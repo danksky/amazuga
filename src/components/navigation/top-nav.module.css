@@ -1,0 +1,144 @@
+.navWrap {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 76px;
+}
+
+.menuButton {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.menuLine {
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.closeLineOne,
+.closeLineTwo {
+  position: absolute;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.closeLineOne {
+  transform: rotate(45deg);
+}
+
+.closeLineTwo {
+  transform: rotate(-45deg);
+}
+
+.brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.links,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.links {
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.links::-webkit-scrollbar {
+  display: none;
+}
+
+.link {
+  padding: 8px 12px;
+  color: var(--foreground-muted);
+  font-weight: 500;
+}
+
+.active {
+  color: var(--foreground);
+}
+
+.mobileOverlay {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .nav {
+    min-height: 64px;
+  }
+
+  .links,
+  .actions {
+    display: none;
+  }
+
+  .menuButton {
+    display: inline-flex;
+    position: relative;
+  }
+
+  .mobileOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: var(--surface);
+  }
+
+  .mobileOverlayHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 64px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobileOverlayBody {
+    display: grid;
+    align-content: start;
+    gap: 24px;
+    padding: 20px 16px 24px;
+  }
+
+  .mobileMenuLinks,
+  .mobileMenuActions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobileMenuLink {
+    padding: 10px 0;
+    color: var(--foreground);
+    font-weight: 500;
+    font-size: 1.05rem;
+  }
+}

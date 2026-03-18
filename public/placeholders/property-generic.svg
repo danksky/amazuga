@@ -1,0 +1,9 @@
+<svg width="1200" height="750" viewBox="0 0 1200 750" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="750" fill="#F3F5F0"/>
+  <rect x="72" y="72" width="1056" height="606" rx="36" fill="#E5EBE1"/>
+  <rect x="146" y="190" width="908" height="372" rx="26" fill="#D3DDD1"/>
+  <path d="M244 456L420 282L572 394L734 250L956 456V506H244V456Z" fill="#8AA886"/>
+  <path d="M352 524L524 398L640 470L784 372L904 524H352Z" fill="#6D8E78"/>
+  <text x="172" y="128" fill="#4D5A4D" font-family="Arial, sans-serif" font-size="34" font-weight="700">Amazuga Placeholder</text>
+  <text x="172" y="168" fill="#6C786B" font-family="Arial, sans-serif" font-size="24">Property image</text>
+</svg>

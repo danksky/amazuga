@@ -1,0 +1,155 @@
+export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin";
+
+export type ListingStatus = "active" | "inactive";
+
+export type SubmissionStatus = "pending" | "approved" | "denied";
+
+export type PropertyListingState = "listed" | "not_listed";
+
+export type AgencyMembershipRole = "agent" | "manager";
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  roles: Role[];
+  avatarUrl?: string;
+  savedPropertyIds: string[];
+  upiLookupCountToday: number;
+}
+
+export interface PropertyGeometry {
+  type: "polygon" | "multipolygon";
+  coordinates: number[][][];
+}
+
+export interface PropertyLocation {
+  district: string;
+  sector?: string;
+  cell?: string;
+  village?: string;
+  lat: number;
+  lng: number;
+}
+
+export interface PropertyFacts {
+  bedrooms?: number;
+  bathrooms?: number;
+  areaSqm?: number;
+  landAreaSqm?: number;
+  propertyType?: string;
+  yearBuilt?: number;
+}
+
+export interface Property {
+  id: string;
+  upi: string;
+  title: string;
+  description?: string;
+  location: PropertyLocation;
+  geometry: PropertyGeometry;
+  facts: PropertyFacts;
+  listingState: PropertyListingState;
+  activeListingId?: string;
+  valuationHistoryIds: string[];
+}
+
+export interface Listing {
+  id: string;
+  propertyId: string;
+  agencyId: string;
+  agentUserId: string;
+  status: ListingStatus;
+  marketingType: "sale" | "rent";
+  askingPrice: number;
+  currency: "RWF";
+  headline?: string;
+  description?: string;
+  imageUrls: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Agency {
+  id: string;
+  slug: string;
+  businessName: string;
+  tin: string;
+  websiteUrl?: string;
+  googleMapsUrl?: string;
+  status: SubmissionStatus;
+  managerUserId: string;
+  memberUserIds: string[];
+}
+
+export interface AgencyMembership {
+  id: string;
+  agencyId: string;
+  userId: string;
+  role: AgencyMembershipRole;
+  createdAt: string;
+}
+
+export interface AgencyJoinRequest {
+  id: string;
+  agencyId: string;
+  userId: string;
+  status: SubmissionStatus;
+  createdAt: string;
+}
+
+export interface AgencyInvite {
+  id: string;
+  agencyId: string;
+  email: string;
+  invitedByUserId: string;
+  status: "pending" | "accepted" | "cancelled";
+  createdAt: string;
+}
+
+export interface ManagerTransferRequest {
+  id: string;
+  agencyId: string;
+  fromUserId: string;
+  toUserId: string;
+  status: "pending" | "accepted" | "rejected" | "cancelled";
+  createdAt: string;
+}
+
+export interface AgentApplication {
+  id: string;
+  userId: string;
+  nationalIdPhotoUrl: string;
+  status: SubmissionStatus;
+  createdAt: string;
+}
+
+export interface ValuatorApplication {
+  id: string;
+  userId: string;
+  irpvRegistrationNumber: string;
+  status: SubmissionStatus;
+  createdAt: string;
+}
+
+export interface AgencyApplication {
+  id: string;
+  createdByUserId: string;
+  businessName: string;
+  tin: string;
+  websiteUrl?: string;
+  googleMapsUrl?: string;
+  status: SubmissionStatus;
+  createdAt: string;
+}
+
+export interface ValuationSubmission {
+  id: string;
+  propertyId: string;
+  submittedByUserId: string;
+  effectiveDate: string;
+  estimatedValue: number;
+  currency: "RWF";
+  status: SubmissionStatus;
+  createdAt: string;
+}

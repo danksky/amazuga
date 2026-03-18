@@ -1,0 +1,123 @@
+.page {
+  padding: 40px 0 56px;
+}
+
+.card {
+  max-width: 860px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.title {
+  margin: 10px 0 12px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.body {
+  max-width: 680px;
+  color: var(--foreground-muted);
+  line-height: 1.6;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--foreground-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.optionList {
+  display: grid;
+  gap: 10px;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.optionTitle {
+  font-weight: 600;
+}
+
+.optionBody {
+  margin-top: 4px;
+  color: var(--foreground-muted);
+  font-size: 0.92rem;
+}
+
+.uploadBox {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.uploadTitle {
+  font-weight: 600;
+}
+
+.uploadBody {
+  color: var(--foreground-muted);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 24px 0 40px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+}

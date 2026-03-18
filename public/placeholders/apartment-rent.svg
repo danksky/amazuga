@@ -1,0 +1,18 @@
+<svg width="1200" height="750" viewBox="0 0 1200 750" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="750" fill="#F1F3EE"/>
+  <rect x="72" y="72" width="1056" height="606" rx="36" fill="#E2E8E0"/>
+  <rect x="216" y="176" width="284" height="388" rx="18" fill="#C8D4C4"/>
+  <rect x="500" y="146" width="284" height="418" rx="18" fill="#D4DED0"/>
+  <rect x="784" y="216" width="200" height="348" rx="18" fill="#BFD0DB"/>
+  <rect x="256" y="222" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="372" y="222" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="256" y="334" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="372" y="334" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="558" y="210" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="654" y="210" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="558" y="314" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="654" y="314" width="72" height="72" rx="8" fill="#FFFFFF"/>
+  <rect x="836" y="262" width="96" height="182" rx="14" fill="#FFFFFF"/>
+  <text x="172" y="128" fill="#4D5A4D" font-family="Arial, sans-serif" font-size="34" font-weight="700">Amazuga Placeholder</text>
+  <text x="172" y="168" fill="#6C786B" font-family="Arial, sans-serif" font-size="24">Rental listing image</text>
+</svg>

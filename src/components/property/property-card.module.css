@@ -1,0 +1,108 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  min-height: 292px;
+  max-height: 320px;
+}
+
+.media {
+  flex: 0 0 120px;
+  position: relative;
+  height: 120px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+
+.mediaSale {
+  background: var(--surface-muted);
+}
+
+.mediaRent {
+  background: var(--surface-muted);
+}
+
+.mediaParcel {
+  background: var(--surface-muted);
+}
+
+.mediaBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mediaShapePrimary,
+.mediaShapeSecondary,
+.mediaShapeTertiary {
+  position: absolute;
+  border-radius: 18px;
+}
+
+.mediaShapePrimary {
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  height: 38px;
+  background: #e7e7e7;
+}
+
+.mediaShapeSecondary {
+  display: none;
+}
+
+.mediaShapeTertiary {
+  display: none;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 14px 16px 16px;
+  min-height: 132px;
+  color: var(--foreground);
+}
+
+.price {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.facts,
+.meta {
+  margin-top: 6px;
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+}
+
+.title {
+  margin-top: 8px;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.25;
+}
+
+.meta {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}

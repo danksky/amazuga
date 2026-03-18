@@ -1,0 +1,14 @@
+<svg width="1200" height="750" viewBox="0 0 1200 750" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="750" fill="#EEF2EA"/>
+  <rect x="72" y="72" width="1056" height="606" rx="36" fill="#E0E7DA"/>
+  <rect x="172" y="360" width="520" height="190" rx="16" fill="#FFFFFF"/>
+  <rect x="740" y="300" width="208" height="250" rx="16" fill="#F6F8F4"/>
+  <path d="M134 372L428 182L724 372V392H134V372Z" fill="#2C4F74"/>
+  <path d="M266 548V382H596V548H266Z" fill="#C7D3C1"/>
+  <rect x="320" y="430" width="88" height="118" rx="10" fill="#FFFFFF"/>
+  <rect x="446" y="420" width="110" height="74" rx="10" fill="#FFFFFF"/>
+  <rect x="782" y="334" width="124" height="88" rx="12" fill="#C7D3C1"/>
+  <rect x="782" y="448" width="124" height="70" rx="12" fill="#D8E1D3"/>
+  <text x="172" y="128" fill="#4D5A4D" font-family="Arial, sans-serif" font-size="34" font-weight="700">Amazuga Placeholder</text>
+  <text x="172" y="168" fill="#6C786B" font-family="Arial, sans-serif" font-size="24">For sale listing image</text>
+</svg>
