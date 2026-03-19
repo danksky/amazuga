@@ -1,0 +1,10 @@
+[
+  {
+    "id": "agent-application-1",
+    "userId": "user-1",
+    "nationalIdPhotoUrl": "/placeholders/property-generic.svg",
+    "selectedAgencyId": "agency-1773881318212",
+    "status": "approved",
+    "createdAt": "2026-03-18T09:00:00.000Z"
+  }
+]

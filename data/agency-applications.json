@@ -1,0 +1,18 @@
+[
+  {
+    "id": "agency-application-1",
+    "createdByUserId": "user-1",
+    "businessName": "Amazuga Advisory",
+    "tin": "119000321",
+    "status": "denied",
+    "createdAt": "2026-03-17T11:00:00.000Z"
+  },
+  {
+    "id": "agency-application-1773881318212",
+    "createdByUserId": "user-1",
+    "businessName": "Some Agency",
+    "tin": "298357",
+    "status": "approved",
+    "createdAt": "2026-03-19T00:48:38.212Z"
+  }
+]

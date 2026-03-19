@@ -1,0 +1,29 @@
+[
+  {
+    "id": "agency-1",
+    "slug": "kigali-homes-group",
+    "businessName": "Kigali Homes Group",
+    "tin": "107839210",
+    "whatsappPhone": "+250788123456",
+    "websiteUrl": "https://example.com",
+    "status": "approved",
+    "managerUserId": "user-2",
+    "memberUserIds": [
+      "user-2",
+      "user-3"
+    ]
+  },
+  {
+    "id": "agency-1773881318212",
+    "slug": "some-agency",
+    "createdFromApplicationId": "agency-application-1773881318212",
+    "businessName": "Some Agency",
+    "tin": "298357",
+    "status": "approved",
+    "pendingManagerUserId": "user-1",
+    "memberUserIds": [
+      "user-1"
+    ],
+    "managerUserId": "user-1"
+  }
+]

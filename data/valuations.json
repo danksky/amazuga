@@ -1,0 +1,32 @@
+[
+  {
+    "id": "valuation-1",
+    "propertyId": "property-1",
+    "submittedByUserId": "user-4",
+    "effectiveDate": "2026-02-01",
+    "estimatedValue": 176000000,
+    "currency": "RWF",
+    "status": "approved",
+    "createdAt": "2026-02-01T08:00:00.000Z"
+  },
+  {
+    "id": "valuation-2",
+    "propertyId": "property-1",
+    "submittedByUserId": "user-4",
+    "effectiveDate": "2025-11-18",
+    "estimatedValue": 168000000,
+    "currency": "RWF",
+    "status": "approved",
+    "createdAt": "2025-11-18T08:00:00.000Z"
+  },
+  {
+    "id": "valuation-3",
+    "propertyId": "property-2",
+    "submittedByUserId": "user-4",
+    "effectiveDate": "2026-01-10",
+    "estimatedValue": 92000000,
+    "currency": "RWF",
+    "status": "approved",
+    "createdAt": "2026-01-10T08:00:00.000Z"
+  }
+]
