@@ -1,11 +1,34 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminReviewPage } from "@/features/admin/admin-review-page";
+import { readAgencyApplications } from "@/lib/data-store";
+import { formatDate } from "@/lib/format";
 
-export default function AdminAgenciesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminAgenciesPage() {
+  const items = (await readAgencyApplications())
+    .filter((application) => application.status === "pending")
+    .map((application) => ({
+      id: application.id,
+      kind: "agency" as const,
+      title: application.businessName,
+      meta: [`TIN ${application.tin}`, `Submitted ${formatDate(application.createdAt)}`],
+      details: [
+        { label: "Request ID", value: application.id },
+        { label: "Created by", value: application.createdByUserId },
+        { label: "Website", value: application.websiteUrl ?? "Not provided" },
+        { label: "Google Maps", value: application.googleMapsUrl ?? "Not provided" },
+      ],
+      reviewNote:
+        "Approving this request creates the agency record. The creator becomes the pending manager candidate and only gains active manager access after agent approval.",
+    }));
+
   return (
-    <PlaceholderPage
-      eyebrow="Admin"
+    <AdminReviewPage
+      active="agencies"
+      body="Review agency submissions that are waiting for approval."
+      empty="No pending agency submissions."
+      items={items}
       title="Agency review"
-      description="Agency submissions and status changes will be reviewed here."
     />
   );
 }

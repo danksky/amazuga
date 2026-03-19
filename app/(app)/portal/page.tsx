@@ -1,11 +1,7 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { PortalOverview } from "@/features/portal/portal-overview";
 
-export default function PortalPage() {
-  return (
-    <PlaceholderPage
-      eyebrow="Portal"
-      title="Business portal"
-      description="The portal overview will adapt to the current user's approved roles, including agent, manager, and valuator states."
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function PortalPage() {
+  return <PortalOverview />;
 }

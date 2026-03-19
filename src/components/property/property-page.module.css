@@ -80,6 +80,35 @@
   font-size: 0.95rem;
 }
 
+.estimateCard {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.estimateLabel {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.estimateValue {
+  margin-top: 8px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.estimateBody {
+  margin-top: 8px;
+  color: var(--foreground-muted);
+  line-height: 1.55;
+}
+
 .description {
   margin-top: 16px;
   color: var(--foreground-muted);
@@ -185,6 +214,26 @@
 .listingDescription,
 .infoBlock {
   font-size: 0.95rem;
+}
+
+.contactCard {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.contactLabel {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.contactValue {
+  margin-top: 6px;
+  font-weight: 600;
 }
 
 .nonListedTitle {

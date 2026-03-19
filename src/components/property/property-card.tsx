@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { formatCurrency } from "@/lib/format";
-import { getListingForProperty } from "@/lib/mock-data";
+import { getListingForProperty, getValuationsForProperty } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 import type { Property } from "@/types/domain";
 
@@ -13,7 +13,13 @@ interface PropertyCardProps {
 
 export function PropertyCard({ property }: PropertyCardProps) {
   const listing = getListingForProperty(property.id);
-  const price = listing ? formatCurrency(listing.askingPrice, listing.currency) : "Not currently listed";
+  const latestValuation = getValuationsForProperty(property.id)[0];
+  const price = listing
+    ? formatCurrency(listing.askingPrice, listing.currency)
+    : latestValuation
+      ? formatCurrency(latestValuation.estimatedValue, latestValuation.currency)
+      : "Market estimate unavailable";
+  const priceLabel = listing ? null : latestValuation ? "Market estimate" : "Not listed";
   const mediaVariant = listing?.marketingType ?? "sale";
   const mediaLabel =
     property.facts.propertyType === "Apartment"
@@ -36,6 +42,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
         <div className={styles.mediaShapeTertiary} />
       </div>
       <div className={styles.body}>
+        {priceLabel ? <div className={styles.priceLabel}>{priceLabel}</div> : null}
         <div className={styles.price}>{price}</div>
         <div className={styles.facts}>
           {property.facts.bedrooms ? `${property.facts.bedrooms} bd` : "Parcel"}

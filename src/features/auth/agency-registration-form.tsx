@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { submitAgencyRegistrationAction } from "@/features/auth/actions";
 import { routes } from "@/lib/routes";
 
 import styles from "./agency-registration-form.module.css";
@@ -16,7 +17,7 @@ export function AgencyRegistrationForm() {
           Maps listing.
         </div>
 
-        <form className={styles.form}>
+        <form action={submitAgencyRegistrationAction} className={styles.form}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="business-name">
               Business name
@@ -47,8 +48,8 @@ export function AgencyRegistrationForm() {
           </div>
 
           <div className={styles.actions}>
-            <Button type="button">Submit agency</Button>
-            <Link href={routes.onboarding.agent}>
+            <Button type="submit">Submit agency</Button>
+            <Link href={routes.onboarding.advertise}>
               <Button type="button" variant="secondary">
                 Back
               </Button>

@@ -83,6 +83,15 @@
   line-height: 1.1;
 }
 
+.priceLabel {
+  color: var(--foreground-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
 .facts,
 .meta {
   margin-top: 6px;

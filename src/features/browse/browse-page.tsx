@@ -18,7 +18,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const title = mode === "buy" ? "Homes for sale in Rwanda" : "Homes for rent in Rwanda";
   const marketingType = mode === "buy" ? "sale" : "rent";
-  const filters = [mode === "buy" ? "For sale" : "For rent", "Price", "Beds & baths", "Property type", "More filters"];
+  const filters = ["Price", "Beds & baths", "Property type", "More filters"];
   const filteredProperties = properties.filter((property) => {
     const listing = listings.find((candidate) => candidate.id === property.activeListingId);
 

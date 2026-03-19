@@ -82,24 +82,6 @@
   border-radius: 0 12px 12px 0;
 }
 
-.uploadBox {
-  display: grid;
-  gap: 10px;
-  padding: 18px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface-muted);
-}
-
-.uploadTitle {
-  font-weight: 600;
-}
-
-.uploadBody {
-  color: var(--foreground-muted);
-  line-height: 1.5;
-}
-
 .actions {
   display: flex;
   gap: 12px;

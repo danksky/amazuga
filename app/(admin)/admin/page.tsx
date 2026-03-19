@@ -1,11 +1,5 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { redirect } from "next/navigation";
 
 export default function AdminPage() {
-  return (
-    <PlaceholderPage
-      eyebrow="Admin"
-      title="Admin overview"
-      description="Admin queue counts, recent actions, and all moderation entry points will live here."
-    />
-  );
+  redirect("/admin/dashboard");
 }

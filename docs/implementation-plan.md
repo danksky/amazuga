@@ -115,6 +115,14 @@ src/
 - Do not surface UPI publicly.
 - Do not create a separate public listing page in v1.
 
+## State Machine Notes
+
+- Agency registration approval creates the agency record.
+- Agency creator is stored as the pending manager candidate.
+- Active manager access is granted only after that user is also approved as an agent.
+- Admin review side effects should preserve that distinction rather than collapsing agency approval and agent approval into one state.
+- Portal surfaces should reflect manager-pending state explicitly rather than assuming an approved agency implies active manager access.
+
 ## Open Future Features
 
 These are intentionally out of scope for the first build:

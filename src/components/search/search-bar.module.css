@@ -33,6 +33,7 @@
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  position: relative;
 }
 
 .mobileFiltersButton {
@@ -45,7 +46,14 @@
   font-weight: 500;
 }
 
+.filterGroup {
+  position: relative;
+}
+
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -54,6 +62,286 @@
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.chevron {
+  color: var(--foreground-muted);
+  display: inline-flex;
+  align-items: center;
+}
+
+.chevronIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.desktopDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 220px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.priceDropdown {
+  width: 360px;
+  border-radius: 16px;
+}
+
+.bedsDropdown {
+  width: 420px;
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.desktopDropdownItem {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.desktopDropdownItem:hover {
+  background: var(--surface-muted);
+}
+
+.checkboxList {
+  display: grid;
+  gap: 10px;
+}
+
+.checkboxOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--foreground);
+}
+
+.checkboxOption input {
+  width: 16px;
+  height: 16px;
+}
+
+.priceSliderBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.priceSlider {
+  position: relative;
+  height: 24px;
+}
+
+.priceTrack,
+.priceActiveTrack {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+}
+
+.priceTrack {
+  inset: 50% 0 auto;
+  background: var(--border);
+}
+
+.priceActiveTrack {
+  background: var(--foreground);
+}
+
+.rangeInput {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rangeInput::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rangeInput::-webkit-slider-runnable-track {
+  height: 24px;
+  background: transparent;
+}
+
+.rangeInput::-moz-range-track {
+  height: 24px;
+  background: transparent;
+}
+
+.priceHandle {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--foreground);
+  border-radius: 50%;
+  background: var(--surface);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.priceRangeMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+}
+
+.priceLabels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--foreground);
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.priceInputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.priceField {
+  display: grid;
+  gap: 8px;
+}
+
+.priceFieldLabel {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.priceInput {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.priceSeparator {
+  padding-bottom: 12px;
+  color: var(--foreground-muted);
+  font-weight: 600;
+}
+
+.filterApply {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid var(--foreground);
+  border-radius: 12px;
+  background: var(--foreground);
+  color: var(--background);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filterActions {
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.bedsDropdown .filterActions {
+  margin-top: 16px;
+}
+
+.filterSection {
+  display: grid;
+  gap: 14px;
+}
+
+.filterSection + .filterSection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+
+.filterSectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.segmentedRow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.segmentButton {
+  min-height: 56px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.segmentButton:last-child {
+  border-right: 0;
+}
+
+.segmentButtonSelected {
+  background: var(--surface-muted);
+}
+
+.checkboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--foreground);
+  font-size: 0.98rem;
+}
+
+.checkboxRow input {
+  width: 18px;
+  height: 18px;
 }
 
 .helper {
@@ -90,15 +378,34 @@
   align-content: start;
   gap: 10px;
   padding: 16px;
+  overflow-y: auto;
 }
 
 .mobileOverlayItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 0;
   border: 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--foreground);
   text-align: left;
+}
+
+.mobileFilterGroup {
+  display: grid;
+}
+
+.mobileFilterPanel {
+  display: grid;
+  gap: 16px;
+  padding: 12px 0 8px;
+}
+
+.mobileOverlayBody > .filterActions {
+  margin-top: 8px;
+  padding-top: 16px;
 }
 
 @media (max-width: 1100px) {
@@ -124,6 +431,10 @@
 
 @media (max-width: 700px) {
   .filters {
+    display: none;
+  }
+
+  .desktopDropdown {
     display: none;
   }
 }

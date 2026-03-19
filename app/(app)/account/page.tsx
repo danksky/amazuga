@@ -5,7 +5,7 @@ export default function AccountPage() {
     <PlaceholderPage
       eyebrow="Account"
       title="Account"
-      description="Account will show current roles, pending applications, and saved-property access."
+      description="This page is shelved for now while the consumer-facing flow is prioritized."
     />
   );
 }

@@ -73,12 +73,15 @@ export interface Listing {
 export interface Agency {
   id: string;
   slug: string;
+  createdFromApplicationId?: string;
   businessName: string;
   tin: string;
+  whatsappPhone?: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
   status: SubmissionStatus;
-  managerUserId: string;
+  pendingManagerUserId?: string;
+  managerUserId?: string;
   memberUserIds: string[];
 }
 
@@ -120,6 +123,7 @@ export interface AgentApplication {
   id: string;
   userId: string;
   nationalIdPhotoUrl: string;
+  selectedAgencyId?: string;
   status: SubmissionStatus;
   createdAt: string;
 }

@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getAgencyById, getListingForProperty, getValuationsForProperty } from "@/lib/mock-data";
 import type { Property } from "@/types/domain";
@@ -10,6 +14,7 @@ interface PropertyPageProps {
 }
 
 export function PropertyPage({ property }: PropertyPageProps) {
+  const [showWhatsapp, setShowWhatsapp] = useState(false);
   const listing = getListingForProperty(property.id);
   const valuations = getValuationsForProperty(property.id);
   const agency = listing ? getAgencyById(listing.agencyId) : undefined;
@@ -38,13 +43,28 @@ export function PropertyPage({ property }: PropertyPageProps) {
           <h1 className={styles.title}>{property.title}</h1>
           <div className={styles.statusRow}>
             <div className={styles.status}>{listing ? "Listed" : "Not listed"}</div>
-            {latestValuation ? (
+            {listing ? (
               <div className={styles.inlineMeta}>
-                Last valuation {formatDate(latestValuation.effectiveDate)}:{" "}
+                Listed at {formatCurrency(listing.askingPrice, listing.currency)}
+              </div>
+            ) : latestValuation ? (
+              <div className={styles.inlineMeta}>
+                Market estimate based on{" "}
+                {formatDate(latestValuation.effectiveDate)}:{" "}
                 {formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}
               </div>
             ) : null}
           </div>
+          {!listing && latestValuation ? (
+            <div className={styles.estimateCard}>
+              <div className={styles.estimateLabel}>Market estimate</div>
+              <div className={styles.estimateValue}>{formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}</div>
+              <div className={styles.estimateBody}>
+                This property is not currently listed. The estimate is based on the latest approved valuation recorded on{" "}
+                {formatDate(latestValuation.effectiveDate)}.
+              </div>
+            </div>
+          ) : null}
           <div className={styles.description}>{property.description}</div>
           <div className={styles.facts}>
             <div className={styles.fact}>
@@ -113,8 +133,16 @@ export function PropertyPage({ property }: PropertyPageProps) {
                   {agency ? ` · ${agency.businessName}` : ""}
                 </div>
                 <div className={styles.listingDescription}>{listing.description}</div>
+                {showWhatsapp && agency?.whatsappPhone ? (
+                  <div className={styles.contactCard}>
+                    <div className={styles.contactLabel}>WhatsApp</div>
+                    <div className={styles.contactValue}>{agency.whatsappPhone}</div>
+                  </div>
+                ) : null}
                 <div className={styles.ctaGroup}>
-                  <Button>Contact agent</Button>
+                  <Button onClick={() => setShowWhatsapp((current) => !current)}>
+                    {showWhatsapp ? "Hide WhatsApp" : "Show WhatsApp"}
+                  </Button>
                   <Button variant="secondary">Save property</Button>
                 </div>
               </div>

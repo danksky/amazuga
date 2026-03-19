@@ -1,0 +1,82 @@
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.searchLabel {
+  font-weight: 600;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.selected {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.selectedTitle {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+}
+
+.selectedBody {
+  font-weight: 600;
+}
+
+.results {
+  display: grid;
+  gap: 10px;
+}
+
+.option {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.optionSelected {
+  border-color: var(--foreground);
+}
+
+.optionTitle {
+  font-weight: 600;
+}
+
+.optionBody {
+  margin-top: 4px;
+  color: var(--foreground-muted);
+  font-size: 0.92rem;
+}
+
+.optionState {
+  color: var(--foreground-muted);
+  font-size: 0.92rem;
+}
+
+.empty {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--foreground-muted);
+}

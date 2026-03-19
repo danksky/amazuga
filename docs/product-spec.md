@@ -52,12 +52,16 @@ The product should prioritize:
 - Must be approved by admin
 - Approval requires National ID photo
 - Can belong to only one agency at a time
+- Agent application requires selecting an approved agency
 - Can create and edit listings for their agency
 
 ### Agency Manager
 
 - Primary controlling role for an agency
-- Agency creator becomes initial manager
+- Agency creator becomes the designated manager candidate
+- Agency management does not activate until both:
+  - the agency registration is approved
+  - the creator is approved as an agent
 - Can add and remove agents from their agency
 - Can approve join requests
 - Can invite users to join or switch agencies
@@ -81,10 +85,19 @@ The product should prioritize:
 
 - Agencies require admin approval before they are joinable
 - Agency creation requires business name and TIN
+- Approving an agency registration creates the agency record
+- If the creator is not yet an approved agent, the agency exists in a manager-pending state until agent approval is granted
 - Website is optional
 - Google Maps listing is optional
 - No logo, branding, registration docs, assigned territory, or proof-of-compliance requirements in v1
 - Join flow is request-based or invite-based
+
+## Approval State Rules
+
+- Agency registration approval and agent approval are separate decisions
+- Agency approval alone does not grant management access
+- Agent approval alone does not create or activate an agency
+- When both approvals are complete, the creator becomes the active manager of the approved agency
 
 ## Property Rules
 
