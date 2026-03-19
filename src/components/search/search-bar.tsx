@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { getPropertyByUpi } from "@/lib/mock-data";
+import { routes } from "@/lib/routes";
 
 import styles from "./search-bar.module.css";
 
@@ -46,6 +49,9 @@ export function SearchBar({
   filters = [],
   onFiltersOpenChange,
 }: SearchBarProps) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [searchMessage, setSearchMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeDesktopFilter, setActiveDesktopFilter] = useState<string | null>(null);
   const [activeMobileFilter, setActiveMobileFilter] = useState<string | null>(null);
@@ -89,12 +95,38 @@ export function SearchBar({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) {
+      setSearchMessage(null);
+      return;
+    }
+
+    const property = getPropertyByUpi(normalizedQuery);
+
+    if (property) {
+      setSearchMessage(null);
+      router.push(routes.public.property(property.id));
+      return;
+    }
+
+    const looksLikeUpi = normalizedQuery.includes("/");
+    setSearchMessage(looksLikeUpi ? "No property matched that UPI." : null);
+  }
+
   return (
     <div className={styles.root}>
-      <div className={styles.wrap}>
-        <input className={styles.input} placeholder={placeholder} />
+      <form className={styles.wrap} onSubmit={handleSearchSubmit}>
+        <input
+          className={styles.input}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={placeholder}
+          value={query}
+        />
         <div className={styles.controls}>
-          <Button type="button">Search</Button>
+          <Button type="submit">Search</Button>
           <button className={styles.mobileFiltersButton} onClick={openFilters} type="button">
             Filters
           </button>
@@ -275,8 +307,8 @@ export function SearchBar({
             ))}
           </div>
         </div>
-      </div>
-      {helperText ? <div className={styles.helper}>{helperText}</div> : null}
+      </form>
+      {searchMessage ? <div className={styles.helper}>{searchMessage}</div> : helperText ? <div className={styles.helper}>{helperText}</div> : null}
       {filtersOpen ? (
         <div className={styles.mobileOverlay}>
           <div className={styles.mobileOverlayHeader}>

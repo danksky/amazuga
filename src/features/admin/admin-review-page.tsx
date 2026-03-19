@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { reviewApplicationAction } from "@/features/admin/actions";
-import { isCurrentUserAdmin } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 import styles from "./admin.module.css";
@@ -24,14 +23,6 @@ interface AdminReviewPageProps {
 }
 
 export function AdminReviewPage({ title, body, active, items, empty }: AdminReviewPageProps) {
-  if (!isCurrentUserAdmin()) {
-    return (
-      <div className={`container ${styles.page}`}>
-        <div className={styles.unauthorized}>This area is restricted to the current admin user.</div>
-      </div>
-    );
-  }
-
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>

@@ -1,8 +1,0 @@
-{
-  "id": "user-1",
-  "email": "daniel.kawalsky@gmail.com",
-  "fullName": "Daniel Kawalsky",
-  "roles": ["user", "admin"],
-  "savedPropertyIds": ["property-1", "property-2", "property-3"],
-  "upiLookupCountToday": 3
-}

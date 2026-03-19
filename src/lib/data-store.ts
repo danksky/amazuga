@@ -1,7 +1,14 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { Agency, AgencyApplication, AgentApplication, SubmissionStatus, ValuatorApplication } from "@/types/domain";
+import type {
+  Agency,
+  AgencyApplication,
+  AgentApplication,
+  SubmissionStatus,
+  User,
+  ValuatorApplication,
+} from "@/types/domain";
 
 type ApplicationKind = "agency" | "agent" | "valuator";
 
@@ -22,6 +29,10 @@ function getAgenciesFilePath() {
   return path.join(dataDir, "agencies.json");
 }
 
+function getUsersFilePath() {
+  return path.join(dataDir, "users.json");
+}
+
 async function readJsonFile<T>(filePath: string) {
   const file = await readFile(filePath, "utf8");
   return JSON.parse(file) as T;
@@ -37,6 +48,10 @@ function createRecordId(prefix: string) {
 
 export async function readAgencyApplications() {
   return readJsonFile<AgencyApplication[]>(getFilePath("agency"));
+}
+
+export async function readUsers() {
+  return readJsonFile<User[]>(getUsersFilePath());
 }
 
 export async function readAgencies() {
@@ -128,6 +143,21 @@ export async function createValuatorApplication(input: {
 
   await writeJsonFile(getFilePath("valuator"), [...applications, nextApplication]);
   return nextApplication;
+}
+
+export async function createUser(input: { email: string; fullName: string }) {
+  const users = await readUsers();
+  const nextUser: User = {
+    id: createRecordId("user"),
+    email: input.email.trim().toLowerCase(),
+    fullName: input.fullName.trim(),
+    roles: ["user"],
+    savedPropertyIds: [],
+    upiLookupCountToday: 0,
+  };
+
+  await writeJsonFile(getUsersFilePath(), [...users, nextUser]);
+  return nextUser;
 }
 
 function slugifyAgencyName(value: string) {

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireAdminUser } from "@/lib/auth";
 import { activatePendingAgencyManager, ensureAgencyFromApprovedApplication, updateApplicationStatus } from "@/lib/data-store";
 import { readAgentApplications } from "@/lib/data-store";
-import { isCurrentUserAdmin } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 import type { SubmissionStatus } from "@/types/domain";
 
@@ -16,9 +16,7 @@ const reviewPaths = [
 ];
 
 export async function reviewApplicationAction(formData: FormData) {
-  if (!isCurrentUserAdmin()) {
-    throw new Error("Unauthorized");
-  }
+  await requireAdminUser();
 
   const kind = formData.get("kind");
   const applicationId = formData.get("applicationId");

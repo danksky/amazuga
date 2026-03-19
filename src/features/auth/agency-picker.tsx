@@ -15,11 +15,11 @@ export function AgencyPicker({ agencies, initialAgencyId }: AgencyPickerProps) {
   const [query, setQuery] = useState("");
   const [selectedAgencyId, setSelectedAgencyId] = useState(initialAgencyId ?? "");
   const searchId = useId();
+  const normalizedQuery = query.trim().toLowerCase();
 
   const filteredAgencies = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
-      return agencies;
+      return [];
     }
 
     return agencies.filter((agency) => {
@@ -27,7 +27,7 @@ export function AgencyPicker({ agencies, initialAgencyId }: AgencyPickerProps) {
       const tin = agency.tin.toLowerCase();
       return name.includes(normalizedQuery) || tin.includes(normalizedQuery);
     });
-  }, [agencies, query]);
+  }, [agencies, normalizedQuery]);
 
   const selectedAgency = agencies.find((agency) => agency.id === selectedAgencyId);
 
@@ -36,47 +36,63 @@ export function AgencyPicker({ agencies, initialAgencyId }: AgencyPickerProps) {
       <label className={styles.searchLabel} htmlFor={searchId}>
         Search approved agencies
       </label>
-      <input
-        className={styles.searchInput}
-        id={searchId}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search by agency name or TIN"
-        type="search"
-        value={query}
-      />
       <input name="agencyId" type="hidden" value={selectedAgencyId} />
 
       {selectedAgency ? (
         <div className={styles.selected}>
-          <div className={styles.selectedTitle}>Selected agency</div>
           <div className={styles.selectedBody}>{selectedAgency.businessName}</div>
+          <button
+            aria-label="Clear selected agency"
+            className={styles.clearButton}
+            onClick={() => {
+              setSelectedAgencyId("");
+              setQuery("");
+            }}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+      ) : (
+        <input
+          className={styles.searchInput}
+          id={searchId}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search by agency name or TIN"
+          type="search"
+          value={query}
+        />
+      )}
+
+      {normalizedQuery ? (
+        <div className={styles.results}>
+          {filteredAgencies.length > 0 ? (
+            filteredAgencies.map((agency) => {
+              const isSelected = agency.id === selectedAgencyId;
+
+              return (
+                <button
+                  className={`${styles.option} ${isSelected ? styles.optionSelected : ""}`}
+                  key={agency.id}
+                  onClick={() => {
+                    setSelectedAgencyId(agency.id);
+                    setQuery("");
+                  }}
+                  type="button"
+                >
+                  <div>
+                    <div className={styles.optionTitle}>{agency.businessName}</div>
+                    <div className={styles.optionBody}>TIN {agency.tin}</div>
+                  </div>
+                  <div className={styles.optionState}>{isSelected ? "Selected" : "Select"}</div>
+                </button>
+              );
+            })
+          ) : (
+            <div className={styles.empty}>No approved agencies match your search.</div>
+          )}
         </div>
       ) : null}
-
-      <div className={styles.results}>
-        {filteredAgencies.length > 0 ? (
-          filteredAgencies.map((agency) => {
-            const isSelected = agency.id === selectedAgencyId;
-
-            return (
-              <button
-                className={`${styles.option} ${isSelected ? styles.optionSelected : ""}`}
-                key={agency.id}
-                onClick={() => setSelectedAgencyId(agency.id)}
-                type="button"
-              >
-                <div>
-                  <div className={styles.optionTitle}>{agency.businessName}</div>
-                  <div className={styles.optionBody}>TIN {agency.tin}</div>
-                </div>
-                <div className={styles.optionState}>{isSelected ? "Selected" : "Select"}</div>
-              </button>
-            );
-          })
-        ) : (
-          <div className={styles.empty}>No approved agencies match your search.</div>
-        )}
-      </div>
     </div>
   );
 }

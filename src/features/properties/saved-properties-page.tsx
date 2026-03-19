@@ -1,9 +1,10 @@
 import { PropertyCard } from "@/components/property/property-card";
-import { currentUser, properties } from "@/lib/mock-data";
+import { properties } from "@/lib/mock-data";
+import type { User } from "@/types/domain";
 
 import styles from "./saved-properties-page.module.css";
 
-export function SavedPropertiesPage() {
+export function SavedPropertiesPage({ currentUser }: { currentUser: User }) {
   const savedProperties = properties.filter((property) => currentUser.savedPropertyIds.includes(property.id));
 
   return (

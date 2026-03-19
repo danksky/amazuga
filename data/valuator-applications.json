@@ -1,23 +1,16 @@
 [
   {
     "id": "valuator-application-1",
-    "userId": "user-1",
+    "userId": "user-6",
     "irpvRegistrationNumber": "IRPV-2026-188",
     "status": "pending",
     "createdAt": "2026-03-18T10:00:00.000Z"
   },
   {
-    "id": "valuator-application-1773874119575",
-    "userId": "user-1",
-    "irpvRegistrationNumber": "29382982",
-    "status": "pending",
-    "createdAt": "2026-03-18T22:48:39.575Z"
-  },
-  {
-    "id": "valuator-application-1773881080797",
-    "userId": "user-1",
-    "irpvRegistrationNumber": "2352364236",
-    "status": "pending",
-    "createdAt": "2026-03-19T00:44:40.798Z"
+    "id": "valuator-application-2",
+    "userId": "user-7",
+    "irpvRegistrationNumber": "IRPV-2026-077",
+    "status": "approved",
+    "createdAt": "2026-03-12T09:00:00.000Z"
   }
 ]

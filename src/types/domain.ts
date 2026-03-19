@@ -13,6 +13,8 @@ export interface User {
   email: string;
   fullName: string;
   roles: Role[];
+  mockPersonaLabel?: string;
+  mockPersonaDescription?: string;
   avatarUrl?: string;
   savedPropertyIds: string[];
   upiLookupCountToday: number;
@@ -151,6 +153,7 @@ export interface ValuationSubmission {
   id: string;
   propertyId: string;
   submittedByUserId: string;
+  isAnonymous?: boolean;
   effectiveDate: string;
   estimatedValue: number;
   currency: "RWF";

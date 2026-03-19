@@ -18,26 +18,40 @@
 }
 
 .selected {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface-muted);
 }
 
-.selectedTitle {
-  color: var(--foreground-muted);
-  font-size: 0.9rem;
-}
-
 .selectedBody {
   font-weight: 600;
+}
+
+.clearButton {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .results {
   display: grid;
   gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
 }
 
 .option {
@@ -46,13 +60,17 @@
   gap: 12px;
   align-items: center;
   padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
   text-align: left;
   color: var(--foreground);
   font: inherit;
   cursor: pointer;
+}
+
+.option:last-child {
+  border-bottom: 0;
 }
 
 .optionSelected {
@@ -76,7 +94,5 @@
 
 .empty {
   padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
   color: var(--foreground-muted);
 }

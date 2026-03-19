@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ApplicationStatus } from "@/features/auth/application-status";
+import { requireCurrentUser } from "@/lib/auth";
 import { readAgencies, readAgencyApplications, readAgentApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
@@ -53,6 +54,7 @@ export default async function AgencyRegistrationRequestPage({
 }: {
   params: Promise<{ requestId: string }>;
 }) {
+  const currentUser = await requireCurrentUser();
   const { requestId } = await params;
   const [applications, agencies, agentApplications] = await Promise.all([
     readAgencyApplications(),
@@ -62,6 +64,10 @@ export default async function AgencyRegistrationRequestPage({
   const application = applications.find((entry) => entry.id === requestId);
 
   if (!application) {
+    notFound();
+  }
+
+  if (application.createdByUserId !== currentUser.id) {
     notFound();
   }
 

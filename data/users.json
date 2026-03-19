@@ -1,0 +1,72 @@
+[
+  {
+    "id": "user-1",
+    "email": "daniel.kawalsky@gmail.com",
+    "fullName": "Daniel Kawalsky",
+    "roles": ["user", "admin"],
+    "mockPersonaLabel": "Admin",
+    "mockPersonaDescription": "Moderates applications and reviews platform activity.",
+    "savedPropertyIds": [],
+    "upiLookupCountToday": 0
+  },
+  {
+    "id": "user-2",
+    "email": "buyer@amazuga.test",
+    "fullName": "Aline Uwimana",
+    "roles": ["user"],
+    "mockPersonaLabel": "Consumer",
+    "mockPersonaDescription": "Typical buyer browsing homes and saving properties.",
+    "savedPropertyIds": ["property-1", "property-2", "property-3"],
+    "upiLookupCountToday": 3
+  },
+  {
+    "id": "user-3",
+    "email": "new.agent@amazuga.test",
+    "fullName": "Eric Habimana",
+    "roles": ["user"],
+    "mockPersonaLabel": "New agent applicant",
+    "mockPersonaDescription": "Has no approvals yet and should start the advertise flow from scratch.",
+    "savedPropertyIds": [],
+    "upiLookupCountToday": 0
+  },
+  {
+    "id": "user-4",
+    "email": "pending.founder@amazuga.test",
+    "fullName": "Chantal Uwase",
+    "roles": ["user"],
+    "mockPersonaLabel": "Pending agency founder",
+    "mockPersonaDescription": "Submitted an agency registration that is still under review.",
+    "savedPropertyIds": [],
+    "upiLookupCountToday": 0
+  },
+  {
+    "id": "user-5",
+    "email": "manager@amazuga.test",
+    "fullName": "Alice Mukamana",
+    "roles": ["user", "agent", "agency_manager"],
+    "mockPersonaLabel": "Approved agency manager",
+    "mockPersonaDescription": "Approved as both agent and manager, with an active agency.",
+    "savedPropertyIds": [],
+    "upiLookupCountToday": 0
+  },
+  {
+    "id": "user-6",
+    "email": "pending.valuator@amazuga.test",
+    "fullName": "Claude Mukiza",
+    "roles": ["user"],
+    "mockPersonaLabel": "Pending valuator",
+    "mockPersonaDescription": "Submitted valuator recognition and is waiting for review.",
+    "savedPropertyIds": [],
+    "upiLookupCountToday": 0
+  },
+  {
+    "id": "user-7",
+    "email": "valuator@amazuga.test",
+    "fullName": "Jeanne Mukandoli",
+    "roles": ["user", "valuator"],
+    "mockPersonaLabel": "Approved valuator",
+    "mockPersonaDescription": "Recognized valuator with approved valuation activity.",
+    "savedPropertyIds": [],
+    "upiLookupCountToday": 0
+  }
+]

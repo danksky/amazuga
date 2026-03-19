@@ -6,9 +6,6 @@ import {
   readAgentApplications,
   readValuatorApplications,
 } from "@/lib/data-store";
-import {
-  isCurrentUserAdmin,
-} from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 import styles from "./admin.module.css";
@@ -22,14 +19,6 @@ export async function AdminDashboard() {
   const pendingAgencies = agencyApplications.filter((application) => application.status === "pending");
   const pendingAgents = agentApplications.filter((application) => application.status === "pending");
   const pendingValuators = valuatorApplications.filter((application) => application.status === "pending");
-
-  if (!isCurrentUserAdmin()) {
-    return (
-      <div className={`container ${styles.page}`}>
-        <div className={styles.unauthorized}>This area is restricted to the current admin user.</div>
-      </div>
-    );
-  }
 
   return (
     <div className={`container ${styles.page}`}>

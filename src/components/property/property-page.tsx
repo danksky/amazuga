@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { formatCurrency, formatDate } from "@/lib/format";
-import { getAgencyById, getListingForProperty, getValuationsForProperty } from "@/lib/mock-data";
+import { getAgencyById, getListingForProperty, getUserById, getValuationsForProperty } from "@/lib/mock-data";
 import type { Property } from "@/types/domain";
 
 import { Button } from "../ui/button";
@@ -101,17 +101,24 @@ export function PropertyPage({ property }: PropertyPageProps) {
                 <tr>
                   <th>Date</th>
                   <th>Value</th>
+                  <th>Valuator</th>
                   <th>Recorded</th>
                 </tr>
               </thead>
               <tbody>
-                {valuations.map((valuation) => (
-                  <tr key={valuation.id}>
-                    <td>{formatDate(valuation.effectiveDate)}</td>
-                    <td>{formatCurrency(valuation.estimatedValue, valuation.currency)}</td>
-                    <td>{formatDate(valuation.createdAt)}</td>
-                  </tr>
-                ))}
+                {valuations.map((valuation) => {
+                  const valuator = getUserById(valuation.submittedByUserId);
+                  const valuatorLabel = valuation.isAnonymous ? "Anonymous" : valuator?.fullName ?? "Unknown valuator";
+
+                  return (
+                    <tr key={valuation.id}>
+                      <td>{formatDate(valuation.effectiveDate)}</td>
+                      <td>{formatCurrency(valuation.estimatedValue, valuation.currency)}</td>
+                      <td>{valuatorLabel}</td>
+                      <td>{formatDate(valuation.createdAt)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ) : (

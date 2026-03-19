@@ -65,6 +65,11 @@
   gap: 12px;
 }
 
+.actions form,
+.mobileMenuActions form {
+  margin: 0;
+}
+
 .links {
   overflow-x: auto;
   scrollbar-width: none;
@@ -83,6 +88,12 @@
 
 .active {
   color: var(--foreground);
+}
+
+.userLabel,
+.mobileUserLabel {
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
 }
 
 .mobileOverlay {

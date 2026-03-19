@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 
 import { AdvertiseChooser } from "@/features/auth/advertise-chooser";
+import { requireCurrentUser } from "@/lib/auth";
 import { readAgencies, readAgencyApplications, readAgentApplications } from "@/lib/data-store";
-import { currentUser } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdvertisePage() {
+  const currentUser = await requireCurrentUser(routes.onboarding.advertise);
   const [agencyApplications, agentApplications, agencies] = await Promise.all([
     readAgencyApplications(),
     readAgentApplications(),
@@ -32,5 +33,5 @@ export default async function AdvertisePage() {
     redirect(routes.onboarding.agencyRegistration(latestAgencyApplication.id));
   }
 
-  return <AdvertiseChooser />;
+  return <AdvertiseChooser userId={currentUser.id} />;
 }

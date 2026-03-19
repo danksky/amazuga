@@ -2,7 +2,8 @@
   {
     "id": "valuation-1",
     "propertyId": "property-1",
-    "submittedByUserId": "user-4",
+    "submittedByUserId": "user-7",
+    "isAnonymous": false,
     "effectiveDate": "2026-02-01",
     "estimatedValue": 176000000,
     "currency": "RWF",
@@ -12,7 +13,8 @@
   {
     "id": "valuation-2",
     "propertyId": "property-1",
-    "submittedByUserId": "user-4",
+    "submittedByUserId": "user-7",
+    "isAnonymous": true,
     "effectiveDate": "2025-11-18",
     "estimatedValue": 168000000,
     "currency": "RWF",
@@ -22,7 +24,8 @@
   {
     "id": "valuation-3",
     "propertyId": "property-2",
-    "submittedByUserId": "user-4",
+    "submittedByUserId": "user-7",
+    "isAnonymous": false,
     "effectiveDate": "2026-01-10",
     "estimatedValue": 92000000,
     "currency": "RWF",

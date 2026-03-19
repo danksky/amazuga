@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { ApplicationStatus } from "@/features/auth/application-status";
+import { requireCurrentUser } from "@/lib/auth";
 import { readValuatorApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
-import { currentUser } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 function getStatusCopy(status: "pending" | "approved" | "denied") {
@@ -41,10 +41,15 @@ export default async function ValuatorApplicationPage({
 }: {
   params: Promise<{ applicationId: string }>;
 }) {
+  const currentUser = await requireCurrentUser();
   const { applicationId } = await params;
   const application = (await readValuatorApplications()).find((entry) => entry.id === applicationId);
 
   if (!application) {
+    notFound();
+  }
+
+  if (application.userId !== currentUser.id) {
     notFound();
   }
 

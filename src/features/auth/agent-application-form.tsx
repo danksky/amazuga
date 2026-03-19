@@ -3,14 +3,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { submitAgentApplicationAction } from "@/features/auth/actions";
 import { AgencyPicker } from "@/features/auth/agency-picker";
-import { agencies } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
+import type { Agency } from "@/types/domain";
 
 import styles from "./agent-application-form.module.css";
 
-export function AgentApplicationForm() {
-  const approvedAgencies = agencies.filter((agency) => agency.status === "approved");
-
+export function AgentApplicationForm({ agencies }: { agencies: Agency[] }) {
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
@@ -44,7 +42,7 @@ export function AgentApplicationForm() {
             <div className={styles.hint}>
               Select the approved agency you intend to join. Agency selection is required for agent review.
             </div>
-            <AgencyPicker agencies={approvedAgencies} />
+            <AgencyPicker agencies={agencies} />
           </div>
 
           <div className={styles.field}>

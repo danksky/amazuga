@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { requireCurrentUser } from "@/lib/auth";
 import { createAgencyApplication, createAgentApplication, createValuatorApplication } from "@/lib/data-store";
-import { currentUser } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 function getRequiredString(formData: FormData, key: string) {
@@ -31,6 +31,7 @@ function getOptionalString(formData: FormData, key: string) {
 }
 
 export async function submitAgencyRegistrationAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.onboarding.agencyRegistrationNew);
   const application = await createAgencyApplication({
     createdByUserId: currentUser.id,
     businessName: getRequiredString(formData, "businessName"),
@@ -43,6 +44,7 @@ export async function submitAgencyRegistrationAction(formData: FormData) {
 }
 
 export async function submitAgentApplicationAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.onboarding.agentApplicationNew);
   getRequiredString(formData, "fullName");
   getRequiredString(formData, "phoneNumber");
   const selectedAgencyId = getRequiredString(formData, "agencyId");
@@ -57,6 +59,7 @@ export async function submitAgentApplicationAction(formData: FormData) {
 }
 
 export async function submitValuatorApplicationAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.onboarding.valuatorApplicationNew);
   getRequiredString(formData, "fullName");
   getRequiredString(formData, "phoneNumber");
 

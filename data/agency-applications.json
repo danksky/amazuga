@@ -1,18 +1,19 @@
 [
   {
     "id": "agency-application-1",
-    "createdByUserId": "user-1",
-    "businessName": "Amazuga Advisory",
+    "createdByUserId": "user-4",
+    "businessName": "Umurage Property Partners",
     "tin": "119000321",
-    "status": "denied",
-    "createdAt": "2026-03-17T11:00:00.000Z"
+    "status": "pending",
+    "createdAt": "2026-03-18T11:00:00.000Z"
   },
   {
-    "id": "agency-application-1773881318212",
-    "createdByUserId": "user-1",
-    "businessName": "Some Agency",
-    "tin": "298357",
+    "id": "agency-application-2",
+    "createdByUserId": "user-5",
+    "businessName": "Kigali Homes Group",
+    "tin": "107839210",
+    "websiteUrl": "https://example.com",
     "status": "approved",
-    "createdAt": "2026-03-19T00:48:38.212Z"
+    "createdAt": "2026-03-15T09:00:00.000Z"
   }
 ]

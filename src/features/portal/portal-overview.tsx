@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import { readAgencies, readAgentApplications, readValuatorApplications } from "@/lib/data-store";
-import { currentUser } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
+import type { User } from "@/types/domain";
 
 import styles from "./portal-overview.module.css";
 
@@ -10,7 +10,7 @@ function getLatestForUser<T extends { userId: string }>(items: T[], userId: stri
   return [...items].reverse().find((item) => item.userId === userId);
 }
 
-export async function PortalOverview() {
+export async function PortalOverview({ currentUser }: { currentUser: User }) {
   const [agencies, agentApplications, valuatorApplications] = await Promise.all([
     readAgencies(),
     readAgentApplications(),

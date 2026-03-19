@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { ApplicationStatus } from "@/features/auth/application-status";
-import { readAgentApplications } from "@/lib/data-store";
+import { requireCurrentUser } from "@/lib/auth";
+import { readAgencies, readAgentApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
-import { agencies, currentUser } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 function getStatusCopy(status: "pending" | "approved" | "denied") {
@@ -41,10 +41,16 @@ export default async function AgentApplicationPage({
 }: {
   params: Promise<{ applicationId: string }>;
 }) {
+  const currentUser = await requireCurrentUser();
   const { applicationId } = await params;
-  const application = (await readAgentApplications()).find((entry) => entry.id === applicationId);
+  const [applications, agencies] = await Promise.all([readAgentApplications(), readAgencies()]);
+  const application = applications.find((entry) => entry.id === applicationId);
 
   if (!application) {
+    notFound();
+  }
+
+  if (application.userId !== currentUser.id) {
     notFound();
   }
 
@@ -58,7 +64,7 @@ export default async function AgentApplicationPage({
       body={statusCopy.body}
       details={[
         { label: "Applicant", value: currentUser.fullName },
-        { label: "Selected agency", value: selectedAgency?.businessName ?? "Choose later" },
+        { label: "Selected agency", value: selectedAgency?.businessName ?? "Not selected" },
         { label: "National ID photo", value: "Received" },
         { label: "Submitted", value: formatDate(application.createdAt) },
       ]}

@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { readAgencyApplications } from "@/lib/data-store";
-import { currentUser } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 import type { AgencyApplication } from "@/types/domain";
 
@@ -35,11 +34,11 @@ function getAgencyStatusCopy(application: AgencyApplication) {
   };
 }
 
-export async function AdvertiseChooser() {
+export async function AdvertiseChooser({ userId }: { userId: string }) {
   const agencyApplications = await readAgencyApplications();
   const agencyApplication = [...agencyApplications]
     .reverse()
-    .find((application) => application.createdByUserId === currentUser.id);
+    .find((application) => application.createdByUserId === userId);
   const agencyStatusCopy = agencyApplication ? getAgencyStatusCopy(agencyApplication) : null;
 
   return (
