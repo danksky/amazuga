@@ -28,11 +28,18 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
+    
+    function syncScrollLock() {
+      const shouldLockScroll = window.innerWidth > 1100;
+      document.body.style.overflow = shouldLockScroll ? "hidden" : previousBodyOverflow;
+      document.documentElement.style.overflow = shouldLockScroll ? "hidden" : previousHtmlOverflow;
+    }
 
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
+    syncScrollLock();
+    window.addEventListener("resize", syncScrollLock);
 
     return () => {
+      window.removeEventListener("resize", syncScrollLock);
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
@@ -43,7 +50,6 @@ export function BrowsePage({ mode }: BrowsePageProps) {
       <div className={styles.stack}>
         <SearchBar
           filters={filters}
-          helperText="Signed-in users can also enter a UPI directly in search. UPI values are not displayed publicly."
           onFiltersOpenChange={setFiltersOpen}
         />
         <div className={`${styles.layout} ${showMobileMap ? styles.mobileMapVisible : ""}`}>

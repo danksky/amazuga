@@ -90,7 +90,7 @@ export function SearchBar({
   }, []);
 
   return (
-    <div>
+    <div className={styles.root}>
       <div className={styles.wrap}>
         <input className={styles.input} placeholder={placeholder} />
         <div className={styles.controls}>

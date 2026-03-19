@@ -1,6 +1,8 @@
 .page {
+  width: 100vw;
   height: calc(100vh - 76px);
-  padding: 20px 0;
+  margin-inline: calc(50% - 50vw);
+  padding: 0 0 20px;
   overflow: hidden;
 }
 
@@ -127,12 +129,22 @@
 
 @media (max-width: 1100px) {
   .page {
-    height: calc(100vh - 64px);
-    padding: 16px 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0 0 24px;
+    overflow: visible;
+  }
+
+  .stack {
+    gap: 14px;
+    height: auto;
+    grid-template-rows: auto auto auto;
   }
 
   .layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .mapCard {
@@ -144,16 +156,36 @@
   }
 
   .resultsCard {
-    height: 100%;
+    height: auto;
+    min-height: 0;
+    margin-inline: calc(50% - 50vw);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .mobileMapVisible .mapCard {
     display: block;
-    height: 100%;
+    height: auto;
+    margin-inline: calc(50% - 50vw);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .mobileMapVisible .resultsCard {
     display: none;
+  }
+
+  .resultsHead {
+    padding: 18px 18px 10px;
+  }
+
+  .grid {
+    overflow: visible;
+    padding: 0 18px 18px;
   }
 
   .mobileToggle {
@@ -166,19 +198,5 @@
 
   .mobileToggle button {
     box-shadow: var(--shadow);
-  }
-}
-
-@media (max-width: 700px) {
-  .stack {
-    gap: 14px;
-  }
-
-  .resultsHead {
-    padding: 18px 18px 10px;
-  }
-
-  .grid {
-    padding: 0 18px 18px;
   }
 }
