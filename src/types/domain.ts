@@ -32,6 +32,12 @@ export interface PropertyLocation {
   village?: string;
   lat: number;
   lng: number;
+  bbox?: {
+    minLng: number;
+    minLat: number;
+    maxLng: number;
+    maxLat: number;
+  };
 }
 
 export interface PropertyFacts {
@@ -41,10 +47,12 @@ export interface PropertyFacts {
   landAreaSqm?: number;
   propertyType?: string;
   yearBuilt?: number;
+  zoningLabel?: string;
 }
 
 export interface Property {
   id: string;
+  publicId?: string;
   upi: string;
   title: string;
   description?: string;

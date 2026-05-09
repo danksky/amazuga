@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatCurrency } from "@/lib/format";
+import { formatAreaSqm, formatCurrency } from "@/lib/format";
 import { getListingForProperty, getValuationsForProperty } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 import type { Property } from "@/types/domain";
@@ -47,7 +47,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
         <div className={styles.facts}>
           {property.facts.bedrooms ? `${property.facts.bedrooms} bd` : "Parcel"}
           {property.facts.bathrooms ? ` | ${property.facts.bathrooms} ba` : ""}
-          {property.facts.areaSqm ? ` | ${property.facts.areaSqm} sqm` : ""}
+          {property.facts.areaSqm ? ` | ${formatAreaSqm(property.facts.areaSqm)}` : ""}
         </div>
         <div className={styles.title}>{property.title}</div>
         <div className={styles.meta}>

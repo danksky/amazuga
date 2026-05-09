@@ -6,6 +6,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
   gap: 24px;
+  align-items: stretch;
 }
 
 .panel {
@@ -15,30 +16,68 @@
   box-shadow: var(--shadow);
 }
 
+.mediaPanel,
 .mapPanel {
   min-height: 440px;
-  padding: 20px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.85fr);
+  min-height: 440px;
+  height: 100%;
+}
+
+.galleryPrimary,
+.gallerySecondary {
+  position: relative;
+  overflow: hidden;
+}
+
+.galleryStack {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  border-left: 1px solid var(--border);
+}
+
+.gallerySecondary + .gallerySecondary {
+  border-top: 1px solid var(--border);
+}
+
+.gallerySecondaryAction {
+  position: relative;
+}
+
+.galleryImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleryCta {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.78);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: default;
 }
 
 .mapGrid {
   position: relative;
   height: 100%;
-  min-height: 390px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(#f0f0f0 1px, transparent 1px),
-    linear-gradient(90deg, #f0f0f0 1px, transparent 1px);
-  background-color: #fafafa;
-  background-size: 64px 64px;
-}
-
-.parcel {
-  position: absolute;
-  inset: 18% 20% 24% 18%;
-  border: 2px solid #7aa2ff;
-  border-radius: 18px;
-  background: rgba(31, 94, 255, 0.08);
+  min-height: 440px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .summary {
@@ -138,11 +177,21 @@
   font-weight: 650;
 }
 
-.secondaryGrid {
+.mapSection,
+.tertiaryGrid {
+  margin-top: 24px;
+}
+
+.secondaryMapFrame {
+  min-height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.tertiaryGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   gap: 24px;
-  margin-top: 24px;
 }
 
 .section {
@@ -296,7 +345,7 @@
 
 @media (max-width: 1000px) {
   .hero,
-  .secondaryGrid {
+  .tertiaryGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -312,7 +361,40 @@
     padding: 18px;
   }
 
+  .mediaPanel {
+    min-height: 0;
+  }
+
+  .gallery {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .galleryPrimary {
+    min-height: 280px;
+  }
+
+  .galleryStack {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: none;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .gallerySecondary + .gallerySecondary {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+
+  .galleryImage {
+    min-height: 0;
+  }
+
   .mapGrid {
+    min-height: 280px;
+  }
+
+  .secondaryMapFrame {
     min-height: 280px;
   }
 

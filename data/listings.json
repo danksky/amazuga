@@ -10,7 +10,7 @@
     "currency": "RWF",
     "headline": "Modern hillside residence with city views",
     "description": "Well-kept family home with an efficient layout, terrace seating, and easy road access.",
-    "imageUrls": ["/placeholders/house-sale.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-kimihurura-ridge-home/1600/1000", "https://picsum.photos/seed/amazuga-kimihurura-ridge-home-2/1600/1000"],
     "createdAt": "2026-03-01T10:00:00.000Z",
     "updatedAt": "2026-03-12T14:00:00.000Z"
   },
@@ -25,7 +25,7 @@
     "currency": "RWF",
     "headline": "Compact rental near services and transit",
     "description": "Bright rental unit with a practical footprint and short travel to neighborhood services.",
-    "imageUrls": ["/placeholders/apartment-rent.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-kicukiro-rental-flat/1600/1000", "https://picsum.photos/seed/amazuga-kicukiro-rental-flat-2/1600/1000"],
     "createdAt": "2026-03-05T10:00:00.000Z",
     "updatedAt": "2026-03-15T12:00:00.000Z"
   },
@@ -40,7 +40,7 @@
     "currency": "RWF",
     "headline": "Three-bedroom house with enclosed garden",
     "description": "Balanced family layout with a compact landscaped yard and updated finishes.",
-    "imageUrls": ["/placeholders/house-sale.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-remera-garden-house/1600/1000", "https://picsum.photos/seed/amazuga-remera-garden-house-2/1600/1000"],
     "createdAt": "2026-03-06T10:00:00.000Z",
     "updatedAt": "2026-03-16T10:00:00.000Z"
   },
@@ -55,7 +55,7 @@
     "currency": "RWF",
     "headline": "Large modern home with flexible upper floor",
     "description": "Generous home footprint suited for a larger household or mixed live-work use.",
-    "imageUrls": ["/placeholders/house-sale.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-nyarutarama-family-residence/1600/1000", "https://picsum.photos/seed/amazuga-nyarutarama-family-residence-2/1600/1000"],
     "createdAt": "2026-03-04T08:00:00.000Z",
     "updatedAt": "2026-03-15T16:00:00.000Z"
   },
@@ -70,7 +70,7 @@
     "currency": "RWF",
     "headline": "Starter home on a quiet interior road",
     "description": "Efficient plan with practical room sizes and steady road access.",
-    "imageUrls": ["/placeholders/house-sale.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-gisozi-starter-home/1600/1000", "https://picsum.photos/seed/amazuga-gisozi-starter-home-2/1600/1000"],
     "createdAt": "2026-03-07T12:00:00.000Z",
     "updatedAt": "2026-03-17T09:00:00.000Z"
   },
@@ -85,7 +85,7 @@
     "currency": "RWF",
     "headline": "Corner parcel house near district services",
     "description": "A bright house with a clear plan, parking apron, and easy service access.",
-    "imageUrls": ["/placeholders/house-sale.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-kimironko-corner-house/1600/1000", "https://picsum.photos/seed/amazuga-kimironko-corner-house-2/1600/1000"],
     "createdAt": "2026-03-08T11:00:00.000Z",
     "updatedAt": "2026-03-17T11:00:00.000Z"
   },
@@ -100,7 +100,7 @@
     "currency": "RWF",
     "headline": "Two-bedroom rental with balcony",
     "description": "Well-lit apartment with a practical kitchen and a sheltered outdoor edge.",
-    "imageUrls": ["/placeholders/apartment-rent.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-kicukiro-balcony-apartment/1600/1000", "https://picsum.photos/seed/amazuga-kicukiro-balcony-apartment-2/1600/1000"],
     "createdAt": "2026-03-09T10:00:00.000Z",
     "updatedAt": "2026-03-17T13:00:00.000Z"
   },
@@ -115,8 +115,38 @@
     "currency": "RWF",
     "headline": "Larger rental unit with flexible second room",
     "description": "Useful rental layout with room for a home office or guest room arrangement.",
-    "imageUrls": ["/placeholders/apartment-rent.svg"],
+    "imageUrls": ["https://picsum.photos/seed/amazuga-nyarugunga-flexible-rental/1600/1000", "https://picsum.photos/seed/amazuga-nyarugunga-flexible-rental-2/1600/1000"],
     "createdAt": "2026-03-10T09:00:00.000Z",
     "updatedAt": "2026-03-18T08:00:00.000Z"
+  },
+  {
+    "id": "listing-9",
+    "propertyId": "property-10",
+    "agencyId": "agency-1",
+    "agentUserId": "user-5",
+    "status": "active",
+    "marketingType": "sale",
+    "askingPrice": 168000000,
+    "currency": "RWF",
+    "headline": "Four-bedroom townhouse near office corridors",
+    "description": "Well-balanced townhouse with practical family sizing and quick access to Kacyiru services.",
+    "imageUrls": ["https://picsum.photos/seed/amazuga-kacyiru-townhouse/1600/1000", "https://picsum.photos/seed/amazuga-kacyiru-townhouse-2/1600/1000"],
+    "createdAt": "2026-03-11T08:30:00.000Z",
+    "updatedAt": "2026-03-18T10:00:00.000Z"
+  },
+  {
+    "id": "listing-10",
+    "propertyId": "property-11",
+    "agencyId": "agency-1",
+    "agentUserId": "user-5",
+    "status": "active",
+    "marketingType": "rent",
+    "askingPrice": 1100000,
+    "currency": "RWF",
+    "headline": "Upper-floor rental with bright living room",
+    "description": "Simple two-bedroom rental with an easy layout and strong day-to-day neighborhood access.",
+    "imageUrls": ["https://picsum.photos/seed/amazuga-kimisagara-upper-floor-rental/1600/1000", "https://picsum.photos/seed/amazuga-kimisagara-upper-floor-rental-2/1600/1000"],
+    "createdAt": "2026-03-12T09:15:00.000Z",
+    "updatedAt": "2026-03-18T10:30:00.000Z"
   }
 ]

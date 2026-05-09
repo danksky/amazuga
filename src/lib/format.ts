@@ -13,3 +13,9 @@ export function formatDate(date: string) {
     day: "numeric",
   }).format(new Date(date));
 }
+
+export function formatAreaSqm(areaSqm: number) {
+  return `${new Intl.NumberFormat("en-RW", {
+    maximumFractionDigits: 2,
+  }).format(areaSqm)} m²`;
+}

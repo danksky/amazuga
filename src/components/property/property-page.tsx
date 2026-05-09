@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-import { formatCurrency, formatDate } from "@/lib/format";
+import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
+import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
 import { getAgencyById, getListingForProperty, getUserById, getValuationsForProperty } from "@/lib/mock-data";
 import type { Property } from "@/types/domain";
 
@@ -22,35 +23,52 @@ export function PropertyPage({ property }: PropertyPageProps) {
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
     .filter(Boolean)
     .join(", ");
+  const zoningLabel = property.facts.zoningLabel;
+  const summaryDescription = property.facts.propertyType === "Parcel" ? undefined : property.description;
+  const galleryImages = listing?.imageUrls ?? [];
+  const primaryImage = galleryImages[0];
+  const secondaryImage = galleryImages[1] ?? galleryImages[0];
+  const tertiaryImage = galleryImages[2] ?? galleryImages[1] ?? galleryImages[0];
 
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.hero}>
-        <div className={`${styles.panel} ${styles.mapPanel}`}>
-          <div className={styles.mapHeader}>
-            <div>
-              <div className={styles.panelEyebrow}>Parcel</div>
-              <div className={styles.mapTitle}>Property outline</div>
+        {listing && primaryImage ? (
+          <div className={`${styles.panel} ${styles.mediaPanel}`}>
+            <div className={styles.gallery}>
+              <div className={styles.galleryPrimary}>
+                <img alt={listing.headline ?? property.title} className={styles.galleryImage} src={primaryImage} />
+              </div>
+              <div className={styles.galleryStack}>
+                <div className={styles.gallerySecondary}>
+                  <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+                </div>
+                <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
+                  <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
+                  <button className={styles.galleryCta} type="button">
+                    See all images
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className={styles.mapMeta}>{property.facts.landAreaSqm ? `${property.facts.landAreaSqm} sqm` : "Area unavailable"}</div>
           </div>
-          <div className={styles.mapGrid}>
-            <div className={styles.parcel} />
+        ) : (
+          <div className={`${styles.panel} ${styles.mapPanel}`}>
+            <div className={styles.mapGrid}>
+              <PropertyParcelMap property={property} />
+            </div>
           </div>
-        </div>
+        )}
         <div className={`${styles.panel} ${styles.summary}`}>
           <div className={styles.eyebrow}>{locationLabel}</div>
           <h1 className={styles.title}>{property.title}</h1>
           <div className={styles.statusRow}>
             <div className={styles.status}>{listing ? "Listed" : "Not listed"}</div>
             {listing ? (
-              <div className={styles.inlineMeta}>
-                Listed at {formatCurrency(listing.askingPrice, listing.currency)}
-              </div>
+              <div className={styles.inlineMeta}>Listed at {formatCurrency(listing.askingPrice, listing.currency)}</div>
             ) : latestValuation ? (
               <div className={styles.inlineMeta}>
-                Market estimate based on{" "}
-                {formatDate(latestValuation.effectiveDate)}:{" "}
+                Market estimate based on {formatDate(latestValuation.effectiveDate)}:{" "}
                 {formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}
               </div>
             ) : null}
@@ -65,7 +83,8 @@ export function PropertyPage({ property }: PropertyPageProps) {
               </div>
             </div>
           ) : null}
-          <div className={styles.description}>{property.description}</div>
+          {summaryDescription ? <div className={styles.description}>{summaryDescription}</div> : null}
+          {zoningLabel ? <div className={styles.description}>{zoningLabel}</div> : null}
           <div className={styles.facts}>
             <div className={styles.fact}>
               <div className={styles.factLabel}>Type</div>
@@ -73,7 +92,7 @@ export function PropertyPage({ property }: PropertyPageProps) {
             </div>
             <div className={styles.fact}>
               <div className={styles.factLabel}>Interior</div>
-              <div className={styles.factValue}>{property.facts.areaSqm ? `${property.facts.areaSqm} sqm` : "Unknown"}</div>
+              <div className={styles.factValue}>{property.facts.areaSqm ? formatAreaSqm(property.facts.areaSqm) : "Unknown"}</div>
             </div>
             <div className={styles.fact}>
               <div className={styles.factLabel}>Beds / baths</div>
@@ -83,13 +102,28 @@ export function PropertyPage({ property }: PropertyPageProps) {
             </div>
             <div className={styles.fact}>
               <div className={styles.factLabel}>Parcel</div>
-              <div className={styles.factValue}>{property.facts.landAreaSqm ? `${property.facts.landAreaSqm} sqm` : "Unknown"}</div>
+              <div className={styles.factValue}>{property.facts.landAreaSqm ? formatAreaSqm(property.facts.landAreaSqm) : "Unknown"}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className={styles.secondaryGrid}>
+      <div className={styles.mapSection}>
+        <div className={`${styles.panel} ${styles.section}`}>
+          <div className={styles.mapHeader}>
+            <div>
+              <div className={styles.panelEyebrow}>Map</div>
+              <div className={styles.mapTitle}>Parcel context</div>
+            </div>
+            <div className={styles.mapMeta}>{locationLabel}</div>
+          </div>
+          <div className={styles.secondaryMapFrame}>
+            <PropertyParcelMap property={property} />
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.tertiaryGrid}>
         <div className={`${styles.panel} ${styles.section}`}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Valuation history</h2>
@@ -201,7 +235,7 @@ export function PropertyPage({ property }: PropertyPageProps) {
               ) : null}
               <div className={styles.detailRow}>
                 <span>Amazuga ID</span>
-                <span>{property.id}</span>
+                <span>{property.publicId ?? property.id}</span>
               </div>
             </div>
           </div>

@@ -251,5 +251,62 @@
     "listingState": "listed",
     "activeListingId": "listing-8",
     "valuationHistoryIds": []
+  },
+  {
+    "id": "property-10",
+    "upi": "1/02/09/03/5521",
+    "title": "Kacyiru Townhouse",
+    "description": "A tidy townhouse with practical family circulation and easy access to office corridors.",
+    "location": {
+      "district": "Gasabo",
+      "sector": "Kacyiru",
+      "cell": "Kamatamu",
+      "village": "Amahoro",
+      "lat": -1.9423,
+      "lng": 30.0876
+    },
+    "geometry": {
+      "type": "polygon",
+      "coordinates": [[[30.0872, -1.9427], [30.0881, -1.9427], [30.0881, -1.9419], [30.0872, -1.9419], [30.0872, -1.9427]]]
+    },
+    "facts": {
+      "bedrooms": 4,
+      "bathrooms": 3,
+      "areaSqm": 214,
+      "landAreaSqm": 318,
+      "propertyType": "House",
+      "yearBuilt": 2018
+    },
+    "listingState": "listed",
+    "activeListingId": "listing-9",
+    "valuationHistoryIds": []
+  },
+  {
+    "id": "property-11",
+    "upi": "1/01/08/02/6640",
+    "title": "Kimisagara Upper-Floor Rental",
+    "description": "A bright upper-floor rental with a comfortable living area and strong daily convenience.",
+    "location": {
+      "district": "Nyarugenge",
+      "sector": "Kimisagara",
+      "cell": "Kamuhoza",
+      "village": "Ubumwe",
+      "lat": -1.9618,
+      "lng": 30.0417
+    },
+    "geometry": {
+      "type": "polygon",
+      "coordinates": [[[30.0413, -1.9622], [30.0421, -1.9622], [30.0421, -1.9615], [30.0413, -1.9615], [30.0413, -1.9622]]]
+    },
+    "facts": {
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "areaSqm": 96,
+      "propertyType": "Apartment",
+      "yearBuilt": 2021
+    },
+    "listingState": "listed",
+    "activeListingId": "listing-10",
+    "valuationHistoryIds": []
   }
 ]
