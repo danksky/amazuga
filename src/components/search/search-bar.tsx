@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { getPropertyByUpi } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
 
 import styles from "./search-bar.module.css";
@@ -95,7 +94,7 @@ export function SearchBar({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
-  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const normalizedQuery = query.trim();
@@ -104,11 +103,18 @@ export function SearchBar({
       return;
     }
 
-    const property = getPropertyByUpi(normalizedQuery);
-
-    if (property) {
-      setSearchMessage(null);
-      router.push(routes.public.property(property.id));
+    try {
+      const response = await fetch(`/api/properties/by-upi?upi=${encodeURIComponent(normalizedQuery)}`);
+      if (response.ok) {
+        const payload = (await response.json()) as { propertyId: string | null };
+        if (payload.propertyId) {
+          setSearchMessage(null);
+          router.push(routes.public.property(payload.propertyId));
+          return;
+        }
+      }
+    } catch {
+      setSearchMessage("Search is temporarily unavailable.");
       return;
     }
 
