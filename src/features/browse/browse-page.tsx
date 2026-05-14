@@ -5,25 +5,20 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/search/search-bar";
 import { PropertyCard } from "@/components/property/property-card";
-import { listings, properties } from "@/lib/mock-data";
+import type { PublicListingCardData } from "@/lib/server/public-listings";
 
 import styles from "./browse-page.module.css";
 
 interface BrowsePageProps {
   mode: "buy" | "rent";
+  listings: PublicListingCardData[];
 }
 
-export function BrowsePage({ mode }: BrowsePageProps) {
+export function BrowsePage({ mode, listings }: BrowsePageProps) {
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const title = mode === "buy" ? "Homes for sale in Rwanda" : "Homes for rent in Rwanda";
-  const marketingType = mode === "buy" ? "sale" : "rent";
   const filters = ["Price", "Beds & baths", "Property type", "More filters"];
-  const filteredProperties = properties.filter((property) => {
-    const listing = listings.find((candidate) => candidate.id === property.activeListingId);
-
-    return listing?.status === "active" && listing.marketingType === marketingType;
-  });
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -77,11 +72,11 @@ export function BrowsePage({ mode }: BrowsePageProps) {
             <div className={styles.resultsHead}>
               <div className={styles.eyebrow}>{mode === "buy" ? "Buy" : "Rent"}</div>
               <h1 className={styles.title}>{title}</h1>
-              <div className={styles.subtitle}>{filteredProperties.length} live listings in the current view</div>
+              <div className={styles.subtitle}>{listings.length} live listings in the current view</div>
             </div>
             <div className={styles.grid}>
-              {filteredProperties.map((property) => (
-                <PropertyCard key={property.id} property={property} />
+              {listings.map(({ property, listing }) => (
+                <PropertyCard key={listing.id} listing={listing} property={property} />
               ))}
             </div>
           </div>

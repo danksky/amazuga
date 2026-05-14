@@ -1,25 +1,24 @@
 import Link from "next/link";
 
 import { formatAreaSqm, formatCurrency } from "@/lib/format";
-import { getListingForProperty, getValuationsForProperty } from "@/lib/mock-data";
 import { routes } from "@/lib/routes";
-import type { Property } from "@/types/domain";
+import type { Listing, Property, ValuationSubmission } from "@/types/domain";
 
 import styles from "./property-card.module.css";
 
 interface PropertyCardProps {
   property: Property;
+  listing?: Listing;
+  latestValuation?: ValuationSubmission;
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
-  const listing = getListingForProperty(property.id);
-  const latestValuation = getValuationsForProperty(property.id)[0];
+export function PropertyCard({ property, listing, latestValuation }: PropertyCardProps) {
   const price = listing
     ? formatCurrency(listing.askingPrice, listing.currency)
     : latestValuation
       ? formatCurrency(latestValuation.estimatedValue, latestValuation.currency)
-      : "Market estimate unavailable";
-  const priceLabel = listing ? null : latestValuation ? "Market estimate" : "Not listed";
+      : "Not listed";
+  const priceLabel = listing ? null : latestValuation ? "Market estimate" : null;
   const mediaVariant = listing?.marketingType ?? "sale";
   const mediaLabel =
     property.facts.propertyType === "Apartment"
@@ -29,7 +28,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
         : "House";
 
   return (
-    <Link className={styles.card} href={routes.public.property(property.id)}>
+    <Link className={styles.card} href={routes.public.property(property.publicId ?? property.id)}>
       <div
         aria-hidden="true"
         className={`${styles.media} ${mediaVariant === "rent" ? styles.mediaRent : styles.mediaSale} ${

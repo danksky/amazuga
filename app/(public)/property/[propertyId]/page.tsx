@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { PropertyPage } from "@/components/property/property-page";
-import { getPropertyById } from "@/lib/mock-data";
-import { getPropertyByIdFromDb } from "@/lib/server/parcels";
+import { getPublicPropertyPageData } from "@/lib/server/public-listings";
+
+export const dynamic = "force-dynamic";
 
 interface PropertyRouteProps {
   params: Promise<{
@@ -12,11 +13,18 @@ interface PropertyRouteProps {
 
 export default async function PropertyDetailsPage({ params }: PropertyRouteProps) {
   const { propertyId } = await params;
-  const property = getPropertyById(propertyId) ?? (await getPropertyByIdFromDb(propertyId));
+  const propertyPageData = await getPublicPropertyPageData(propertyId);
 
-  if (!property) {
+  if (!propertyPageData) {
     notFound();
   }
 
-  return <PropertyPage property={property} />;
+  return (
+    <PropertyPage
+      agency={propertyPageData.agency}
+      listing={propertyPageData.listing}
+      property={propertyPageData.property}
+      valuations={propertyPageData.valuations}
+    />
+  );
 }

@@ -4,21 +4,20 @@ import { useState } from "react";
 
 import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
 import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
-import { getAgencyById, getListingForProperty, getUserById, getValuationsForProperty } from "@/lib/mock-data";
-import type { Property } from "@/types/domain";
+import type { Agency, Listing, Property, ValuationSubmission } from "@/types/domain";
 
 import { Button } from "../ui/button";
 import styles from "./property-page.module.css";
 
 interface PropertyPageProps {
   property: Property;
+  listing?: Listing;
+  agency?: Agency;
+  valuations: ValuationSubmission[];
 }
 
-export function PropertyPage({ property }: PropertyPageProps) {
+export function PropertyPage({ property, listing, agency, valuations }: PropertyPageProps) {
   const [showWhatsapp, setShowWhatsapp] = useState(false);
-  const listing = getListingForProperty(property.id);
-  const valuations = getValuationsForProperty(property.id);
-  const agency = listing ? getAgencyById(listing.agencyId) : undefined;
   const latestValuation = valuations[0];
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
     .filter(Boolean)
@@ -141,8 +140,7 @@ export function PropertyPage({ property }: PropertyPageProps) {
               </thead>
               <tbody>
                 {valuations.map((valuation) => {
-                  const valuator = getUserById(valuation.submittedByUserId);
-                  const valuatorLabel = valuation.isAnonymous ? "Anonymous" : valuator?.fullName ?? "Unknown valuator";
+                  const valuatorLabel = valuation.isAnonymous ? "Anonymous" : "Named valuator";
 
                   return (
                     <tr key={valuation.id}>

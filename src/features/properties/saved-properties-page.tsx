@@ -1,12 +1,8 @@
-import { PropertyCard } from "@/components/property/property-card";
-import { properties } from "@/lib/mock-data";
 import type { User } from "@/types/domain";
 
 import styles from "./saved-properties-page.module.css";
 
 export function SavedPropertiesPage({ currentUser }: { currentUser: User }) {
-  const savedProperties = properties.filter((property) => currentUser.savedPropertyIds.includes(property.id));
-
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
@@ -14,20 +10,16 @@ export function SavedPropertiesPage({ currentUser }: { currentUser: User }) {
           <div className={styles.eyebrow}>Saved</div>
           <h1 className={styles.title}>Saved properties</h1>
           <div className={styles.body}>
-            Keep track of the properties you want to come back to. Saved properties stay tied to your account so they are
-            easy to revisit later.
+            Saved properties are being migrated from legacy mock IDs to preview-backed parcel records. Once the save flow
+            is wired to the preview database, properties you save will appear here.
           </div>
         </div>
 
-        {savedProperties.length > 0 ? (
-          <div className={styles.grid}>
-            {savedProperties.map((property) => (
-              <PropertyCard key={property.id} property={property} />
-            ))}
-          </div>
-        ) : (
-          <div className={styles.empty}>You have not saved any properties yet.</div>
-        )}
+        <div className={styles.empty}>
+          {currentUser.savedPropertyIds.length > 0
+            ? "This account still has legacy saved-property references that are not yet mapped to preview parcel IDs."
+            : "You have not saved any preview-backed properties yet."}
+        </div>
       </div>
     </div>
   );
