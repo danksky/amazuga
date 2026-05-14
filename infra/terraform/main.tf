@@ -2,6 +2,10 @@ terraform {
   required_version = ">= 1.5.0"
 
   required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.19"
+    }
     neon = {
       source  = "kislerdm/neon"
       version = "~> 0.13"
@@ -13,6 +17,10 @@ terraform {
   }
 }
 
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
 provider "neon" {
   api_key = var.neon_api_key
 }
@@ -22,10 +30,153 @@ provider "vercel" {
   team      = var.vercel_team_id
 }
 
+locals {
+  parcel_tiles_worker_file = "${path.module}/../workers/parcel-tiles/index.js"
+  cloudflare_tiles_worker_allowed_origins = distinct(
+    concat(
+      var.cloudflare_tiles_worker_local_allowed_origins,
+      var.cloudflare_tiles_worker_public_allowed_origins,
+      var.cloudflare_tiles_worker_preview_allowed_origins,
+    )
+  )
+  vercel_public_pmtiles_url = coalesce(
+    var.vercel_public_pmtiles_url,
+    format(
+      "https://%s%s",
+      cloudflare_workers_custom_domain.parcel_tiles.hostname,
+      var.cloudflare_tiles_worker_public_path
+    )
+  )
+}
+
+data "cloudflare_zone" "amazuga" {
+  filter = {
+    account = {
+      id = var.cloudflare_account_id
+    }
+    name = var.cloudflare_zone_name
+  }
+}
+
+resource "cloudflare_r2_bucket" "parcel_tiles" {
+  account_id    = var.cloudflare_account_id
+  name          = var.cloudflare_r2_bucket_name
+  location      = var.cloudflare_r2_bucket_location
+  storage_class = "Standard"
+}
+
+resource "cloudflare_r2_managed_domain" "parcel_tiles" {
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.parcel_tiles.name
+  enabled     = var.cloudflare_r2_enable_managed_public_domain
+}
+
+resource "cloudflare_r2_custom_domain" "parcel_tiles" {
+  count = var.cloudflare_r2_custom_domain != null && var.cloudflare_zone_id != null ? 1 : 0
+
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.parcel_tiles.name
+  domain      = var.cloudflare_r2_custom_domain
+  enabled     = true
+  min_tls     = "1.2"
+  zone_id     = var.cloudflare_zone_id
+}
+
+resource "cloudflare_r2_bucket_cors" "parcel_tiles" {
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.parcel_tiles.name
+
+  rules = [
+    {
+      id = "Allow Parcel Map Browser Reads"
+      allowed = {
+        methods = ["GET", "HEAD"]
+        origins = var.cloudflare_r2_cors_allowed_origins
+        headers = ["Range"]
+      }
+      expose_headers  = ["Accept-Ranges", "Content-Length", "Content-Range", "ETag"]
+      max_age_seconds = 3600
+    }
+  ]
+}
+
+resource "cloudflare_workers_script" "parcel_tiles" {
+  account_id         = var.cloudflare_account_id
+  script_name        = var.cloudflare_tiles_worker_name
+  content_file       = local.parcel_tiles_worker_file
+  content_sha256     = filesha256(local.parcel_tiles_worker_file)
+  main_module        = "index.js"
+  compatibility_date = "2026-05-09"
+
+  bindings = [
+    {
+      name        = "PARCEL_BUCKET"
+      type        = "r2_bucket"
+      bucket_name = cloudflare_r2_bucket.parcel_tiles.name
+    },
+    {
+      name = "OBJECT_KEY"
+      type = "plain_text"
+      text = var.cloudflare_tiles_worker_object_key
+    },
+    {
+      name = "ALLOWED_ORIGINS"
+      type = "plain_text"
+      text = jsonencode(local.cloudflare_tiles_worker_allowed_origins)
+    },
+    {
+      name = "PUBLIC_PATH"
+      type = "plain_text"
+      text = var.cloudflare_tiles_worker_public_path
+    },
+    {
+      name = "MAX_RANGE_BYTES"
+      type = "plain_text"
+      text = tostring(var.cloudflare_tiles_worker_max_range_bytes)
+    },
+    {
+      name         = "TILE_RATE_LIMITER"
+      type         = "ratelimit"
+      namespace_id = var.cloudflare_tiles_worker_rate_limit_namespace_id
+      simple = {
+        limit  = var.cloudflare_tiles_worker_rate_limit_requests
+        period = var.cloudflare_tiles_worker_rate_limit_period_seconds
+      }
+    },
+    {
+      name = "RATE_LIMIT_PERIOD_SECONDS"
+      type = "plain_text"
+      text = tostring(var.cloudflare_tiles_worker_rate_limit_period_seconds)
+    },
+  ]
+
+  observability = {
+    enabled = true
+    logs = {
+      enabled            = true
+      invocation_logs    = true
+      head_sampling_rate = 1
+    }
+  }
+}
+
+resource "cloudflare_workers_script_subdomain" "parcel_tiles" {
+  account_id  = var.cloudflare_account_id
+  script_name = cloudflare_workers_script.parcel_tiles.script_name
+  enabled     = true
+}
+
+resource "cloudflare_workers_custom_domain" "parcel_tiles" {
+  account_id = var.cloudflare_account_id
+  hostname   = var.cloudflare_tiles_worker_hostname
+  service    = cloudflare_workers_script.parcel_tiles.script_name
+  zone_id    = data.cloudflare_zone.amazuga.id
+}
+
 resource "vercel_project" "amazuga" {
-  name      = "amazuga"
-  framework = "nextjs"
-  node_version = "24.x"
+  name            = "amazuga"
+  framework       = "nextjs"
+  node_version    = "24.x"
   skew_protection = "12 hours"
 
   git_repository = {
@@ -42,6 +193,15 @@ resource "vercel_project" "amazuga" {
   vercel_authentication = {
     deployment_type = "standard_protection_new"
   }
+}
+
+resource "vercel_project_environment_variable" "parcel_pmtiles_url" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_PARCEL_PMTILES_URL"
+  value      = local.vercel_public_pmtiles_url
+  target     = ["production", "preview"]
+  comment    = "Public Worker-backed PMTiles URL for parcel maps."
 }
 
 resource "neon_project" "amazuga" {

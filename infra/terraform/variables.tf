@@ -1,3 +1,128 @@
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with R2 write permissions and zone access for custom domains."
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare account ID that owns the R2 bucket."
+  type        = string
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID used for an optional R2 custom domain."
+  type        = string
+  default     = null
+}
+
+variable "cloudflare_zone_name" {
+  description = "Cloudflare zone name used for Worker custom domains."
+  type        = string
+  default     = "amazuga.com"
+}
+
+variable "cloudflare_r2_bucket_name" {
+  description = "Bucket name for public parcel PMTiles."
+  type        = string
+  default     = "amazuga-parcel-tiles"
+}
+
+variable "cloudflare_r2_bucket_location" {
+  description = "Preferred location hint for the R2 bucket."
+  type        = string
+  default     = "enam"
+}
+
+variable "cloudflare_r2_custom_domain" {
+  description = "Optional custom domain to attach to the R2 bucket, such as tiles.example.com."
+  type        = string
+  default     = null
+}
+
+variable "cloudflare_r2_enable_managed_public_domain" {
+  description = "Whether to enable the Cloudflare-managed r2.dev public URL."
+  type        = bool
+  default     = true
+}
+
+variable "cloudflare_r2_cors_allowed_origins" {
+  description = "Allowed origins for browser access to public parcel PMTiles."
+  type        = list(string)
+  default = [
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+  ]
+}
+
+variable "cloudflare_tiles_worker_name" {
+  description = "Worker name used to front parcel PMTiles."
+  type        = string
+  default     = "amazuga-parcel-tiles"
+}
+
+variable "cloudflare_tiles_worker_hostname" {
+  description = "Custom hostname for the parcel tile Worker."
+  type        = string
+  default     = "tiles.amazuga.com"
+}
+
+variable "cloudflare_tiles_worker_public_path" {
+  description = "Public request path served by the parcel tile Worker."
+  type        = string
+  default     = "/catalog/base"
+}
+
+variable "cloudflare_tiles_worker_object_key" {
+  description = "R2 object key that stores the PMTiles archive."
+  type        = string
+  default     = "parcel-context-v1.pmtiles"
+}
+
+variable "cloudflare_tiles_worker_local_allowed_origins" {
+  description = "Local-development origins allowed to fetch PMTiles through the Worker."
+  type        = list(string)
+  default     = []
+}
+
+variable "cloudflare_tiles_worker_public_allowed_origins" {
+  description = "Public production origins allowed to fetch PMTiles through the Worker."
+  type        = list(string)
+  default = [
+    "https://amazuga.com",
+    "https://www.amazuga.com",
+  ]
+}
+
+variable "cloudflare_tiles_worker_preview_allowed_origins" {
+  description = "Explicit preview origins allowed to fetch PMTiles through the Worker."
+  type        = list(string)
+  default     = []
+}
+
+variable "cloudflare_tiles_worker_max_range_bytes" {
+  description = "Maximum allowed byte range per PMTiles request."
+  type        = number
+  default     = 16777216
+}
+
+variable "cloudflare_tiles_worker_rate_limit_namespace_id" {
+  description = "Unique Cloudflare rate limit namespace ID for the parcel tile Worker."
+  type        = string
+  default     = "41001"
+}
+
+variable "cloudflare_tiles_worker_rate_limit_requests" {
+  description = "Number of allowed Worker tile requests per rate limit window."
+  type        = number
+  default     = 240
+}
+
+variable "cloudflare_tiles_worker_rate_limit_period_seconds" {
+  description = "Rate limit window in seconds. Cloudflare currently supports 10 or 60."
+  type        = number
+  default     = 60
+}
+
 variable "vercel_token" {
   description = "Vercel API token."
   type        = string
@@ -12,6 +137,12 @@ variable "vercel_team_id" {
 variable "vercel_project_id" {
   description = "Existing Vercel project ID to import."
   type        = string
+}
+
+variable "vercel_public_pmtiles_url" {
+  description = "Public PMTiles URL exposed to Vercel deployments."
+  type        = string
+  default     = null
 }
 
 variable "neon_api_key" {

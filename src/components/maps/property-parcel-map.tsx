@@ -8,7 +8,9 @@ import type { Property } from "@/types/domain";
 
 import styles from "./property-parcel-map.module.css";
 
-const PMTILES_URL = "/tiles/approved-provisional-parcels.pmtiles";
+const PMTILES_URL =
+  process.env.NEXT_PUBLIC_PARCEL_PMTILES_URL ||
+  (process.env.NODE_ENV === "development" ? "/tiles/approved-provisional-parcels.pmtiles" : "");
 
 interface PropertyParcelMapProps {
   property: Property;
@@ -19,7 +21,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
   const parcelKey = property.publicId ?? property.id;
 
   useEffect(() => {
-    if (!mapRef.current) {
+    if (!mapRef.current || !PMTILES_URL) {
       return;
     }
 
