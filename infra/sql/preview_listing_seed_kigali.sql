@@ -220,6 +220,57 @@ delete_stale_seed_profiles AS (
     )
   RETURNING pp.parcel_id
 ),
+delete_stale_seed_assets AS (
+  DELETE FROM property_asset pa
+  WHERE pa.seed_source = 'preview_kigali_seed_v1'
+    AND pa.parcel_id NOT IN (
+      SELECT parcel_id
+      FROM selected_seed_rows
+    )
+  RETURNING pa.id
+),
+upsert_assets AS (
+  INSERT INTO property_asset (
+    id,
+    parcel_id,
+    asset_type,
+    public_id,
+    display_code,
+    title,
+    description,
+    is_primary_for_parcel,
+    seed_source
+  )
+  SELECT
+    'ast_' || SUBSTR(MD5('parcel-primary:' || ssr.parcel_id), 1, 20),
+    ssr.parcel_id,
+    CASE
+      WHEN LOWER(ssr.property_type) = 'house' THEN 'house'
+      WHEN LOWER(ssr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
+      WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
+      WHEN LOWER(ssr.property_type) LIKE 'building%' THEN 'building'
+      WHEN LOWER(ssr.property_type) = 'mixed use' THEN 'mixed_use'
+      ELSE 'other'
+    END,
+    UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)),
+    'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)),
+    CONCAT(ssr.sector, ' ', ssr.title_suffix),
+    ssr.property_description,
+    TRUE,
+    'preview_kigali_seed_v1'
+  FROM selected_seed_rows ssr
+  ON CONFLICT (id) DO UPDATE
+  SET
+    asset_type = EXCLUDED.asset_type,
+    public_id = EXCLUDED.public_id,
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING id
+),
 upsert_profiles AS (
   INSERT INTO property_profile (
     parcel_id,
@@ -263,6 +314,7 @@ upsert_listings AS (
   INSERT INTO listing (
     id,
     parcel_id,
+    property_asset_id,
     agency_id,
     agent_user_id,
     status,
@@ -277,6 +329,7 @@ upsert_listings AS (
   SELECT
     ssr.listing_id,
     ssr.parcel_id,
+    'ast_' || SUBSTR(MD5('parcel-primary:' || ssr.parcel_id), 1, 20),
     'agency_preview_kigali_homes_group',
     ssr.agent_user_id,
     'active',
@@ -290,6 +343,8 @@ upsert_listings AS (
   FROM selected_seed_rows ssr
   ON CONFLICT (id) DO UPDATE
   SET
+    parcel_id = EXCLUDED.parcel_id,
+    property_asset_id = EXCLUDED.property_asset_id,
     agency_id = EXCLUDED.agency_id,
     agent_user_id = EXCLUDED.agent_user_id,
     status = EXCLUDED.status,

@@ -107,6 +107,21 @@ The product should prioritize:
 - Search may internally resolve a UPI to a property for signed-in users
 - UPI lookups should be rate-limited to about `20/day/user`
 
+## Property Identity Model
+
+- `parcel` is the land identity anchor
+- `property_asset` is the marketable real estate object shown, listed, owned, or valued in the app
+- a parcel may have one asset, or many assets when the parcel contains multiple units
+- example asset types include:
+  - `house`
+  - `land`
+  - `building`
+  - `apartment_unit`
+  - `commercial_unit`
+- `property_asset` should support parent-child relationships so a building can contain many units
+- if source data does not provide a reliable apartment-level identifier, Amazuga should create a stable internal asset identifier
+- public property routes can remain parcel-oriented at first, but the long-term model should allow both parcel-level pages and asset-level pages
+
 ## Listing Rules
 
 - Public browse centers on properties, not separate public listing pages
@@ -114,6 +129,7 @@ The product should prioritize:
 - Internal listing views may exist in portal/admin surfaces
 - Listings created by approved agents/managers go live immediately
 - Use `active` and `inactive`, not `archived`
+- long-term, listings should attach to `property_asset`, not only to the parcel
 
 ## Valuation Rules
 
@@ -170,6 +186,7 @@ Show:
 - active listing summary
 - property facts
 - valuation history
+- when relevant, distinguish between parcel context and asset context, such as a building page versus an apartment unit page
 
 ### Non-listed property
 

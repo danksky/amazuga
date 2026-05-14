@@ -29,6 +29,7 @@ Add app-owned tables around it:
 - `agency`
 - `agency_membership`
 - `property_profile`
+- `property_asset`
 - `listing`
 - `listing_image`
 
@@ -45,6 +46,11 @@ This keeps the parcel pipeline and the listing app concerns separate.
 - `upi`
   - lookup-only input for authenticated search
   - should not be used as the relational key for listings
+- `property_asset.id`
+  - internal stable identifier for the marketable asset
+  - should support cases where one parcel contains many units
+- `property_asset.display_code`
+  - app-owned stable identifier for units or sub-properties when no reliable external sub-parcel identifier exists
 
 ## Table Roles
 
@@ -99,13 +105,43 @@ Keyed by:
 
 - `parcel_id`
 
-### `listing`
+This is a good fit for parcel-level or building-level enrichment, but not sufficient on its own for many separately marketable units on one parcel.
 
-Stores the active sale or rent offer for a parcel.
+### `property_asset`
+
+Stores the app-owned real estate object that can be listed, owned, claimed, or valued.
+
+Examples:
+
+- standalone house on a parcel
+- vacant land parcel
+- apartment building
+- apartment unit
+- commercial suite
 
 Important fields:
 
+- `id`
 - `parcel_id`
+- `asset_type`
+- `parent_asset_id`
+- `display_code`
+- `title`
+- `description`
+
+Rules:
+
+- one parcel can have many assets
+- assets can form a hierarchy, such as building -> apartment unit
+- unit and suite records should live here instead of overloading the parcel row
+
+### `listing`
+
+Stores the active sale or rent offer for a marketable asset.
+
+Important fields:
+
+- `property_asset_id`
 - `agency_id`
 - `agent_user_id`
 - `marketing_type`
@@ -116,7 +152,7 @@ Important fields:
 
 Rules:
 
-- one active listing per parcel
+- one active listing per asset
 - many historical inactive listings allowed
 
 ### `listing_image`
@@ -130,6 +166,10 @@ Preview can safely use:
 ## Why `property_profile` Exists
 
 The parcel source should stay focused on parcel identity, geometry, and land facts. It should not become the place where we write app-specific marketing fields. A profile table lets us enrich a parcel for marketplace use without mutating the upstream parcel contract.
+
+## Why `property_asset` Should Exist
+
+The parcel model is necessary but not sufficient. It identifies land, not every marketable thing that may exist on that land. A `property_asset` layer lets the app represent apartments, suites, and other sub-parcel inventory without forcing the parcel seed table to solve unit identity.
 
 ## Why There Is No FK To The Parcel Seed Table Yet
 
@@ -184,9 +224,12 @@ That makes cleanup and re-seeding straightforward.
 2. Run the Kigali preview seed SQL.
 3. Verify seeded rows manually in preview DB.
 4. Add a DB repository that joins parcel rows to profile, listing, image, agency, and user data.
-5. Switch public browse and property pages to that repository.
-6. Move auth from file-backed users to preview DB users.
-7. Remove `src/lib/mock-data.ts` usage from runtime paths.
+5. Add `property_asset` so multi-unit parcels have first-class app identity.
+6. Switch listings, ownership, and valuations to attach to assets.
+7. Switch public browse and property pages to an asset-aware repository.
+8. Preserve parcel context on property pages for map and land facts.
+9. Move auth from file-backed users to preview DB users.
+10. Remove `src/lib/mock-data.ts` usage from runtime paths.
 
 ## Scope Boundary
 

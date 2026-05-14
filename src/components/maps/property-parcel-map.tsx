@@ -18,7 +18,7 @@ interface PropertyParcelMapProps {
 
 export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
-  const parcelKey = property.publicId ?? property.id;
+  const parcelKey = property.parcelPublicId ?? property.parcelId ?? property.id;
 
   useEffect(() => {
     if (!mapRef.current || !PMTILES_URL) {

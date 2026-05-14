@@ -1,6 +1,12 @@
 import "server-only";
 
-import type { Agency, Listing, Property, ValuationSubmission } from "@/types/domain";
+import type {
+  Agency,
+  Listing,
+  Property,
+  PropertyKind,
+  ValuationSubmission,
+} from "@/types/domain";
 
 import { pgPool } from "./postgres";
 
@@ -25,6 +31,13 @@ interface ListingParcelRow {
   zoning: string | null;
   zone_code: string | null;
   gen_lu: string | null;
+  property_internal_id: string | null;
+  property_public_id: string | null;
+  parent_property_internal_id: string | null;
+  property_kind: PropertyKind | null;
+  property_code: string | null;
+  property_title: string | null;
+  property_description_override: string | null;
   listing_id: string | null;
   agency_id: string | null;
   agent_user_id: string | null;
@@ -84,6 +97,25 @@ function toNullableNumber(value: number | string | null | undefined) {
   return Number.isFinite(numericValue) ? numericValue : undefined;
 }
 
+function propertyKindToPropertyType(propertyKind: PropertyKind | null | undefined) {
+  switch (propertyKind) {
+    case "house":
+      return "House";
+    case "land":
+      return "Parcel";
+    case "building":
+      return "Building";
+    case "apartment_unit":
+      return "Apartment";
+    case "commercial_unit":
+      return "Commercial";
+    case "mixed_use":
+      return "Mixed Use";
+    default:
+      return undefined;
+  }
+}
+
 function buildPlaceholderGeometry(row: ListingParcelRow): Property["geometry"] {
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
@@ -124,20 +156,27 @@ function buildPlaceholderGeometry(row: ListingParcelRow): Property["geometry"] {
 }
 
 function buildPropertyFromRow(row: ListingParcelRow): Property {
-  const title = row.profile_title || row.display_id || `Parcel ${row.public_id}`;
+  const propertyId = row.property_public_id || row.public_id || row.parcel_id;
+  const title = row.property_title || row.profile_title || row.display_id || `Parcel ${propertyId}`;
+  const description = row.property_description_override || row.profile_description;
   const zoningLabel = row.zoning || row.gen_lu || row.zone_code;
   const listingState = row.listing_id ? "listed" : "not_listed";
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
   const maxLng = toNullableNumber(row.bbox_max_lon);
   const maxLat = toNullableNumber(row.bbox_max_lat);
+  const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
 
   return {
-    id: row.parcel_id,
-    publicId: row.public_id,
+    id: propertyId,
+    internalId: row.property_internal_id || undefined,
+    parcelId: row.parcel_id,
+    parcelPublicId: row.public_id,
+    code: row.property_code || undefined,
+    parentInternalId: row.parent_property_internal_id || undefined,
     upi: row.upi,
     title,
-    description: row.profile_description || undefined,
+    description: description || undefined,
     location: {
       district: row.district || "Unknown district",
       sector: row.sector || undefined,
@@ -164,7 +203,8 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
       bathrooms: toNullableNumber(row.bathrooms),
       areaSqm: toNullableNumber(row.interior_area_sqm),
       landAreaSqm: toNullableNumber(row.representative_size),
-      propertyType: row.property_type || "Parcel",
+      propertyType,
+      propertyKind: row.property_kind || undefined,
       yearBuilt: toNullableNumber(row.year_built),
       zoningLabel: zoningLabel || undefined,
     },
@@ -191,7 +231,8 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
 
   return {
     id: row.listing_id,
-    propertyId: row.parcel_id,
+    propertyId: row.property_public_id || row.public_id || row.parcel_id,
+    propertyInternalId: row.property_internal_id || undefined,
     agencyId: row.agency_id,
     agentUserId: row.agent_user_id,
     status: row.listing_status,
@@ -299,6 +340,13 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         p.zoning,
         p.zone_code,
         p.gen_lu,
+        pa.id AS property_internal_id,
+        pa.public_id AS property_public_id,
+        pa.parent_asset_id AS parent_property_internal_id,
+        pa.asset_type AS property_kind,
+        pa.display_code AS property_code,
+        pa.title AS property_title,
+        pa.description AS property_description_override,
         l.id AS listing_id,
         l.agency_id,
         l.agent_user_id,
@@ -312,7 +360,18 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.updated_at AS listing_updated_at,
         pp.title AS profile_title,
         pp.description AS profile_description,
-        pp.property_type,
+        COALESCE(
+          CASE pa.asset_type
+            WHEN 'house' THEN 'House'
+            WHEN 'land' THEN 'Parcel'
+            WHEN 'building' THEN 'Building'
+            WHEN 'apartment_unit' THEN 'Apartment'
+            WHEN 'commercial_unit' THEN 'Commercial'
+            WHEN 'mixed_use' THEN 'Mixed Use'
+            ELSE NULL
+          END,
+          pp.property_type
+        ) AS property_type,
         pp.bedrooms,
         pp.bathrooms,
         pp.interior_area_sqm,
@@ -320,6 +379,8 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
       FROM listing l
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = l.parcel_id
+      LEFT JOIN property_asset pa
+        ON pa.id = l.property_asset_id
       LEFT JOIN property_profile pp
         ON pp.parcel_id = l.parcel_id
       WHERE l.status = 'active'
@@ -346,6 +407,18 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
 export async function getPublicPropertyPageData(propertyId: string): Promise<PublicPropertyPageData | undefined> {
   const result = await pgPool.query<ListingParcelRow>(
     `
+      WITH target_parcel AS (
+        SELECT p.parcel_id
+        FROM parcel_app_ready_seed_preview p
+        WHERE p.public_id = $1
+           OR p.parcel_id = $1
+        UNION
+        SELECT pa.parcel_id
+        FROM property_asset pa
+        WHERE pa.public_id = $1
+           OR pa.id = $1
+        LIMIT 1
+      )
       SELECT
         p.parcel_id,
         p.public_id,
@@ -365,6 +438,13 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         p.zoning,
         p.zone_code,
         p.gen_lu,
+        pa.id AS property_internal_id,
+        pa.public_id AS property_public_id,
+        pa.parent_asset_id AS parent_property_internal_id,
+        pa.asset_type AS property_kind,
+        pa.display_code AS property_code,
+        pa.title AS property_title,
+        pa.description AS property_description_override,
         l.id AS listing_id,
         l.agency_id,
         l.agent_user_id,
@@ -378,19 +458,54 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         l.updated_at AS listing_updated_at,
         pp.title AS profile_title,
         pp.description AS profile_description,
-        pp.property_type,
+        COALESCE(
+          CASE pa.asset_type
+            WHEN 'house' THEN 'House'
+            WHEN 'land' THEN 'Parcel'
+            WHEN 'building' THEN 'Building'
+            WHEN 'apartment_unit' THEN 'Apartment'
+            WHEN 'commercial_unit' THEN 'Commercial'
+            WHEN 'mixed_use' THEN 'Mixed Use'
+            ELSE NULL
+          END,
+          pp.property_type
+        ) AS property_type,
         pp.bedrooms,
         pp.bathrooms,
         pp.interior_area_sqm,
         pp.year_built
-      FROM parcel_app_ready_seed_preview p
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = p.parcel_id
+      FROM target_parcel tp
+      JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = tp.parcel_id
       LEFT JOIN listing l
         ON l.parcel_id = p.parcel_id
        AND l.status = 'active'
-      WHERE p.public_id = $1
-         OR p.parcel_id = $1
+      LEFT JOIN LATERAL (
+        SELECT
+          pa_inner.id,
+          pa_inner.public_id,
+          pa_inner.parent_asset_id,
+          pa_inner.asset_type,
+          pa_inner.display_code,
+          pa_inner.title,
+          pa_inner.description
+        FROM property_asset pa_inner
+        WHERE pa_inner.parcel_id = p.parcel_id
+        ORDER BY
+          CASE
+            WHEN pa_inner.public_id = $1 THEN 0
+            WHEN pa_inner.id = $1 THEN 0
+            WHEN l.property_asset_id IS NOT NULL AND pa_inner.id = l.property_asset_id THEN 1
+            WHEN pa_inner.is_primary_for_parcel THEN 2
+            ELSE 3
+          END,
+          pa_inner.created_at ASC,
+          pa_inner.id ASC
+        LIMIT 1
+      ) pa
+        ON TRUE
+      LEFT JOIN property_profile pp
+        ON pp.parcel_id = p.parcel_id
       LIMIT 1
     `,
     [propertyId],

@@ -19,6 +19,8 @@ Right now this table is used for:
 
 It is **not** yet the source of truth for listings, agencies, valuations, or browse results. Those are still using mock data.
 
+It is also **not** sufficient by itself to represent multiple marketable units on one parcel. That should be handled by an app-owned `property_asset` layer above the parcel table.
+
 ## Current Identifier Model
 
 - `parcel_id`
@@ -98,6 +100,24 @@ It is a placeholder polygon derived from:
 - otherwise a tiny square around the centroid
 
 So the property page is DB-backed for parcel identity/location, but not yet rendering the real parcel outline from tiles or DB geometry.
+
+## Relationship To Future Asset Modeling
+
+The parcel table should remain the land identity source.
+
+For multi-unit cases such as:
+
+- apartment buildings
+- apartment ownership within a shared parcel
+- commercial suites within one building
+
+the app should introduce a separate `property_asset` model keyed to `parcel_id`.
+
+That means:
+
+- parcel rows keep land and zoning facts
+- app-owned asset rows represent the thing that can be listed or owned
+- if no reliable external apartment-level identifier exists, the app should mint its own stable asset identifier
 
 ## Current Indexes
 

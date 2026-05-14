@@ -5,6 +5,7 @@ import type {
   Agency,
   AgencyApplication,
   AgentApplication,
+  PropertyClaimRequest,
   SubmissionStatus,
   User,
   ValuatorApplication,
@@ -33,6 +34,10 @@ function getUsersFilePath() {
   return path.join(dataDir, "users.json");
 }
 
+function getPropertyClaimRequestsFilePath() {
+  return path.join(dataDir, "property-claim-requests.json");
+}
+
 async function readJsonFile<T>(filePath: string) {
   const file = await readFile(filePath, "utf8");
   return JSON.parse(file) as T;
@@ -56,6 +61,10 @@ export async function readUsers() {
 
 export async function readAgencies() {
   return readJsonFile<Agency[]>(getAgenciesFilePath());
+}
+
+export async function readPropertyClaimRequests() {
+  return readJsonFile<PropertyClaimRequest[]>(getPropertyClaimRequestsFilePath());
 }
 
 export async function readAgentApplications() {
@@ -158,6 +167,65 @@ export async function createUser(input: { email: string; fullName: string }) {
 
   await writeJsonFile(getUsersFilePath(), [...users, nextUser]);
   return nextUser;
+}
+
+export async function toggleSavedPropertyForUser(input: {
+  userId: string;
+  propertyRouteId: string;
+}) {
+  const users = await readUsers();
+  let didSave = false;
+
+  const nextUsers = users.map((user) => {
+    if (user.id !== input.userId) {
+      return user;
+    }
+
+    const alreadySaved = user.savedPropertyIds.includes(input.propertyRouteId);
+    didSave = !alreadySaved;
+
+    return {
+      ...user,
+      savedPropertyIds: alreadySaved
+        ? user.savedPropertyIds.filter((propertyId) => propertyId !== input.propertyRouteId)
+        : [...user.savedPropertyIds, input.propertyRouteId],
+    };
+  });
+
+  await writeJsonFile(getUsersFilePath(), nextUsers);
+  return { didSave };
+}
+
+export async function createPropertyClaimRequest(input: {
+  userId: string;
+  propertyId: string;
+  propertyInternalId: string;
+  parcelId: string;
+}) {
+  const claims = await readPropertyClaimRequests();
+  const existing = claims.find(
+    (claim) =>
+      claim.userId === input.userId &&
+      claim.propertyInternalId === input.propertyInternalId &&
+      claim.status === "pending",
+  );
+
+  if (existing) {
+    return existing;
+  }
+
+  const nextClaim: PropertyClaimRequest = {
+    id: createRecordId("property-claim"),
+    userId: input.userId,
+    propertyId: input.propertyId,
+    propertyInternalId: input.propertyInternalId,
+    parcelId: input.parcelId,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+
+  await writeJsonFile(getPropertyClaimRequestsFilePath(), [...claims, nextClaim]);
+  return nextClaim;
 }
 
 function slugifyAgencyName(value: string) {

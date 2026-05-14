@@ -8,6 +8,15 @@ export type PropertyListingState = "listed" | "not_listed";
 
 export type AgencyMembershipRole = "agent" | "manager";
 
+export type PropertyKind =
+  | "house"
+  | "land"
+  | "building"
+  | "apartment_unit"
+  | "commercial_unit"
+  | "mixed_use"
+  | "other";
+
 export interface User {
   id: string;
   email: string;
@@ -46,13 +55,18 @@ export interface PropertyFacts {
   areaSqm?: number;
   landAreaSqm?: number;
   propertyType?: string;
+  propertyKind?: PropertyKind;
   yearBuilt?: number;
   zoningLabel?: string;
 }
 
 export interface Property {
   id: string;
-  publicId?: string;
+  internalId?: string;
+  parcelId: string;
+  parcelPublicId?: string;
+  code?: string;
+  parentInternalId?: string;
   upi: string;
   title: string;
   description?: string;
@@ -67,6 +81,7 @@ export interface Property {
 export interface Listing {
   id: string;
   propertyId: string;
+  propertyInternalId?: string;
   agencyId: string;
   agentUserId: string;
   status: ListingStatus;
@@ -165,6 +180,16 @@ export interface ValuationSubmission {
   effectiveDate: string;
   estimatedValue: number;
   currency: "RWF";
+  status: SubmissionStatus;
+  createdAt: string;
+}
+
+export interface PropertyClaimRequest {
+  id: string;
+  userId: string;
+  propertyId: string;
+  propertyInternalId: string;
+  parcelId: string;
   status: SubmissionStatus;
   createdAt: string;
 }

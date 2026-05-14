@@ -6,6 +6,9 @@ WHERE seed_source = 'preview_kigali_seed_v1';
 DELETE FROM listing
 WHERE seed_source = 'preview_kigali_seed_v1';
 
+DELETE FROM property_asset
+WHERE seed_source = 'preview_kigali_seed_v1';
+
 DELETE FROM property_profile
 WHERE seed_source = 'preview_kigali_seed_v1';
 

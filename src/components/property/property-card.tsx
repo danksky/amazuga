@@ -20,15 +20,10 @@ export function PropertyCard({ property, listing, latestValuation }: PropertyCar
       : "Not listed";
   const priceLabel = listing ? null : latestValuation ? "Market estimate" : null;
   const mediaVariant = listing?.marketingType ?? "sale";
-  const mediaLabel =
-    property.facts.propertyType === "Apartment"
-      ? "Apartment"
-      : property.facts.propertyType === "Parcel"
-        ? "Parcel"
-        : "House";
+  const mediaLabel = property.facts.propertyType ?? "Property";
 
   return (
-    <Link className={styles.card} href={routes.public.property(property.publicId ?? property.id)}>
+    <Link className={styles.card} href={routes.public.property(property.id)}>
       <div
         aria-hidden="true"
         className={`${styles.media} ${mediaVariant === "rent" ? styles.mediaRent : styles.mediaSale} ${

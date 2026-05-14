@@ -488,6 +488,57 @@ delete_stale_profiles AS (
     )
   RETURNING pp.parcel_id
 ),
+delete_stale_assets AS (
+  DELETE FROM property_asset pa
+  WHERE pa.seed_source = 'mock_import_listing_surface_v1'
+    AND pa.parcel_id NOT IN (
+      SELECT parcel_id
+      FROM selected_rows
+    )
+  RETURNING pa.id
+),
+upsert_assets AS (
+  INSERT INTO property_asset (
+    id,
+    parcel_id,
+    asset_type,
+    public_id,
+    display_code,
+    title,
+    description,
+    is_primary_for_parcel,
+    seed_source
+  )
+  SELECT
+    'ast_' || SUBSTR(MD5('parcel-primary:' || sr.parcel_id), 1, 20),
+    sr.parcel_id,
+    CASE
+      WHEN LOWER(sr.property_type) = 'house' THEN 'house'
+      WHEN LOWER(sr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
+      WHEN LOWER(sr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
+      WHEN LOWER(sr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
+      WHEN LOWER(sr.property_type) LIKE 'building%' THEN 'building'
+      WHEN LOWER(sr.property_type) = 'mixed use' THEN 'mixed_use'
+      ELSE 'other'
+    END,
+    UPPER(SUBSTR(MD5('public:' || sr.parcel_id), 1, 10)),
+    'AST-' || UPPER(SUBSTR(MD5('display:' || sr.parcel_id), 1, 10)),
+    sr.title,
+    sr.property_description,
+    TRUE,
+    'mock_import_listing_surface_v1'
+  FROM selected_rows sr
+  ON CONFLICT (id) DO UPDATE
+  SET
+    asset_type = EXCLUDED.asset_type,
+    public_id = EXCLUDED.public_id,
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING id
+),
 upsert_profiles AS (
   INSERT INTO property_profile (
     parcel_id,
@@ -531,6 +582,7 @@ upsert_listings AS (
   INSERT INTO listing (
     id,
     parcel_id,
+    property_asset_id,
     agency_id,
     agent_user_id,
     status,
@@ -547,6 +599,7 @@ upsert_listings AS (
   SELECT
     sr.listing_id,
     sr.parcel_id,
+    'ast_' || SUBSTR(MD5('parcel-primary:' || sr.parcel_id), 1, 20),
     sr.agency_id,
     sr.agent_user_id,
     sr.status,
@@ -563,6 +616,7 @@ upsert_listings AS (
   ON CONFLICT (id) DO UPDATE
   SET
     parcel_id = EXCLUDED.parcel_id,
+    property_asset_id = EXCLUDED.property_asset_id,
     agency_id = EXCLUDED.agency_id,
     agent_user_id = EXCLUDED.agent_user_id,
     status = EXCLUDED.status,

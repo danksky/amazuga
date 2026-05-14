@@ -52,9 +52,35 @@ CREATE TABLE IF NOT EXISTS property_profile (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS property_asset (
+  id TEXT PRIMARY KEY,
+  parcel_id TEXT NOT NULL,
+  parent_asset_id TEXT REFERENCES property_asset(id) ON DELETE CASCADE,
+  asset_type TEXT NOT NULL CHECK (
+    asset_type IN (
+      'house',
+      'land',
+      'building',
+      'apartment_unit',
+      'commercial_unit',
+      'mixed_use',
+      'other'
+    )
+  ),
+  public_id TEXT NOT NULL UNIQUE,
+  display_code TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT,
+  is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS listing (
   id TEXT PRIMARY KEY,
   parcel_id TEXT NOT NULL,
+  property_asset_id TEXT NOT NULL REFERENCES property_asset(id),
   agency_id TEXT NOT NULL REFERENCES agency(id),
   agent_user_id TEXT NOT NULL REFERENCES app_user(id),
   status TEXT NOT NULL CHECK (status IN ('draft', 'active', 'inactive', 'archived')),
@@ -80,12 +106,31 @@ CREATE TABLE IF NOT EXISTS listing_image (
   UNIQUE (listing_id, sort_order)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS listing_one_active_per_parcel_idx
-  ON listing (parcel_id)
+CREATE UNIQUE INDEX IF NOT EXISTS property_asset_one_primary_per_parcel_idx
+  ON property_asset (parcel_id)
+  WHERE is_primary_for_parcel;
+
+CREATE INDEX IF NOT EXISTS property_asset_parcel_id_idx
+  ON property_asset (parcel_id);
+
+CREATE INDEX IF NOT EXISTS property_asset_parent_asset_id_idx
+  ON property_asset (parent_asset_id);
+
+CREATE INDEX IF NOT EXISTS property_asset_asset_type_idx
+  ON property_asset (asset_type);
+
+CREATE UNIQUE INDEX IF NOT EXISTS listing_one_active_per_asset_idx
+  ON listing (property_asset_id)
   WHERE status = 'active';
 
 CREATE INDEX IF NOT EXISTS listing_status_marketing_type_idx
   ON listing (status, marketing_type);
+
+CREATE INDEX IF NOT EXISTS listing_parcel_id_idx
+  ON listing (parcel_id);
+
+CREATE INDEX IF NOT EXISTS listing_property_asset_id_idx
+  ON listing (property_asset_id);
 
 CREATE INDEX IF NOT EXISTS listing_agency_id_idx
   ON listing (agency_id);
@@ -100,6 +145,8 @@ CREATE OR REPLACE VIEW preview_active_listing_surface_v1 AS
 SELECT
   l.id AS listing_id,
   l.parcel_id,
+  l.property_asset_id,
+  pa.public_id AS property_asset_public_id,
   p.public_id,
   p.upi,
   p.district,
@@ -109,9 +156,20 @@ SELECT
   p.centroid_lat,
   p.centroid_lon,
   p.representative_size AS land_area_sqm,
-  pp.title,
-  pp.description AS property_description,
-  pp.property_type,
+  COALESCE(pa.title, pp.title) AS title,
+  COALESCE(pa.description, pp.description) AS property_description,
+  COALESCE(
+    CASE pa.asset_type
+      WHEN 'house' THEN 'House'
+      WHEN 'land' THEN 'Parcel'
+      WHEN 'building' THEN 'Building'
+      WHEN 'apartment_unit' THEN 'Apartment'
+      WHEN 'commercial_unit' THEN 'Commercial'
+      WHEN 'mixed_use' THEN 'Mixed Use'
+      ELSE 'Property'
+    END,
+    pp.property_type
+  ) AS property_type,
   pp.bedrooms,
   pp.bathrooms,
   pp.interior_area_sqm,
@@ -133,6 +191,8 @@ SELECT
 FROM listing l
 JOIN parcel_app_ready_seed_preview p
   ON p.parcel_id = l.parcel_id
+LEFT JOIN property_asset pa
+  ON pa.id = l.property_asset_id
 LEFT JOIN property_profile pp
   ON pp.parcel_id = l.parcel_id
 JOIN agency a
@@ -147,8 +207,20 @@ WHERE l.status = 'active';
 COMMENT ON TABLE property_profile IS
 'App-owned property enrichment keyed by parcel_id. Keeps marketing and home facts separate from the parcel seed pipeline.';
 
+COMMENT ON TABLE property_asset IS
+'App-owned marketable real estate object keyed to a parcel. Supports one parcel having many listable units over time.';
+
+COMMENT ON COLUMN property_asset.public_id IS
+'Public-safe property identifier for asset-level routes. This is the preferred user-facing property ID.';
+
+COMMENT ON COLUMN property_asset.is_primary_for_parcel IS
+'Marks the default top-level asset for a parcel so legacy parcel-first records can be backfilled safely.';
+
 COMMENT ON COLUMN listing.parcel_id IS
 'Intended to join to parcel_app_ready_seed_preview.parcel_id. Deliberately not a hard FK yet because the parcel seed table is still a working preview contract.';
+
+COMMENT ON COLUMN listing.property_asset_id IS
+'App-owned asset reference for the specific house, unit, suite, or parcel-backed asset being listed.';
 
 COMMENT ON VIEW preview_active_listing_surface_v1 IS
 'Preview join surface for future browse and property queries once mock data is removed.';

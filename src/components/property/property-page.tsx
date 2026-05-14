@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
+import { createPropertyClaimRequestAction, toggleSavePropertyAction } from "@/features/properties/actions";
 import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
+import { routes } from "@/lib/routes";
 import type { Agency, Listing, Property, ValuationSubmission } from "@/types/domain";
 
 import { Button } from "../ui/button";
@@ -14,9 +16,11 @@ interface PropertyPageProps {
   listing?: Listing;
   agency?: Agency;
   valuations: ValuationSubmission[];
+  isSaved?: boolean;
+  statusMessage?: string;
 }
 
-export function PropertyPage({ property, listing, agency, valuations }: PropertyPageProps) {
+export function PropertyPage({ property, listing, agency, valuations, isSaved = false, statusMessage }: PropertyPageProps) {
   const [showWhatsapp, setShowWhatsapp] = useState(false);
   const latestValuation = valuations[0];
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
@@ -24,6 +28,9 @@ export function PropertyPage({ property, listing, agency, valuations }: Property
     .join(", ");
   const zoningLabel = property.facts.zoningLabel;
   const summaryDescription = property.facts.propertyType === "Parcel" ? undefined : property.description;
+  const propertyKindLabel = property.facts.propertyKind?.replace(/_/g, " ");
+  const propertyRouteId = property.id;
+  const propertyPath = routes.public.property(propertyRouteId);
   const galleryImages = listing?.imageUrls ?? [];
   const primaryImage = galleryImages[0];
   const secondaryImage = galleryImages[1] ?? galleryImages[0];
@@ -61,6 +68,7 @@ export function PropertyPage({ property, listing, agency, valuations }: Property
         <div className={`${styles.panel} ${styles.summary}`}>
           <div className={styles.eyebrow}>{locationLabel}</div>
           <h1 className={styles.title}>{property.title}</h1>
+          {statusMessage ? <div className={styles.description}>{statusMessage}</div> : null}
           <div className={styles.statusRow}>
             <div className={styles.status}>{listing ? "Listed" : "Not listed"}</div>
             {listing ? (
@@ -182,7 +190,11 @@ export function PropertyPage({ property, listing, agency, valuations }: Property
                   <Button onClick={() => setShowWhatsapp((current) => !current)}>
                     {showWhatsapp ? "Hide WhatsApp" : "Show WhatsApp"}
                   </Button>
-                  <Button variant="secondary">Save property</Button>
+                  <form action={toggleSavePropertyAction}>
+                    <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
+                    <input name="propertyPath" type="hidden" value={propertyPath} />
+                    <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
+                  </form>
                 </div>
               </div>
             ) : (
@@ -192,8 +204,23 @@ export function PropertyPage({ property, listing, agency, valuations }: Property
                   You can claim the home or contribute a valuation when you have relevant information.
                 </div>
                 <div className={styles.ctaGroup}>
-                  <Button>Claim this home</Button>
-                  <Button variant="secondary">Submit a valuation</Button>
+                  {property.internalId ? (
+                    <form action={createPropertyClaimRequestAction}>
+                      <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
+                      <input name="propertyPath" type="hidden" value={propertyPath} />
+                      <input name="propertyId" type="hidden" value={property.id} />
+                      <input name="propertyInternalId" type="hidden" value={property.internalId} />
+                      <input name="parcelId" type="hidden" value={property.parcelId} />
+                      <Button type="submit">Claim this home</Button>
+                    </form>
+                  ) : (
+                    <Button disabled>Claim this home</Button>
+                  )}
+                  <form action={toggleSavePropertyAction}>
+                    <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
+                    <input name="propertyPath" type="hidden" value={propertyPath} />
+                    <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
+                  </form>
                 </div>
               </div>
             )}
@@ -225,6 +252,18 @@ export function PropertyPage({ property, listing, agency, valuations }: Property
                   <span>{property.location.village}</span>
                 </div>
               ) : null}
+              {propertyKindLabel ? (
+                <div className={styles.detailRow}>
+                  <span>Property kind</span>
+                  <span>{propertyKindLabel}</span>
+                </div>
+              ) : null}
+              {property.code ? (
+                <div className={styles.detailRow}>
+                  <span>Property code</span>
+                  <span>{property.code}</span>
+                </div>
+              ) : null}
               {property.facts.yearBuilt ? (
                 <div className={styles.detailRow}>
                   <span>Year built</span>
@@ -232,8 +271,8 @@ export function PropertyPage({ property, listing, agency, valuations }: Property
                 </div>
               ) : null}
               <div className={styles.detailRow}>
-                <span>Amazuga ID</span>
-                <span>{property.publicId ?? property.id}</span>
+                <span>Property ID</span>
+                <span>{property.id}</span>
               </div>
             </div>
           </div>
