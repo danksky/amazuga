@@ -18,12 +18,14 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
   ]);
 
   const activeManagedAgency = agencies.find((agency) => agency.managerUserId === currentUser.id);
+  const activeMemberAgency = agencies.find((agency) => agency.memberUserIds.includes(currentUser.id));
   const pendingManagedAgency = agencies.find(
     (agency) => agency.pendingManagerUserId === currentUser.id && agency.managerUserId !== currentUser.id,
   );
   const latestAgentApplication = getLatestForUser(agentApplications, currentUser.id);
   const latestValuatorApplication = getLatestForUser(valuatorApplications, currentUser.id);
   const canManageAgency = Boolean(activeManagedAgency);
+  const hasAgentMembership = Boolean(activeMemberAgency) && !canManageAgency;
   const managerBlocked = Boolean(pendingManagedAgency);
   const isApprovedAgent = latestAgentApplication?.status === "approved";
   const isApprovedValuator = latestValuatorApplication?.status === "approved";
@@ -42,10 +44,12 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
 
         <div className={styles.grid}>
           <div className={styles.card}>
-            <div className={styles.cardLabel}>Agency management</div>
+            <div className={styles.cardLabel}>Agency access</div>
             <div className={styles.cardTitle}>
               {canManageAgency
                 ? activeManagedAgency?.businessName
+                : hasAgentMembership
+                  ? activeMemberAgency?.businessName
                 : managerBlocked
                   ? pendingManagedAgency?.businessName
                   : "No active agency access"}
@@ -53,6 +57,8 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
             <div className={styles.cardBody}>
               {canManageAgency
                 ? "Your manager access is active. You can manage the agency in the portal."
+                : hasAgentMembership
+                  ? "Your agent membership is active. You can work with this agency and its listings in the portal."
                 : managerBlocked
                   ? "Your agency has been approved, but manager access is still locked until your agent approval is complete."
                   : "You do not currently have an active agency management role."}
@@ -65,9 +71,9 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
                 </span>
               </div>
               <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>Manager access</span>
+                <span className={styles.statusLabel}>Access</span>
                 <span className={styles.statusValue}>
-                  {canManageAgency ? "Active" : managerBlocked ? "Locked" : "Unavailable"}
+                  {canManageAgency ? "Manager" : hasAgentMembership ? "Agent" : managerBlocked ? "Locked" : "Unavailable"}
                 </span>
               </div>
             </div>
@@ -75,6 +81,10 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
               {canManageAgency ? (
                 <Link className={styles.primaryAction} href={routes.app.portalAgency}>
                   Open agency
+                </Link>
+              ) : hasAgentMembership ? (
+                <Link className={styles.primaryAction} href={routes.app.portalListings}>
+                  Open listings
                 </Link>
               ) : managerBlocked ? (
                 <Link className={styles.primaryAction} href={routes.onboarding.agentApplicationNew}>

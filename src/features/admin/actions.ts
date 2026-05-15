@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdminUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import {
+  activateApprovedAgentMembershipInDb,
   activatePendingAgencyManagerInDb,
   ensureAgencyFromApprovedApplicationInDb,
-  listAgentApplicationsFromDb,
   updateApplicationStatusInDb,
 } from "@/lib/server/workflows";
 import type { SubmissionStatus } from "@/types/domain";
@@ -41,8 +41,7 @@ export async function reviewApplicationAction(formData: FormData) {
   }
 
   if (kind === "agent" && decision === "approved") {
-    const applications = await listAgentApplicationsFromDb();
-    const application = applications.find((entry) => entry.id === applicationId);
+    const application = await activateApprovedAgentMembershipInDb(applicationId);
     if (application) {
       await activatePendingAgencyManagerInDb(application.userId);
     }

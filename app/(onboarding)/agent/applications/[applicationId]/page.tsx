@@ -10,7 +10,7 @@ function getStatusCopy(status: "pending" | "approved" | "denied") {
   if (status === "approved") {
     return {
       body: "Your agent application has been approved.",
-      nextStepsBody: "You can now continue with agency membership and listing activity.",
+      nextStepsBody: "Your selected approved agency membership is now active, so you can continue with listing activity.",
       primaryHref: routes.onboarding.advertise,
       primaryLabel: "Back to advertise",
     };
@@ -65,6 +65,15 @@ export default async function AgentApplicationPage({
       details={[
         { label: "Applicant", value: currentUser.fullName },
         { label: "Selected agency", value: selectedAgency?.businessName ?? "Not selected" },
+        {
+          label: "Agency membership",
+          value:
+            application.status === "approved"
+              ? selectedAgency?.status === "approved"
+                ? "Active"
+                : "Unavailable"
+              : "Pending agent approval",
+        },
         { label: "National ID photo", value: "Received" },
         { label: "Submitted", value: formatDate(application.createdAt) },
       ]}

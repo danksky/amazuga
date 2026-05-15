@@ -207,6 +207,40 @@ async function getLatestAgentApplicationForUser(userId: string) {
   return result.rows[0] ? toAgentApplication(result.rows[0]) : undefined;
 }
 
+async function getAgentApplicationById(applicationId: string) {
+  const result = await getPgPool().query<AgentApplicationRow>(
+    `
+      SELECT
+        id,
+        user_id,
+        national_id_photo_url,
+        selected_agency_id,
+        status,
+        created_at::TEXT
+      FROM agent_application
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [applicationId],
+  );
+
+  return result.rows[0] ? toAgentApplication(result.rows[0]) : undefined;
+}
+
+async function getAgencyStatusById(agencyId: string) {
+  const result = await getPgPool().query<{ status: Agency["status"] }>(
+    `
+      SELECT status
+      FROM agency
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [agencyId],
+  );
+
+  return result.rows[0]?.status;
+}
+
 async function buildUniqueAgencySlug(baseName: string, applicationId: string) {
   const baseSlug = slugifyAgencyName(baseName) || "agency";
   const existing = await getPgPool().query<{ id: string }>(
@@ -416,6 +450,29 @@ export async function createValuatorApplicationInDb(input: {
   );
 
   return toValuatorApplication(result.rows[0]);
+}
+
+export async function activateApprovedAgentMembershipInDb(applicationId: string) {
+  const application = await getAgentApplicationById(applicationId);
+
+  if (!application || application.status !== "approved" || !application.selectedAgencyId) {
+    return null;
+  }
+
+  const agencyStatus = await getAgencyStatusById(application.selectedAgencyId);
+  if (agencyStatus !== "approved") {
+    return null;
+  }
+
+  await ensureAgencyMembership({
+    id: `${application.selectedAgencyId}-agent-${application.userId}`,
+    agencyId: application.selectedAgencyId,
+    userId: application.userId,
+    role: "agent",
+    seedSource: "manual_workflow_v1",
+  });
+
+  return application;
 }
 
 export async function updateApplicationStatusInDb(

@@ -25,7 +25,7 @@ export default async function AdminAgentsPage() {
         { label: "National ID", value: "Received" },
       ],
       reviewNote:
-        "Approving this application grants agent approval. If this user is the pending manager candidate for an approved agency, manager access activates at the same time.",
+        "Approving this application grants agent approval and activates membership in the selected approved agency. If this user is also the pending manager candidate for an approved agency, manager access activates at the same time.",
     }));
 
   return (
