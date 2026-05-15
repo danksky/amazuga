@@ -3,23 +3,48 @@
 import { useState } from "react";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { signOutAction } from "@/features/auth/session-actions";
-import { publicTopNav } from "@/lib/navigation";
 import { routes } from "@/lib/routes";
 import type { User } from "@/types/domain";
 
 import { Button } from "../ui/button";
 import styles from "./top-nav.module.css";
 
-interface TopNavProps {
-  currentPath?: string;
-  currentUser?: User | null;
-  isAdmin?: boolean;
+interface NavLinkItem {
+  label: string;
+  href: string;
 }
 
-export function TopNav({ currentPath, currentUser, isAdmin = false }: TopNavProps) {
+interface TopNavProps {
+  currentUser?: User | null;
+  isAdmin?: boolean;
+  marketingLinks: NavLinkItem[];
+  signedInLinks: NavLinkItem[];
+}
+
+function isLinkActive(pathname: string, href: string) {
+  if (href === routes.onboarding.advertise) {
+    return (
+      pathname === routes.onboarding.advertise ||
+      pathname === routes.onboarding.assess ||
+      pathname.startsWith("/agent/") ||
+      pathname.startsWith("/agency/") ||
+      pathname.startsWith("/valuator/")
+    );
+  }
+
+  if (href === routes.admin.dashboard) {
+    return pathname.startsWith("/admin/");
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInLinks }: TopNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
   const signedInLabel = currentUser?.fullName?.split(" ")[0] ?? "Account";
 
   return (
@@ -29,10 +54,10 @@ export function TopNav({ currentPath, currentUser, isAdmin = false }: TopNavProp
           Amazuga
         </Link>
         <div className={styles.links}>
-          {publicTopNav.map((item) => (
+          {marketingLinks.map((item) => (
             <Link
               key={item.href}
-              className={`${styles.link} ${currentPath === item.href ? styles.active : ""}`}
+              className={`${styles.link} ${isLinkActive(pathname, item.href) ? styles.active : ""}`}
               href={item.href}
             >
               {item.label}
@@ -53,14 +78,20 @@ export function TopNav({ currentPath, currentUser, isAdmin = false }: TopNavProp
         <div className={styles.actions}>
           {currentUser ? (
             <>
-              <Link className={styles.link} href={routes.app.saved}>
-                Saved
-              </Link>
-              <Link className={styles.link} href={routes.app.portal}>
-                Portal
-              </Link>
+              {signedInLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  className={`${styles.link} ${isLinkActive(pathname, item.href) ? styles.active : ""}`}
+                  href={item.href}
+                >
+                  {item.label}
+                </Link>
+              ))}
               {isAdmin ? (
-                <Link className={styles.link} href={routes.admin.dashboard}>
+                <Link
+                  className={`${styles.link} ${isLinkActive(pathname, routes.admin.dashboard) ? styles.active : ""}`}
+                  href={routes.admin.dashboard}
+                >
                   Admin
                 </Link>
               ) : null}
@@ -96,10 +127,10 @@ export function TopNav({ currentPath, currentUser, isAdmin = false }: TopNavProp
             </div>
             <div className={styles.mobileOverlayBody}>
               <div className={styles.mobileMenuLinks}>
-                {publicTopNav.map((item) => (
+                {marketingLinks.map((item) => (
                   <Link
                     key={item.href}
-                    className={`${styles.mobileMenuLink} ${currentPath === item.href ? styles.active : ""}`}
+                    className={`${styles.mobileMenuLink} ${isLinkActive(pathname, item.href) ? styles.active : ""}`}
                     href={item.href}
                     onClick={() => setMenuOpen(false)}
                   >
@@ -110,14 +141,22 @@ export function TopNav({ currentPath, currentUser, isAdmin = false }: TopNavProp
               <div className={styles.mobileMenuActions}>
                 {currentUser ? (
                   <>
-                    <Link className={styles.mobileMenuLink} href={routes.app.saved} onClick={() => setMenuOpen(false)}>
-                      Saved
-                    </Link>
-                    <Link className={styles.mobileMenuLink} href={routes.app.portal} onClick={() => setMenuOpen(false)}>
-                      Portal
-                    </Link>
+                    {signedInLinks.map((item) => (
+                      <Link
+                        key={item.href}
+                        className={`${styles.mobileMenuLink} ${isLinkActive(pathname, item.href) ? styles.active : ""}`}
+                        href={item.href}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
                     {isAdmin ? (
-                      <Link className={styles.mobileMenuLink} href={routes.admin.dashboard} onClick={() => setMenuOpen(false)}>
+                      <Link
+                        className={`${styles.mobileMenuLink} ${isLinkActive(pathname, routes.admin.dashboard) ? styles.active : ""}`}
+                        href={routes.admin.dashboard}
+                        onClick={() => setMenuOpen(false)}
+                      >
                         Admin
                       </Link>
                     ) : null}

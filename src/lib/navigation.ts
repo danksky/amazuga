@@ -12,13 +12,10 @@ export const accountNav = [
 ] as const;
 
 export const portalNav = [
-  { label: "Overview", href: routes.app.portal },
   { label: "Listings", href: routes.app.portalListings },
-  { label: "Valuations", href: routes.app.portalValuations },
   { label: "Agency", href: routes.app.portalAgency },
-  { label: "Agents", href: routes.app.portalAgents },
-  { label: "Profile", href: routes.app.portalProfile },
-  { label: "Settings", href: routes.app.portalSettings },
+  { label: "Team", href: routes.app.portalAgents },
+  { label: "Valuations", href: routes.app.portalValuations },
 ] as const;
 
 export const adminNav = [
