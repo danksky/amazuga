@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
 import { PortalShell } from "@/features/portal/portal-shell";
+import { PortalValuationsPage as PortalValuationsWorkspacePage } from "@/features/portal/portal-valuations-page";
 import { requireCurrentUser } from "@/lib/auth";
 import { getPortalAccessState, getPortalEntryHref } from "@/lib/server/portal-access";
+import { getPortalValuationsWorkspaceData } from "@/lib/server/portal-valuations";
 
 export const dynamic = "force-dynamic";
 
-export default async function PortalValuationsPage() {
+export default async function PortalValuationsRoute() {
   const currentUser = await requireCurrentUser();
   const access = await getPortalAccessState(currentUser.id);
 
@@ -15,13 +16,11 @@ export default async function PortalValuationsPage() {
     redirect(getPortalEntryHref(access));
   }
 
+  const data = await getPortalValuationsWorkspaceData(currentUser.id);
+
   return (
     <PortalShell access={access}>
-      <PlaceholderPage
-        eyebrow="Portal"
-        title="Valuations"
-        description="Valuators will manage submission history and create new valuation proposals here."
-      />
+      <PortalValuationsWorkspacePage data={data} />
     </PortalShell>
   );
 }
