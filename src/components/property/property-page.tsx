@@ -139,10 +139,10 @@ function buildFactItems(property: Property, propertyKind: PropertyKind): FactIte
     case "other":
     default:
       return [
-        { label: "Type", value: typeLabel },
         { label: "Interior", value: formatArea(property.facts.areaSqm) },
         { label: "Beds / baths", value: formatBedsBaths(property) },
         { label: "Parcel", value: formatArea(property.facts.landAreaSqm) },
+        { label: "Year built", value: property.facts.yearBuilt ? String(property.facts.yearBuilt) : "Unknown" },
       ];
   }
 }
