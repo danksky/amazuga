@@ -1,11 +1,17 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { PortalAgencyPage } from "@/features/portal/portal-agency-page";
+import { requireCurrentUser } from "@/lib/auth";
+import { getPortalAgencyWorkspaceData } from "@/lib/server/portal-agency";
 
-export default function PortalAgencyPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PortalAgencyRoute() {
+  const currentUser = await requireCurrentUser();
+  const data = await getPortalAgencyWorkspaceData(currentUser.id);
+
   return (
-    <PlaceholderPage
-      eyebrow="Portal"
-      title="Agency"
-      description="Agency managers will manage agency details, join requests, and invitations here."
+    <PortalAgencyPage
+      currentUserFirstName={currentUser.fullName.split(" ")[0] ?? currentUser.fullName}
+      data={data}
     />
   );
 }

@@ -139,6 +139,9 @@ export function PortalListingsPage({
                             <Link className={styles.secondaryAction} href={routes.app.portalAgency}>
                               Agency tools
                             </Link>
+                            <Link className={styles.secondaryAction} href={routes.app.portalAgents}>
+                              Team roster
+                            </Link>
                           </div>
                         </article>
                       ))}
