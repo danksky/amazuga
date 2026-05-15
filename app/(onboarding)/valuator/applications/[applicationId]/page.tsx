@@ -29,8 +29,8 @@ function getStatusCopy(status: "pending" | "approved" | "denied") {
     body: "Your valuator recognition request has been submitted for review.",
     nextStepsBody:
       "Your registration number is being reviewed before valuator recognition is granted. Once approved, you will be able to submit property valuations.",
-    primaryHref: routes.public.buy,
-    primaryLabel: "Back",
+    primaryHref: routes.onboarding.advertise,
+    primaryLabel: "Back to applications",
   };
 }
 

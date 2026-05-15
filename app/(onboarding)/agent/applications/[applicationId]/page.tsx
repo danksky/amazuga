@@ -12,7 +12,7 @@ function getStatusCopy(status: "pending" | "approved" | "denied") {
       body: "Your agent application has been approved.",
       nextStepsBody: "Your selected approved agency membership is now active, so you can continue with listing activity.",
       primaryHref: routes.onboarding.advertise,
-      primaryLabel: "Back to advertise",
+      primaryLabel: "Back to applications",
     };
   }
 
@@ -30,7 +30,7 @@ function getStatusCopy(status: "pending" | "approved" | "denied") {
     nextStepsBody:
       "Your National ID submission is being reviewed. Once approved, you can continue with agency membership and listing activity.",
     primaryHref: routes.onboarding.advertise,
-    primaryLabel: "Back to advertise",
+    primaryLabel: "Back to applications",
   };
 }
 

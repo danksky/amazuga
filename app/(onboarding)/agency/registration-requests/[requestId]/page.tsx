@@ -43,7 +43,7 @@ function getStatusCopy(
     nextStepsBody:
       "You do not need to submit another registration while this one is under review. Once approved, the agency can become available for agent membership.",
     primaryHref: routes.onboarding.advertise,
-    primaryLabel: "Back to advertise",
+    primaryLabel: "Back to applications",
   };
 }
 

@@ -3,8 +3,7 @@ import { routes } from "./routes";
 export const publicTopNav = [
   { label: "Buy", href: routes.public.buy },
   { label: "Rent", href: routes.public.rent },
-  { label: "Advertise", href: routes.onboarding.advertise },
-  { label: "Assess", href: routes.onboarding.assess },
+  { label: "Applications", href: routes.onboarding.advertise },
 ] as const;
 
 export const accountNav = [

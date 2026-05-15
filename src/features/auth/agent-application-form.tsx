@@ -62,7 +62,7 @@ export function AgentApplicationForm({ agencies }: { agencies: Agency[] }) {
             <Button type="submit">Submit application</Button>
             <Link href={routes.onboarding.advertise}>
               <Button type="button" variant="secondary">
-                Back
+                Back to applications
               </Button>
             </Link>
           </div>

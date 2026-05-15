@@ -10,7 +10,7 @@ export function ValuatorApplicationForm() {
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
-        <div className={styles.eyebrow}>Assess</div>
+        <div className={styles.eyebrow}>Applications</div>
         <h1 className={styles.title}>Apply as a recognized valuator</h1>
         <div className={styles.body}>
           Submit your valuator application to be recognized for valuation submissions. IRPV registration number is required
@@ -47,9 +47,9 @@ export function ValuatorApplicationForm() {
 
           <div className={styles.actions}>
             <Button type="submit">Submit application</Button>
-            <Link href={routes.onboarding.assess}>
+            <Link href={routes.onboarding.advertise}>
               <Button type="button" variant="secondary">
-                Back
+                Back to applications
               </Button>
             </Link>
           </div>

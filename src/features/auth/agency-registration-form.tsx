@@ -51,7 +51,7 @@ export function AgencyRegistrationForm() {
             <Button type="submit">Submit agency</Button>
             <Link href={routes.onboarding.advertise}>
               <Button type="button" variant="secondary">
-                Back
+                Back to applications
               </Button>
             </Link>
           </div>
