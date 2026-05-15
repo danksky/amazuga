@@ -1,20 +1,20 @@
 import Link from "next/link";
 
 import { formatDate } from "@/lib/format";
-import {
-  readAgencyApplications,
-  readAgentApplications,
-  readValuatorApplications,
-} from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import {
+  listAgencyApplicationsFromDb,
+  listAgentApplicationsFromDb,
+  listValuatorApplicationsFromDb,
+} from "@/lib/server/workflows";
 
 import styles from "./admin.module.css";
 
 export async function AdminDashboard() {
   const [agencyApplications, agentApplications, valuatorApplications] = await Promise.all([
-    readAgencyApplications(),
-    readAgentApplications(),
-    readValuatorApplications(),
+    listAgencyApplicationsFromDb(),
+    listAgentApplicationsFromDb(),
+    listValuatorApplicationsFromDb(),
   ]);
   const pendingAgencies = agencyApplications.filter((application) => application.status === "pending");
   const pendingAgents = agentApplications.filter((application) => application.status === "pending");

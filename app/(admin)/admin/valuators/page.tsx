@@ -1,11 +1,11 @@
 import { AdminReviewPage } from "@/features/admin/admin-review-page";
-import { readValuatorApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
+import { listValuatorApplicationsFromDb } from "@/lib/server/workflows";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminValuatorsPage() {
-  const items = (await readValuatorApplications())
+  const items = (await listValuatorApplicationsFromDb())
     .filter((application) => application.status === "pending")
     .map((application) => ({
       id: application.id,

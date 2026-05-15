@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 
 import { ApplicationStatus } from "@/features/auth/application-status";
 import { requireCurrentUser } from "@/lib/auth";
-import { readAgencies, readAgentApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
+import { listAgenciesFromDb, listAgentApplicationsFromDb } from "@/lib/server/workflows";
 
 function getStatusCopy(status: "pending" | "approved" | "denied") {
   if (status === "approved") {
@@ -43,7 +43,7 @@ export default async function AgentApplicationPage({
 }) {
   const currentUser = await requireCurrentUser();
   const { applicationId } = await params;
-  const [applications, agencies] = await Promise.all([readAgentApplications(), readAgencies()]);
+  const [applications, agencies] = await Promise.all([listAgentApplicationsFromDb(), listAgenciesFromDb()]);
   const application = applications.find((entry) => entry.id === applicationId);
 
   if (!application) {

@@ -46,22 +46,28 @@ INSERT INTO app_user (
   email,
   full_name,
   roles,
+  mock_persona_label,
+  mock_persona_description,
+  upi_lookup_count_today,
   status,
   seed_source
 )
 VALUES
-  ('user-1', 'daniel.kawalsky@gmail.com', 'Daniel Kawalsky', ARRAY['user', 'admin']::TEXT[], 'active', 'mock_import_listing_surface_v1'),
-  ('user-2', 'buyer@amazuga.test', 'Aline Uwimana', ARRAY['user']::TEXT[], 'active', 'mock_import_listing_surface_v1'),
-  ('user-3', 'new.agent@amazuga.test', 'Eric Habimana', ARRAY['user']::TEXT[], 'active', 'mock_import_listing_surface_v1'),
-  ('user-4', 'pending.founder@amazuga.test', 'Chantal Uwase', ARRAY['user']::TEXT[], 'active', 'mock_import_listing_surface_v1'),
-  ('user-5', 'manager@amazuga.test', 'Alice Mukamana', ARRAY['user', 'agent', 'agency_manager']::TEXT[], 'active', 'mock_import_listing_surface_v1'),
-  ('user-6', 'pending.valuator@amazuga.test', 'Claude Mukiza', ARRAY['user']::TEXT[], 'active', 'mock_import_listing_surface_v1'),
-  ('user-7', 'valuator@amazuga.test', 'Jeanne Mukandoli', ARRAY['user', 'valuator']::TEXT[], 'active', 'mock_import_listing_surface_v1')
+  ('user-1', 'daniel.kawalsky@gmail.com', 'Daniel Kawalsky', ARRAY['user', 'admin']::TEXT[], 'Admin', 'Moderates applications and reviews platform activity.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-2', 'buyer@amazuga.test', 'Aline Uwimana', ARRAY['user']::TEXT[], 'Consumer', 'Typical buyer browsing homes and saving properties.', 3, 'active', 'mock_import_listing_surface_v1'),
+  ('user-3', 'new.agent@amazuga.test', 'Eric Habimana', ARRAY['user']::TEXT[], 'New agent applicant', 'Has no approvals yet and should start the advertise flow from scratch.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-4', 'pending.founder@amazuga.test', 'Chantal Uwase', ARRAY['user']::TEXT[], 'Pending agency founder', 'Submitted an agency registration that is still under review.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-5', 'manager@amazuga.test', 'Alice Mukamana', ARRAY['user', 'agent', 'agency_manager']::TEXT[], 'Approved agency manager', 'Approved as both agent and manager, with an active agency.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-6', 'pending.valuator@amazuga.test', 'Claude Mukiza', ARRAY['user']::TEXT[], 'Pending valuator', 'Submitted valuator recognition and is waiting for review.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-7', 'valuator@amazuga.test', 'Jeanne Mukandoli', ARRAY['user', 'valuator']::TEXT[], 'Approved valuator', 'Recognized valuator with approved valuation activity.', 0, 'active', 'mock_import_listing_surface_v1')
 ON CONFLICT (id) DO UPDATE
 SET
   email = EXCLUDED.email,
   full_name = EXCLUDED.full_name,
   roles = EXCLUDED.roles,
+  mock_persona_label = EXCLUDED.mock_persona_label,
+  mock_persona_description = EXCLUDED.mock_persona_description,
+  upi_lookup_count_today = EXCLUDED.upi_lookup_count_today,
   status = EXCLUDED.status,
   seed_source = EXCLUDED.seed_source,
   updated_at = NOW();
@@ -69,6 +75,7 @@ SET
 INSERT INTO agency (
   id,
   slug,
+  created_from_application_id,
   business_name,
   tin,
   whatsapp_phone,
@@ -81,6 +88,7 @@ INSERT INTO agency (
 VALUES (
   'agency-1',
   'kigali-homes-group',
+  'agency-application-2',
   'Kigali Homes Group',
   '107839210',
   '+250788123456',
@@ -93,6 +101,7 @@ VALUES (
 ON CONFLICT (id) DO UPDATE
 SET
   slug = EXCLUDED.slug,
+  created_from_application_id = EXCLUDED.created_from_application_id,
   business_name = EXCLUDED.business_name,
   tin = EXCLUDED.tin,
   whatsapp_phone = EXCLUDED.whatsapp_phone,
@@ -118,6 +127,122 @@ ON CONFLICT (agency_id, user_id, role) DO UPDATE
 SET
   status = EXCLUDED.status,
   seed_source = EXCLUDED.seed_source;
+
+INSERT INTO agency_application (
+  id,
+  created_by_user_id,
+  business_name,
+  tin,
+  website_url,
+  google_maps_url,
+  status,
+  seed_source,
+  created_at,
+  updated_at
+)
+VALUES
+  (
+    'agency-application-1',
+    'user-4',
+    'Umurage Property Partners',
+    '119000321',
+    NULL,
+    NULL,
+    'pending',
+    'mock_import_listing_surface_v1',
+    '2026-03-18T11:00:00.000Z'::TIMESTAMPTZ,
+    '2026-03-18T11:00:00.000Z'::TIMESTAMPTZ
+  ),
+  (
+    'agency-application-2',
+    'user-5',
+    'Kigali Homes Group',
+    '107839210',
+    'https://example.com',
+    NULL,
+    'approved',
+    'mock_import_listing_surface_v1',
+    '2026-03-15T09:00:00.000Z'::TIMESTAMPTZ,
+    '2026-03-15T09:00:00.000Z'::TIMESTAMPTZ
+  )
+ON CONFLICT (id) DO UPDATE
+SET
+  created_by_user_id = EXCLUDED.created_by_user_id,
+  business_name = EXCLUDED.business_name,
+  tin = EXCLUDED.tin,
+  website_url = EXCLUDED.website_url,
+  google_maps_url = EXCLUDED.google_maps_url,
+  status = EXCLUDED.status,
+  seed_source = EXCLUDED.seed_source,
+  created_at = EXCLUDED.created_at,
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO agent_application (
+  id,
+  user_id,
+  national_id_photo_url,
+  selected_agency_id,
+  status,
+  seed_source,
+  created_at,
+  updated_at
+)
+VALUES (
+  'agent-application-1',
+  'user-5',
+  '/placeholders/property-generic.svg',
+  'agency-1',
+  'approved',
+  'mock_import_listing_surface_v1',
+  '2026-03-16T09:00:00.000Z'::TIMESTAMPTZ,
+  '2026-03-16T09:00:00.000Z'::TIMESTAMPTZ
+)
+ON CONFLICT (id) DO UPDATE
+SET
+  user_id = EXCLUDED.user_id,
+  national_id_photo_url = EXCLUDED.national_id_photo_url,
+  selected_agency_id = EXCLUDED.selected_agency_id,
+  status = EXCLUDED.status,
+  seed_source = EXCLUDED.seed_source,
+  created_at = EXCLUDED.created_at,
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO valuator_application (
+  id,
+  user_id,
+  irpv_registration_number,
+  status,
+  seed_source,
+  created_at,
+  updated_at
+)
+VALUES
+  (
+    'valuator-application-1',
+    'user-6',
+    'IRPV-2026-188',
+    'pending',
+    'mock_import_listing_surface_v1',
+    '2026-03-18T10:00:00.000Z'::TIMESTAMPTZ,
+    '2026-03-18T10:00:00.000Z'::TIMESTAMPTZ
+  ),
+  (
+    'valuator-application-2',
+    'user-7',
+    'IRPV-2026-077',
+    'approved',
+    'mock_import_listing_surface_v1',
+    '2026-03-12T09:00:00.000Z'::TIMESTAMPTZ,
+    '2026-03-12T09:00:00.000Z'::TIMESTAMPTZ
+  )
+ON CONFLICT (id) DO UPDATE
+SET
+  user_id = EXCLUDED.user_id,
+  irpv_registration_number = EXCLUDED.irpv_registration_number,
+  status = EXCLUDED.status,
+  seed_source = EXCLUDED.seed_source,
+  created_at = EXCLUDED.created_at,
+  updated_at = EXCLUDED.updated_at;
 
 WITH mock_listing_source AS (
   SELECT *
@@ -497,6 +622,11 @@ delete_stale_assets AS (
     )
   RETURNING pa.id
 ),
+delete_stale_saved_properties AS (
+  DELETE FROM saved_property sp
+  WHERE sp.seed_source = 'mock_import_listing_surface_v1'
+  RETURNING sp.id
+),
 upsert_assets AS (
   INSERT INTO property_asset (
     id,
@@ -662,6 +792,145 @@ JOIN LATERAL (
     ordinality - 1 AS sort_order
   FROM UNNEST(sr.image_urls) WITH ORDINALITY AS image_source(image_url, ordinality)
 ) AS image_row
-  ON TRUE;
+  ON TRUE
+ON CONFLICT (id) DO UPDATE
+SET
+  listing_id = EXCLUDED.listing_id,
+  sort_order = EXCLUDED.sort_order,
+  image_url = EXCLUDED.image_url,
+  alt_text = EXCLUDED.alt_text,
+  seed_source = EXCLUDED.seed_source;
+
+WITH saved_property_seed AS (
+  SELECT
+    'svp_' || SUBSTR(MD5('saved:user-2:property-1'), 1, 20) AS id,
+    'user-2'::TEXT AS user_id,
+    pa.public_id AS property_route_id,
+    NULL::TEXT AS legacy_property_ref,
+    'mock_import_listing_surface_v1'::TEXT AS seed_source
+  FROM listing l
+  JOIN property_asset pa
+    ON pa.id = l.property_asset_id
+  WHERE l.id = 'listing-1'
+
+  UNION ALL
+
+  SELECT
+    'svp_' || SUBSTR(MD5('saved:user-2:property-3'), 1, 20) AS id,
+    'user-2'::TEXT AS user_id,
+    pa.public_id AS property_route_id,
+    NULL::TEXT AS legacy_property_ref,
+    'mock_import_listing_surface_v1'::TEXT AS seed_source
+  FROM listing l
+  JOIN property_asset pa
+    ON pa.id = l.property_asset_id
+  WHERE l.id = 'listing-2'
+)
+INSERT INTO saved_property (
+  id,
+  user_id,
+  property_route_id,
+  legacy_property_ref,
+  seed_source
+)
+SELECT
+  id,
+  user_id,
+  property_route_id,
+  legacy_property_ref,
+  seed_source
+FROM saved_property_seed
+ON CONFLICT (id) DO UPDATE
+SET
+  property_route_id = EXCLUDED.property_route_id,
+  legacy_property_ref = EXCLUDED.legacy_property_ref,
+  seed_source = EXCLUDED.seed_source,
+  updated_at = NOW();
+
+WITH valuation_seed AS (
+  SELECT
+    'valuation-1'::TEXT AS id,
+    pa.public_id AS property_id,
+    pa.id AS property_asset_id,
+    NULL::TEXT AS legacy_property_ref,
+    'user-7'::TEXT AS submitted_by_user_id,
+    FALSE AS is_anonymous,
+    '2026-02-01'::DATE AS effective_date,
+    176000000::BIGINT AS estimated_value_rwf,
+    'RWF'::TEXT AS currency,
+    'approved'::TEXT AS status,
+    'mock_import_listing_surface_v1'::TEXT AS seed_source,
+    '2026-02-01T08:00:00.000Z'::TIMESTAMPTZ AS created_at,
+    '2026-02-01T08:00:00.000Z'::TIMESTAMPTZ AS updated_at
+  FROM listing l
+  JOIN property_asset pa
+    ON pa.id = l.property_asset_id
+  WHERE l.id = 'listing-1'
+
+  UNION ALL
+
+  SELECT
+    'valuation-2'::TEXT AS id,
+    pa.public_id AS property_id,
+    pa.id AS property_asset_id,
+    NULL::TEXT AS legacy_property_ref,
+    'user-7'::TEXT AS submitted_by_user_id,
+    TRUE AS is_anonymous,
+    '2025-11-18'::DATE AS effective_date,
+    168000000::BIGINT AS estimated_value_rwf,
+    'RWF'::TEXT AS currency,
+    'approved'::TEXT AS status,
+    'mock_import_listing_surface_v1'::TEXT AS seed_source,
+    '2025-11-18T08:00:00.000Z'::TIMESTAMPTZ AS created_at,
+    '2025-11-18T08:00:00.000Z'::TIMESTAMPTZ AS updated_at
+  FROM listing l
+  JOIN property_asset pa
+    ON pa.id = l.property_asset_id
+  WHERE l.id = 'listing-1'
+)
+INSERT INTO valuation_submission (
+  id,
+  property_id,
+  property_asset_id,
+  legacy_property_ref,
+  submitted_by_user_id,
+  is_anonymous,
+  effective_date,
+  estimated_value_rwf,
+  currency,
+  status,
+  seed_source,
+  created_at,
+  updated_at
+)
+SELECT
+  id,
+  property_id,
+  property_asset_id,
+  legacy_property_ref,
+  submitted_by_user_id,
+  is_anonymous,
+  effective_date,
+  estimated_value_rwf,
+  currency,
+  status,
+  seed_source,
+  created_at,
+  updated_at
+FROM valuation_seed
+ON CONFLICT (id) DO UPDATE
+SET
+  property_id = EXCLUDED.property_id,
+  property_asset_id = EXCLUDED.property_asset_id,
+  legacy_property_ref = EXCLUDED.legacy_property_ref,
+  submitted_by_user_id = EXCLUDED.submitted_by_user_id,
+  is_anonymous = EXCLUDED.is_anonymous,
+  effective_date = EXCLUDED.effective_date,
+  estimated_value_rwf = EXCLUDED.estimated_value_rwf,
+  currency = EXCLUDED.currency,
+  status = EXCLUDED.status,
+  seed_source = EXCLUDED.seed_source,
+  created_at = EXCLUDED.created_at,
+  updated_at = EXCLUDED.updated_at;
 
 COMMIT;

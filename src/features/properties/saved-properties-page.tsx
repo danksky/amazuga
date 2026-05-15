@@ -17,10 +17,7 @@ export function SavedPropertiesPage({ currentUser, savedEntries, unresolvedCount
         <div className={styles.header}>
           <div className={styles.eyebrow}>Saved</div>
           <h1 className={styles.title}>Saved properties</h1>
-          <div className={styles.body}>
-            Saved properties now use asset-aware route IDs when available, while older legacy references can continue to
-            age out as we replace them.
-          </div>
+          <div className={styles.body}>Saved properties now use current public property IDs from the preview DB.</div>
         </div>
 
         {savedEntries.length > 0 ? (
@@ -37,14 +34,13 @@ export function SavedPropertiesPage({ currentUser, savedEntries, unresolvedCount
         ) : (
           <div className={styles.empty}>
             {currentUser.savedPropertyIds.length > 0
-              ? "This account still has saved references that are not yet resolvable in the preview dataset."
+              ? "Some saved properties could not be loaded from the current preview dataset."
               : "You have not saved any asset-backed properties yet."}
           </div>
         )}
         {unresolvedCount > 0 ? (
           <div className={styles.body}>
-            {unresolvedCount} saved reference{unresolvedCount === 1 ? "" : "s"} could not be resolved and may still be
-            pointing at older mock IDs.
+            {unresolvedCount} saved propert{unresolvedCount === 1 ? "y could" : "ies could"} not be loaded.
           </div>
         ) : null}
       </div>

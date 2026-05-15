@@ -2,17 +2,17 @@ import { redirect } from "next/navigation";
 
 import { AdvertiseChooser } from "@/features/auth/advertise-chooser";
 import { requireCurrentUser } from "@/lib/auth";
-import { readAgencies, readAgencyApplications, readAgentApplications } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { listAgenciesFromDb, listAgencyApplicationsFromDb, listAgentApplicationsFromDb } from "@/lib/server/workflows";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdvertisePage() {
   const currentUser = await requireCurrentUser(routes.onboarding.advertise);
   const [agencyApplications, agentApplications, agencies] = await Promise.all([
-    readAgencyApplications(),
-    readAgentApplications(),
-    readAgencies(),
+    listAgencyApplicationsFromDb(),
+    listAgentApplicationsFromDb(),
+    listAgenciesFromDb(),
   ]);
   const latestAgencyApplication = [...agencyApplications]
     .reverse()

@@ -76,6 +76,18 @@ interface AgencyRow {
   member_user_ids: string[];
 }
 
+interface ValuationRow {
+  id: string;
+  property_id: string | null;
+  submitted_by_user_id: string;
+  is_anonymous: boolean;
+  effective_date: string;
+  estimated_value_rwf: number | string;
+  currency: ValuationSubmission["currency"];
+  status: ValuationSubmission["status"];
+  created_at: string;
+}
+
 export interface PublicListingCardData {
   property: Property;
   listing: Listing;
@@ -263,6 +275,20 @@ function buildAgencyFromRow(row: AgencyRow): Agency {
   };
 }
 
+function buildValuationFromRow(row: ValuationRow): ValuationSubmission {
+  return {
+    id: row.id,
+    propertyId: row.property_id || "",
+    submittedByUserId: row.submitted_by_user_id,
+    isAnonymous: row.is_anonymous,
+    effectiveDate: row.effective_date,
+    estimatedValue: toNullableNumber(row.estimated_value_rwf) ?? 0,
+    currency: row.currency,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
 async function getListingImages(listingId: string) {
   const result = await getPgPool().query<ListingImageRow>(
     `
@@ -316,6 +342,36 @@ async function getAgencyByIdFromDb(agencyId: string) {
 
   const row = result.rows[0];
   return row ? buildAgencyFromRow(row) : undefined;
+}
+
+async function getApprovedValuationsForProperty(input: {
+  propertyInternalId?: string;
+  propertyId: string;
+}) {
+  const result = await getPgPool().query<ValuationRow>(
+    `
+      SELECT
+        id,
+        property_id,
+        submitted_by_user_id,
+        is_anonymous,
+        effective_date::TEXT,
+        estimated_value_rwf,
+        currency,
+        status,
+        created_at::TEXT
+      FROM valuation_submission
+      WHERE status = 'approved'
+        AND (
+          ($1::TEXT IS NOT NULL AND property_asset_id = $1)
+          OR property_id = $2
+        )
+      ORDER BY effective_date DESC, created_at DESC, id DESC
+    `,
+    [input.propertyInternalId || null, input.propertyId],
+  );
+
+  return result.rows.map(buildValuationFromRow);
 }
 
 export async function getBrowseListingCards(marketingType: MarketingType): Promise<PublicListingCardData[]> {
@@ -520,11 +576,17 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
   const imageUrls = row.listing_id ? await getListingImages(row.listing_id) : [];
   const listing = buildListingFromRow(row, imageUrls);
   const agency = row.agency_id ? await getAgencyByIdFromDb(row.agency_id) : undefined;
+  const valuations = await getApprovedValuationsForProperty({
+    propertyInternalId: property.internalId,
+    propertyId: property.id,
+  });
+
+  property.valuationHistoryIds = valuations.map((valuation) => valuation.id);
 
   return {
     property,
     listing,
     agency,
-    valuations: [],
+    valuations,
   };
 }

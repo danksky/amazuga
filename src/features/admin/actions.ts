@@ -3,9 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdminUser } from "@/lib/auth";
-import { activatePendingAgencyManager, ensureAgencyFromApprovedApplication, updateApplicationStatus } from "@/lib/data-store";
-import { readAgentApplications } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import {
+  activatePendingAgencyManagerInDb,
+  ensureAgencyFromApprovedApplicationInDb,
+  listAgentApplicationsFromDb,
+  updateApplicationStatusInDb,
+} from "@/lib/server/workflows";
 import type { SubmissionStatus } from "@/types/domain";
 
 const reviewPaths = [
@@ -30,17 +34,17 @@ export async function reviewApplicationAction(formData: FormData) {
     throw new Error("Invalid review payload");
   }
 
-  await updateApplicationStatus(kind, applicationId, decision as SubmissionStatus);
+  await updateApplicationStatusInDb(kind, applicationId, decision as SubmissionStatus);
 
   if (kind === "agency" && decision === "approved") {
-    await ensureAgencyFromApprovedApplication(applicationId);
+    await ensureAgencyFromApprovedApplicationInDb(applicationId);
   }
 
   if (kind === "agent" && decision === "approved") {
-    const applications = await readAgentApplications();
+    const applications = await listAgentApplicationsFromDb();
     const application = applications.find((entry) => entry.id === applicationId);
     if (application) {
-      await activatePendingAgencyManager(application.userId);
+      await activatePendingAgencyManagerInDb(application.userId);
     }
   }
 

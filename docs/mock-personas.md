@@ -1,6 +1,8 @@
 # Mock Personas
 
-These local test accounts are stored in `data/users.json` and can be used from the mock auth screens without passwords.
+These local test accounts are now seeded into preview DB `app_user` rows and can be used from the mock auth screens without passwords.
+
+The JSON files in `data/` are now reference material only for these personas and associated workflow fixtures. The app runtime should use preview DB state instead.
 
 ## Personas
 
@@ -36,7 +38,9 @@ These local test accounts are stored in `data/users.json` and can be used from t
 ## Associated records
 
 - `buyer@amazuga.test`
-  - Saved properties: `property-1`, `property-2`, `property-3`
+  - Saved properties:
+    - `AF49552697`
+    - `50714AA28F`
 
 - `pending.founder@amazuga.test`
   - Pending agency application: `agency-application-1`
@@ -52,4 +56,4 @@ These local test accounts are stored in `data/users.json` and can be used from t
 
 - `valuator@amazuga.test`
   - Approved valuator application: `valuator-application-2`
-  - Approved valuation submissions: `valuation-1`, `valuation-2`, `valuation-3`
+  - Approved valuation submissions: `valuation-1`, `valuation-2`

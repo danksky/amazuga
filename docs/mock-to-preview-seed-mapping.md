@@ -12,6 +12,33 @@ Use it as the checklist for:
 
 Move preview/dev listing data off fake property IDs like `property-1` and onto real parcel-backed records from `parcel_app_ready_seed_preview`.
 
+The current direction is stricter than that original goal:
+
+- runtime app paths should read from preview DB
+- `data/*.json` should remain reference material only unless explicitly used for one-off fixture import work
+
+## Current Preview Cohorts
+
+The preview DB should treat imported mock records as intentional seed cohorts, not anonymous leftovers.
+
+Current cohorts:
+
+- `mock_import_listing_surface_v1`
+  - Purpose: import the older app mock catalog onto real parcel-backed preview records.
+  - Backing scripts:
+    - [infra/sql/preview_import_mock_listing_surface.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_import_mock_listing_surface.sql)
+    - [infra/sql/preview_import_mock_listing_surface_cleanup.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_import_mock_listing_surface_cleanup.sql)
+  - Current live shape: 10 listed properties, all residential (`6 house`, `4 apartment_unit`).
+  - Limitation: this cohort is still not enough to validate `building`, `commercial_unit`, or unlisted property-page behavior.
+
+- `preview_property_page_variants_v1`
+  - Purpose: supplement the imported mock cohort with asset kinds and listing states that the older mock catalog does not cover well.
+  - Backing scripts:
+    - [infra/sql/preview_property_page_variants_seed.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_property_page_variants_seed.sql)
+    - [infra/sql/preview_property_page_variants_cleanup.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_property_page_variants_cleanup.sql)
+  - Current live shape: `3 land`, `2 commercial_unit`, `1 building`, `1 house`, `1 apartment_unit`, with `5 listed` and `3 unlisted`.
+  - Rule: keep this cohort separate and explicitly named so it can be removed or refreshed without touching the imported mock cohort.
+
 ## Core Rule
 
 For listing cutover:
@@ -71,10 +98,10 @@ Target:
 | `fullName` | `full_name` | copy | Direct rename |
 | `roles` | `roles` | copy | Array shape can stay |
 | `avatarUrl` | `avatar_url` | copy if present | Optional |
-| `mockPersonaLabel` | none | drop | Mock-only UI aid |
-| `mockPersonaDescription` | none | drop | Mock-only UI aid |
-| `savedPropertyIds` | none in first pass | defer | Do not seed until saved properties point at real parcel-backed property routes |
-| `upiLookupCountToday` | none in first pass | drop or defer | Runtime/account metric, not needed for initial listing cutover |
+| `mockPersonaLabel` | `mock_persona_label` | copy | Preserved for quick mock sign-in UX |
+| `mockPersonaDescription` | `mock_persona_description` | copy | Preserved for quick mock sign-in UX |
+| `savedPropertyIds` | none on `app_user` | transform into `saved_property` rows | Prefer real property route IDs when resolvable; keep legacy references only when needed |
+| `upiLookupCountToday` | `upi_lookup_count_today` | copy | Preserved as preview-only account fixture state |
 
 ## `agency`
 
@@ -192,9 +219,24 @@ Target:
 | `index` | `sort_order` | transform | `0`, `1`, `2`, ... |
 | none | `alt_text` | synthesize | Use headline/title-based fallback text |
 
+## `saved_property`
+
+Source:
+
+- [data/users.json](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/data/users.json)
+
+Target:
+
+- `saved_property`
+
+| Mock field | Preview column | Action | Notes |
+|---|---|---|---|
+| `user.id` | `user_id` | copy with user ID remap | One row per saved reference |
+| resolvable `savedPropertyIds[]` | `property_route_id` | transform | Prefer the current public property ID used by `/property/[propertyId]` |
+
 ## Later-Phase Tables
 
-These mock files should not block listing cutover, but they are reasonable later seed candidates.
+These mock files started as later-phase candidates, but valuation history is now part of the preview DB-backed runtime.
 
 ## `valuation_submission`
 
@@ -218,6 +260,11 @@ Candidate target:
 | `status` | `status` | copy | Direct |
 | `createdAt` | `created_at` | copy | Direct |
 
+Current state:
+
+- preview DB-backed at runtime for public property-page valuation history
+- seed keeps only valuations that map to current preview properties
+
 ## `agency_application`
 
 Source:
@@ -239,6 +286,11 @@ Candidate target:
 | `status` | `status` | copy | Direct |
 | `createdAt` | `created_at` | copy | Direct |
 
+Current state:
+
+- preview DB-backed at runtime
+- seeded through preview workflow SQL
+
 ## `agent_application`
 
 Source:
@@ -258,6 +310,11 @@ Candidate target:
 | `status` | `status` | copy | Direct |
 | `createdAt` | `created_at` | copy | Direct |
 
+Current state:
+
+- preview DB-backed at runtime
+- seeded through preview workflow SQL
+
 ## `valuator_application`
 
 Source:
@@ -275,6 +332,35 @@ Candidate target:
 | `irpvRegistrationNumber` | `irpv_registration_number` | copy | Direct |
 | `status` | `status` | copy | Direct |
 | `createdAt` | `created_at` | copy | Direct |
+
+Current state:
+
+- preview DB-backed at runtime
+- seeded through preview workflow SQL
+
+## `property_claim_request`
+
+Source:
+
+- [data/property-claim-requests.json](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/data/property-claim-requests.json)
+
+Target:
+
+- `property_claim_request`
+
+| Mock field | Preview column | Action | Notes |
+|---|---|---|---|
+| `id` | `id` | copy or replace | Preview app can generate DB-native IDs |
+| `userId` | `user_id` | copy | Direct |
+| `propertyId` | `property_id` | copy | Public property ID |
+| `propertyInternalId` | `property_internal_id` | copy | Internal property row ID |
+| `parcelId` | `parcel_id` | copy | Preserve parcel context |
+| `status` | `status` | copy | Direct |
+| `createdAt` | `created_at` | copy | Direct |
+
+Current state:
+
+- preview DB-backed at runtime
 
 ## Explicitly Deferred
 

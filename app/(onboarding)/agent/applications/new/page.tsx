@@ -1,14 +1,14 @@
 import { AgentApplicationForm } from "@/features/auth/agent-application-form";
 import { requireCurrentUser } from "@/lib/auth";
-import { readAgencies, readAgentApplications } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { listAgenciesFromDb, listAgentApplicationsFromDb } from "@/lib/server/workflows";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function AgentApplicationNewPage() {
   const currentUser = await requireCurrentUser(routes.onboarding.agentApplicationNew);
-  const existing = [...(await readAgentApplications())]
+  const existing = [...(await listAgentApplicationsFromDb())]
     .reverse()
     .find((application) => application.userId === currentUser.id && application.status !== "denied");
 
@@ -16,6 +16,6 @@ export default async function AgentApplicationNewPage() {
     redirect(routes.onboarding.agentApplication(existing.id));
   }
 
-  const agencies = await readAgencies();
+  const agencies = await listAgenciesFromDb();
   return <AgentApplicationForm agencies={agencies.filter((agency) => agency.status === "approved")} />;
 }

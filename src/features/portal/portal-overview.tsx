@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { readAgencies, readAgentApplications, readValuatorApplications } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { listAgenciesFromDb, listAgentApplicationsFromDb, listValuatorApplicationsFromDb } from "@/lib/server/workflows";
 import type { User } from "@/types/domain";
 
 import styles from "./portal-overview.module.css";
@@ -12,9 +12,9 @@ function getLatestForUser<T extends { userId: string }>(items: T[], userId: stri
 
 export async function PortalOverview({ currentUser }: { currentUser: User }) {
   const [agencies, agentApplications, valuatorApplications] = await Promise.all([
-    readAgencies(),
-    readAgentApplications(),
-    readValuatorApplications(),
+    listAgenciesFromDb(),
+    listAgentApplicationsFromDb(),
+    listValuatorApplicationsFromDb(),
   ]);
 
   const activeManagedAgency = agencies.find((agency) => agency.managerUserId === currentUser.id);

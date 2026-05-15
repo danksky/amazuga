@@ -3,8 +3,12 @@
 import { redirect } from "next/navigation";
 
 import { requireCurrentUser } from "@/lib/auth";
-import { createAgencyApplication, createAgentApplication, createValuatorApplication } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import {
+  createAgencyApplicationInDb,
+  createAgentApplicationInDb,
+  createValuatorApplicationInDb,
+} from "@/lib/server/workflows";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -32,7 +36,7 @@ function getOptionalString(formData: FormData, key: string) {
 
 export async function submitAgencyRegistrationAction(formData: FormData) {
   const currentUser = await requireCurrentUser(routes.onboarding.agencyRegistrationNew);
-  const application = await createAgencyApplication({
+  const application = await createAgencyApplicationInDb({
     createdByUserId: currentUser.id,
     businessName: getRequiredString(formData, "businessName"),
     tin: getRequiredString(formData, "tin"),
@@ -49,7 +53,7 @@ export async function submitAgentApplicationAction(formData: FormData) {
   getRequiredString(formData, "phoneNumber");
   const selectedAgencyId = getRequiredString(formData, "agencyId");
 
-  const application = await createAgentApplication({
+  const application = await createAgentApplicationInDb({
     userId: currentUser.id,
     nationalIdPhotoUrl: "/placeholders/property-generic.svg",
     selectedAgencyId,
@@ -63,7 +67,7 @@ export async function submitValuatorApplicationAction(formData: FormData) {
   getRequiredString(formData, "fullName");
   getRequiredString(formData, "phoneNumber");
 
-  const application = await createValuatorApplication({
+  const application = await createValuatorApplicationInDb({
     userId: currentUser.id,
     irpvRegistrationNumber: getRequiredString(formData, "irpvRegistrationNumber"),
   });

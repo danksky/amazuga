@@ -1,11 +1,11 @@
 import { AdminReviewPage } from "@/features/admin/admin-review-page";
-import { readAgencies, readAgentApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
+import { listAgenciesFromDb, listAgentApplicationsFromDb } from "@/lib/server/workflows";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAgentsPage() {
-  const [agentApplications, agencies] = await Promise.all([readAgentApplications(), readAgencies()]);
+  const [agentApplications, agencies] = await Promise.all([listAgentApplicationsFromDb(), listAgenciesFromDb()]);
   const items = agentApplications
     .filter((application) => application.status === "pending")
     .map((application) => ({

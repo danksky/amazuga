@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 
 import { ApplicationStatus } from "@/features/auth/application-status";
 import { requireCurrentUser } from "@/lib/auth";
-import { readValuatorApplications } from "@/lib/data-store";
 import { formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
+import { listValuatorApplicationsFromDb } from "@/lib/server/workflows";
 
 function getStatusCopy(status: "pending" | "approved" | "denied") {
   if (status === "approved") {
@@ -43,7 +43,7 @@ export default async function ValuatorApplicationPage({
 }) {
   const currentUser = await requireCurrentUser();
   const { applicationId } = await params;
-  const application = (await readValuatorApplications()).find((entry) => entry.id === applicationId);
+  const application = (await listValuatorApplicationsFromDb()).find((entry) => entry.id === applicationId);
 
   if (!application) {
     notFound();

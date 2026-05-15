@@ -3,8 +3,9 @@
 import { redirect } from "next/navigation";
 
 import { requireCurrentUser } from "@/lib/auth";
-import { createPropertyClaimRequest, toggleSavedPropertyForUser } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { toggleSavedPropertyForUserInDb } from "@/lib/server/users";
+import { createPropertyClaimRequestInDb } from "@/lib/server/workflows";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -25,7 +26,7 @@ export async function toggleSavePropertyAction(formData: FormData) {
   const propertyRouteId = getRequiredString(formData, "propertyRouteId");
   const propertyPath = getRequiredString(formData, "propertyPath");
   const currentUser = await requireCurrentUser(propertyPath);
-  const result = await toggleSavedPropertyForUser({
+  const result = await toggleSavedPropertyForUserInDb({
     userId: currentUser.id,
     propertyRouteId,
   });
@@ -41,7 +42,7 @@ export async function createPropertyClaimRequestAction(formData: FormData) {
   const parcelId = getRequiredString(formData, "parcelId");
   const currentUser = await requireCurrentUser(propertyPath);
 
-  await createPropertyClaimRequest({
+  await createPropertyClaimRequestInDb({
     userId: currentUser.id,
     propertyId,
     propertyInternalId,

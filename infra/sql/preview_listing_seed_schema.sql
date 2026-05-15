@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS app_user (
   full_name TEXT NOT NULL,
   roles TEXT[] NOT NULL DEFAULT ARRAY['user']::TEXT[],
   avatar_url TEXT,
+  mock_persona_label TEXT,
+  mock_persona_description TEXT,
+  upi_lookup_count_today INTEGER NOT NULL DEFAULT 0 CHECK (upi_lookup_count_today >= 0),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
   seed_source TEXT NOT NULL DEFAULT 'manual',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -13,6 +16,7 @@ CREATE TABLE IF NOT EXISTS app_user (
 CREATE TABLE IF NOT EXISTS agency (
   id TEXT PRIMARY KEY,
   slug TEXT NOT NULL UNIQUE,
+  created_from_application_id TEXT,
   business_name TEXT NOT NULL,
   tin TEXT NOT NULL,
   whatsapp_phone TEXT,
@@ -106,6 +110,80 @@ CREATE TABLE IF NOT EXISTS listing_image (
   UNIQUE (listing_id, sort_order)
 );
 
+CREATE TABLE IF NOT EXISTS saved_property (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  property_route_id TEXT,
+  legacy_property_ref TEXT,
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (property_route_id IS NOT NULL OR legacy_property_ref IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS agency_application (
+  id TEXT PRIMARY KEY,
+  created_by_user_id TEXT NOT NULL REFERENCES app_user(id),
+  business_name TEXT NOT NULL,
+  tin TEXT NOT NULL,
+  website_url TEXT,
+  google_maps_url TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS agent_application (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_user(id),
+  national_id_photo_url TEXT NOT NULL,
+  selected_agency_id TEXT REFERENCES agency(id),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS valuator_application (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_user(id),
+  irpv_registration_number TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS property_claim_request (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_user(id),
+  property_id TEXT NOT NULL,
+  property_internal_id TEXT NOT NULL REFERENCES property_asset(id),
+  parcel_id TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS valuation_submission (
+  id TEXT PRIMARY KEY,
+  property_id TEXT,
+  property_asset_id TEXT REFERENCES property_asset(id),
+  legacy_property_ref TEXT,
+  submitted_by_user_id TEXT NOT NULL REFERENCES app_user(id),
+  is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+  effective_date DATE NOT NULL,
+  estimated_value_rwf BIGINT NOT NULL CHECK (estimated_value_rwf > 0),
+  currency TEXT NOT NULL DEFAULT 'RWF' CHECK (currency = 'RWF'),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (property_asset_id IS NOT NULL OR legacy_property_ref IS NOT NULL)
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS property_asset_one_primary_per_parcel_idx
   ON property_asset (parcel_id)
   WHERE is_primary_for_parcel;
@@ -118,6 +196,57 @@ CREATE INDEX IF NOT EXISTS property_asset_parent_asset_id_idx
 
 CREATE INDEX IF NOT EXISTS property_asset_asset_type_idx
   ON property_asset (asset_type);
+
+CREATE INDEX IF NOT EXISTS saved_property_user_id_idx
+  ON saved_property (user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS saved_property_user_route_id_idx
+  ON saved_property (user_id, property_route_id)
+  WHERE property_route_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS saved_property_user_legacy_ref_idx
+  ON saved_property (user_id, legacy_property_ref)
+  WHERE legacy_property_ref IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS agency_application_created_by_user_id_idx
+  ON agency_application (created_by_user_id);
+
+CREATE INDEX IF NOT EXISTS agency_application_status_idx
+  ON agency_application (status);
+
+CREATE INDEX IF NOT EXISTS agent_application_user_id_idx
+  ON agent_application (user_id);
+
+CREATE INDEX IF NOT EXISTS agent_application_status_idx
+  ON agent_application (status);
+
+CREATE INDEX IF NOT EXISTS valuator_application_user_id_idx
+  ON valuator_application (user_id);
+
+CREATE INDEX IF NOT EXISTS valuator_application_status_idx
+  ON valuator_application (status);
+
+CREATE INDEX IF NOT EXISTS property_claim_request_user_id_idx
+  ON property_claim_request (user_id);
+
+CREATE INDEX IF NOT EXISTS property_claim_request_status_idx
+  ON property_claim_request (status);
+
+CREATE UNIQUE INDEX IF NOT EXISTS property_claim_request_one_pending_per_user_property_idx
+  ON property_claim_request (user_id, property_internal_id)
+  WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS valuation_submission_property_asset_id_idx
+  ON valuation_submission (property_asset_id);
+
+CREATE INDEX IF NOT EXISTS valuation_submission_submitted_by_user_id_idx
+  ON valuation_submission (submitted_by_user_id);
+
+CREATE INDEX IF NOT EXISTS valuation_submission_status_idx
+  ON valuation_submission (status);
+
+CREATE INDEX IF NOT EXISTS valuation_submission_effective_date_idx
+  ON valuation_submission (effective_date DESC);
 
 CREATE UNIQUE INDEX IF NOT EXISTS listing_one_active_per_asset_idx
   ON listing (property_asset_id)

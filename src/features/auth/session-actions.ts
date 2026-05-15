@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { createUser, readUsers } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb } from "@/lib/server/users";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -30,8 +30,7 @@ function getNextDestination(formData: FormData, fallback: string) {
 export async function signInAction(formData: FormData) {
   const email = getRequiredString(formData, "email").toLowerCase();
   const next = getNextDestination(formData, routes.public.buy);
-  const users = await readUsers();
-  const matchingUser = users.find((user) => user.email === email);
+  const matchingUser = await getUserByEmailFromDb(email);
 
   if (!matchingUser) {
     redirect(`${routes.auth.login}?error=not-found&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
@@ -51,14 +50,18 @@ export async function signUpAction(formData: FormData) {
   const fullName = getRequiredString(formData, "fullName");
   const email = getRequiredString(formData, "email").toLowerCase();
   const next = getNextDestination(formData, routes.public.buy);
-  const users = await readUsers();
-  const existingUser = users.find((user) => user.email === email);
+  const existingUser = await getUserByEmailFromDb(email);
 
   if (existingUser) {
     redirect(`${routes.auth.signup}?error=email-taken&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
   }
 
-  const createdUser = await createUser({ email, fullName });
+  const createdUser = await createUserInDb({ email, fullName });
+
+  if (!createdUser) {
+    throw new Error("Failed to create user");
+  }
+
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, createdUser.id, {
     httpOnly: true,
@@ -78,8 +81,7 @@ export async function signOutAction() {
 export async function signInAsUserAction(formData: FormData) {
   const userId = getRequiredString(formData, "userId");
   const next = getNextDestination(formData, routes.public.buy);
-  const users = await readUsers();
-  const matchingUser = users.find((user) => user.id === userId);
+  const matchingUser = await getUserByIdFromDb(userId);
 
   if (!matchingUser) {
     redirect(routes.auth.login);

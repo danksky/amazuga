@@ -212,11 +212,21 @@ Every seeded record should carry:
 
 - `seed_source`
 
-For the first batch:
+Current named cohorts:
+
+- `mock_import_listing_surface_v1`
+  - Imported older app mock listings onto real parcel-backed preview rows.
+  - Main purpose: preserve the older residential mock catalog while moving identity onto parcel/property records.
+
+- `preview_property_page_variants_v1`
+  - Supplemental property-page validation cohort.
+  - Main purpose: add `land`, `building`, `commercial_unit`, and unlisted examples that the older mock catalog does not cover.
 
 - `preview_kigali_seed_v1`
+  - Original curated Kigali seed script.
+  - Remains useful as a reseedable fixture, but should be treated as a separate cohort rather than assumed live preview state.
 
-That makes cleanup and re-seeding straightforward.
+Each cohort should keep a paired cleanup script so preview DB state can be reset intentionally instead of leaving stray records behind.
 
 ## Recommended Rollout
 
@@ -229,7 +239,7 @@ That makes cleanup and re-seeding straightforward.
 7. Switch public browse and property pages to an asset-aware repository.
 8. Preserve parcel context on property pages for map and land facts.
 9. Move auth from file-backed users to preview DB users.
-10. Remove `src/lib/mock-data.ts` usage from runtime paths.
+10. Remove any remaining JSON-backed runtime stores and leave `data/*.json` as reference-only fixtures.
 
 ## Scope Boundary
 

@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { readUsers } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { getUserByIdFromDb } from "@/lib/server/users";
 import type { User } from "@/types/domain";
 
 export const AUTH_COOKIE_NAME = "amazuga_mock_auth";
@@ -19,8 +19,7 @@ export const getCurrentUser = cache(async () => {
     return null;
   }
 
-  const users = await readUsers();
-  return users.find((user) => user.id === userId) ?? null;
+  return getUserByIdFromDb(userId);
 });
 
 export function isAdminUser(user: User | null | undefined) {

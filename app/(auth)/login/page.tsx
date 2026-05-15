@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
 import { AuthPage } from "@/features/auth/auth-page";
-import { readUsers } from "@/lib/data-store";
 import { routes } from "@/lib/routes";
+import { listUsersFromDb } from "@/lib/server/users";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ next?: string; email?: string; error?: string }>;
 }) {
-  const [currentUser, { next, email, error }, users] = await Promise.all([getCurrentUser(), searchParams, readUsers()]);
+  const [currentUser, { next, email, error }, users] = await Promise.all([getCurrentUser(), searchParams, listUsersFromDb()]);
 
   if (currentUser) {
     redirect(next ?? routes.public.buy);
