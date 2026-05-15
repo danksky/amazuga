@@ -264,6 +264,9 @@ Current state:
 
 - preview DB-backed at runtime for public property-page valuation history
 - seed keeps only valuations that map to current preview properties
+- portal valuator history is preview DB-backed at runtime
+- new valuation submissions now write pending `valuation_submission` rows in preview DB
+- admin valuation approval or denial is now part of the live preview-backed workflow
 
 ## `agency_application`
 

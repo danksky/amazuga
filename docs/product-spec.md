@@ -160,20 +160,14 @@ Primary browse/navigation should stay restrained.
 
 Role entry CTAs:
 
-- `Advertise`
-- `Assess`
+- `Applications`
 
-`Advertise` behavior:
+`Applications` behavior:
 
-- if already an approved agent or agency manager, route to portal
-- otherwise route to a chooser with:
-  - `I belong to an agency`
-  - `I manage an agency`
-
-`Assess` behavior:
-
-- if already an approved valuator, route to valuation portal
-- otherwise route to valuator onboarding
+- if the user has no active professional approvals, route to the shared applications/status hub
+- if the user is an approved agent or agency manager, route toward the agency portal workspaces
+- if the user is an approved valuator, route toward the valuations workspace
+- if the user has pending or denied professional applications, keep those statuses visible from the same hub
 
 ## Property Page Behavior
 

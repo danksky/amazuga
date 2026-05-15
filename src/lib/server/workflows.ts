@@ -71,6 +71,7 @@ interface PropertyClaimRequestRow {
 interface ValuationSubmissionRow {
   id: string;
   property_id: string | null;
+  property_asset_id?: string | null;
   submitted_by_user_id: string;
   is_anonymous: boolean;
   effective_date: string;
@@ -78,6 +79,31 @@ interface ValuationSubmissionRow {
   currency: ValuationSubmission["currency"];
   status: SubmissionStatus;
   created_at: string;
+}
+
+interface AdminValuationSubmissionRow extends ValuationSubmissionRow {
+  updated_at: string;
+  property_route_id: string | null;
+  property_title: string | null;
+  district: string | null;
+  sector: string | null;
+}
+
+export interface AdminValuationSubmission {
+  id: string;
+  propertyId: string;
+  propertyRouteId?: string;
+  propertyTitle: string;
+  district: string;
+  sector?: string;
+  submittedByUserId: string;
+  isAnonymous: boolean;
+  effectiveDate: string;
+  estimatedValue: number;
+  currency: ValuationSubmission["currency"];
+  status: SubmissionStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function createRecordId(prefix: string) {
@@ -167,6 +193,25 @@ function toValuationSubmission(row: ValuationSubmissionRow): ValuationSubmission
     currency: row.currency,
     status: row.status,
     createdAt: row.created_at,
+  };
+}
+
+function toAdminValuationSubmission(row: AdminValuationSubmissionRow): AdminValuationSubmission {
+  return {
+    id: row.id,
+    propertyId: row.property_id || row.property_route_id || row.id,
+    propertyRouteId: row.property_route_id || undefined,
+    propertyTitle: row.property_title || row.property_route_id || row.property_id || "Preview property",
+    district: row.district || "Unknown district",
+    sector: row.sector || undefined,
+    submittedByUserId: row.submitted_by_user_id,
+    isAnonymous: row.is_anonymous,
+    effectiveDate: row.effective_date,
+    estimatedValue: Number(row.estimated_value_rwf),
+    currency: row.currency,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -587,6 +632,65 @@ export async function createValuationSubmissionInDb(input: {
   return toValuationSubmission(result.rows[0]);
 }
 
+export async function listValuationSubmissionsFromDb() {
+  const result = await getPgPool().query<AdminValuationSubmissionRow>(
+    `
+      SELECT
+        vs.id,
+        vs.property_id,
+        vs.property_asset_id,
+        vs.submitted_by_user_id,
+        vs.is_anonymous,
+        vs.effective_date::TEXT,
+        vs.estimated_value_rwf,
+        vs.currency,
+        vs.status,
+        vs.created_at::TEXT,
+        vs.updated_at::TEXT,
+        prop.property_route_id,
+        prop.property_title,
+        prop.district,
+        prop.sector
+      FROM valuation_submission vs
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
+          COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+          p.district,
+          p.sector
+        FROM parcel_app_ready_seed_preview p
+        LEFT JOIN property_profile pp
+          ON pp.parcel_id = p.parcel_id
+        LEFT JOIN property_asset pa
+          ON pa.parcel_id = p.parcel_id
+         AND (
+           pa.id = vs.property_asset_id
+           OR pa.public_id = vs.property_id
+           OR (vs.property_asset_id IS NULL AND pa.is_primary_for_parcel)
+         )
+        WHERE
+          (vs.property_asset_id IS NOT NULL AND pa.id = vs.property_asset_id)
+          OR p.public_id = vs.property_id
+          OR p.parcel_id = vs.property_id
+        ORDER BY
+          CASE
+            WHEN vs.property_asset_id IS NOT NULL AND pa.id = vs.property_asset_id THEN 0
+            WHEN pa.public_id = vs.property_id THEN 1
+            WHEN pa.is_primary_for_parcel THEN 2
+            ELSE 3
+          END,
+          pa.created_at ASC NULLS LAST,
+          p.parcel_id ASC
+        LIMIT 1
+      ) prop
+        ON TRUE
+      ORDER BY vs.created_at ASC, vs.id ASC
+    `,
+  );
+
+  return result.rows.map(toAdminValuationSubmission);
+}
+
 export async function activateApprovedAgentMembershipInDb(applicationId: string) {
   const application = await getAgentApplicationById(applicationId);
 
@@ -647,6 +751,47 @@ export async function updateApplicationStatusInDb(
   if (status === "approved" && kind === "valuator" && row.user_id) {
     await addRoleToUser(row.user_id, "valuator");
   }
+}
+
+export async function updateValuationSubmissionStatusInDb(
+  submissionId: string,
+  status: SubmissionStatus,
+) {
+  const result = await getPgPool().query<AdminValuationSubmissionRow>(
+    `
+      UPDATE valuation_submission
+      SET
+        status = $2,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        property_id,
+        property_asset_id,
+        submitted_by_user_id,
+        is_anonymous,
+        effective_date::TEXT,
+        estimated_value_rwf,
+        currency,
+        status,
+        created_at::TEXT,
+        updated_at::TEXT,
+        NULL::TEXT AS property_route_id,
+        NULL::TEXT AS property_title,
+        NULL::TEXT AS district,
+        NULL::TEXT AS sector
+    `,
+    [submissionId, status],
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  const hydrated = (await listValuationSubmissionsFromDb()).find((submission) => submission.id === row.id);
+  return hydrated ?? toAdminValuationSubmission(row);
 }
 
 export async function ensureAgencyFromApprovedApplicationInDb(applicationId: string) {

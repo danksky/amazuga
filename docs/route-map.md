@@ -19,12 +19,14 @@
 
 ## Onboarding
 
-- `/agent`
-- `/agent/status`
-- `/agency`
-- `/agency/status`
-- `/valuator`
-- `/valuator/status`
+- `/advertise`
+- `/assess` -> redirect to `/advertise`
+- `/agent/applications/new`
+- `/agent/applications/[applicationId]`
+- `/agency/registration-requests/new`
+- `/agency/registration-requests/[requestId]`
+- `/valuator/applications/new`
+- `/valuator/applications/[applicationId]`
 
 ## Authenticated App
 
@@ -33,6 +35,7 @@
 - `/portal`
 - `/portal/listings`
 - `/portal/valuations`
+- `/portal/valuations/new`
 - `/portal/agency`
 - `/portal/agents`
 - `/portal/profile`
@@ -51,6 +54,7 @@
 ## Notes
 
 - Public property browsing should live on `/buy` and `/rent`.
+- Professional onboarding now centers on `/advertise` as the shared applications hub.
 - There is no standalone public listing detail page in v1.
 - There is no standalone UPI lookup page in v1.
 - UPI resolution should happen from the shared search experience and route to `/property/[propertyId]`.

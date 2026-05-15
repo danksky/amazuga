@@ -9,7 +9,7 @@ interface ReviewItem {
   id: string;
   title: string;
   meta: string[];
-  kind: "agency" | "agent" | "valuator";
+  kind: "agency" | "agent" | "valuator" | "valuation";
   details: Array<{ label: string; value: string }>;
   reviewNote: string;
 }
@@ -17,7 +17,7 @@ interface ReviewItem {
 interface AdminReviewPageProps {
   title: string;
   body: string;
-  active: "agencies" | "agents" | "valuators";
+  active: "agencies" | "agents" | "valuators" | "valuations";
   items: ReviewItem[];
   empty: string;
 }
@@ -41,6 +41,9 @@ export function AdminReviewPage({ title, body, active, items, empty }: AdminRevi
           </Link>
           <Link className={`${styles.navLink} ${active === "valuators" ? styles.active : ""}`} href={routes.admin.valuators}>
             Valuators
+          </Link>
+          <Link className={`${styles.navLink} ${active === "valuations" ? styles.active : ""}`} href={routes.admin.valuations}>
+            Valuations
           </Link>
           <Link className={styles.navLink} href={routes.admin.dashboard}>
             Dashboard

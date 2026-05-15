@@ -1,24 +1,27 @@
 import Link from "next/link";
 
-import { formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import {
   listAgencyApplicationsFromDb,
   listAgentApplicationsFromDb,
+  listValuationSubmissionsFromDb,
   listValuatorApplicationsFromDb,
 } from "@/lib/server/workflows";
 
 import styles from "./admin.module.css";
 
 export async function AdminDashboard() {
-  const [agencyApplications, agentApplications, valuatorApplications] = await Promise.all([
+  const [agencyApplications, agentApplications, valuatorApplications, valuationSubmissions] = await Promise.all([
     listAgencyApplicationsFromDb(),
     listAgentApplicationsFromDb(),
     listValuatorApplicationsFromDb(),
+    listValuationSubmissionsFromDb(),
   ]);
   const pendingAgencies = agencyApplications.filter((application) => application.status === "pending");
   const pendingAgents = agentApplications.filter((application) => application.status === "pending");
   const pendingValuators = valuatorApplications.filter((application) => application.status === "pending");
+  const pendingValuations = valuationSubmissions.filter((submission) => submission.status === "pending");
 
   return (
     <div className={`container ${styles.page}`}>
@@ -42,6 +45,9 @@ export async function AdminDashboard() {
           <Link className={styles.navLink} href={routes.admin.valuators}>
             Valuators
           </Link>
+          <Link className={styles.navLink} href={routes.admin.valuations}>
+            Valuations
+          </Link>
         </div>
 
         <div className={styles.stats}>
@@ -56,6 +62,10 @@ export async function AdminDashboard() {
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Pending valuators</div>
             <div className={styles.statValue}>{pendingValuators.length}</div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>Pending valuations</div>
+            <div className={styles.statValue}>{pendingValuations.length}</div>
           </div>
         </div>
 
@@ -107,6 +117,25 @@ export async function AdminDashboard() {
                 ))
               ) : (
                 <div className={styles.empty}>No pending valuator applications.</div>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.panel}>
+            <h2 className={styles.panelTitle}>Valuation queue</h2>
+            <div className={styles.list}>
+              {pendingValuations.length > 0 ? (
+                pendingValuations.map((submission) => (
+                  <div className={styles.item} key={submission.id}>
+                    <div className={styles.itemTitle}>{submission.propertyTitle}</div>
+                    <div className={styles.itemMeta}>
+                      {formatCurrency(submission.estimatedValue, submission.currency)} effective {formatDate(submission.effectiveDate)}
+                    </div>
+                    <div className={styles.itemMeta}>Submitted by {submission.submittedByUserId}</div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.empty}>No pending valuation submissions.</div>
               )}
             </div>
           </div>

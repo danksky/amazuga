@@ -96,7 +96,7 @@ src/
 
 - role-aware portal overview
 - listing management
-- valuation management
+- valuation management, including submission history and new pending submissions
 - agency management
 - membership management
 
@@ -104,7 +104,7 @@ src/
 
 - admin overview
 - review queues
-- approve/deny workflows
+- approve/deny workflows, including valuation moderation
 
 ## Key Architectural Rules
 

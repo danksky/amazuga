@@ -8,6 +8,7 @@ import {
   activateApprovedAgentMembershipInDb,
   activatePendingAgencyManagerInDb,
   ensureAgencyFromApprovedApplicationInDb,
+  updateValuationSubmissionStatusInDb,
   updateApplicationStatusInDb,
 } from "@/lib/server/workflows";
 import type { SubmissionStatus } from "@/types/domain";
@@ -17,6 +18,9 @@ const reviewPaths = [
   routes.admin.agencies,
   routes.admin.agents,
   routes.admin.valuators,
+  routes.admin.valuations,
+  routes.app.portalValuations,
+  routes.app.portalValuationNew,
 ];
 
 export async function reviewApplicationAction(formData: FormData) {
@@ -27,11 +31,27 @@ export async function reviewApplicationAction(formData: FormData) {
   const decision = formData.get("decision");
 
   if (
-    (kind !== "agency" && kind !== "agent" && kind !== "valuator") ||
+    (kind !== "agency" && kind !== "agent" && kind !== "valuator" && kind !== "valuation") ||
     typeof applicationId !== "string" ||
     (decision !== "approved" && decision !== "denied")
   ) {
     throw new Error("Invalid review payload");
+  }
+
+  if (kind === "valuation") {
+    const submission = await updateValuationSubmissionStatusInDb(applicationId, decision as SubmissionStatus);
+
+    reviewPaths.forEach((reviewPath) => {
+      revalidatePath(reviewPath);
+    });
+
+    if (submission?.propertyRouteId) {
+      revalidatePath(routes.public.property(submission.propertyRouteId));
+    }
+
+    revalidatePath(routes.public.buy);
+    revalidatePath(routes.public.rent);
+    return;
   }
 
   await updateApplicationStatusInDb(kind, applicationId, decision as SubmissionStatus);
