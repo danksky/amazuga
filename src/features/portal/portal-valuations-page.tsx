@@ -52,11 +52,11 @@ export function PortalValuationsPage({ data }: { data: PortalValuationsWorkspace
             easier to review estimates, visibility, and the public pages those records support.
           </div>
           <div className={styles.heroActions}>
-            <Link className={styles.primaryAction} href={routes.public.buy}>
-              Browse properties
+            <Link className={styles.primaryAction} href={routes.app.portalValuationNew}>
+              Submit valuation
             </Link>
-            <Link className={styles.secondaryAction} href={routes.onboarding.advertise}>
-              Application status
+            <Link className={styles.secondaryAction} href={routes.public.buy}>
+              Browse properties
             </Link>
           </div>
         </section>
@@ -151,7 +151,13 @@ export function PortalValuationsPage({ data }: { data: PortalValuationsWorkspace
                     </div>
 
                     <div className={styles.actions}>
-                      <Link className={styles.primaryAction} href={routes.public.property(submission.propertyId)}>
+                      <Link
+                        className={styles.primaryAction}
+                        href={`${routes.app.portalValuationNew}?propertyId=${encodeURIComponent(submission.propertyId)}`}
+                      >
+                        Value this property
+                      </Link>
+                      <Link className={styles.secondaryAction} href={routes.public.property(submission.propertyId)}>
                         Open property page
                       </Link>
                       <Link className={styles.secondaryAction} href={routes.public.buy}>
@@ -171,19 +177,19 @@ export function PortalValuationsPage({ data }: { data: PortalValuationsWorkspace
               account yet. Once records exist, they will appear here with property links and approval status.
             </div>
             <div className={styles.heroActions}>
-              <Link className={styles.primaryAction} href={routes.public.buy}>
-                Browse properties
+              <Link className={styles.primaryAction} href={routes.app.portalValuationNew}>
+                Submit first valuation
               </Link>
-              <Link className={styles.secondaryAction} href={routes.onboarding.advertise}>
-                View applications
+              <Link className={styles.secondaryAction} href={routes.public.buy}>
+                Browse properties
               </Link>
             </div>
           </section>
         )}
 
         <div className={styles.note}>
-          New valuation submission and admin review workflows are still the next layer to build. This page makes the current
-          Preview-backed valuator persona testable right now by exposing real seeded history in the portal.
+          Admin review is still the next layer to build. This page now makes the Preview-backed valuator persona testable as
+          both a history workspace and a live submission entry point.
         </div>
       </div>
     </div>

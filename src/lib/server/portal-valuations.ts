@@ -67,6 +67,19 @@ export interface PortalValuationPropertyGroup {
   submissions: PortalValuationSubmissionSummary[];
 }
 
+export interface PortalValuationPropertyOption {
+  routeId: string;
+  propertyTitle: string;
+  propertyKind?: PropertyKind;
+  district: string;
+  sector?: string;
+  listingMarketingType?: MarketingType;
+  askingPrice?: number;
+  currency: Currency;
+  latestApprovedValue?: number;
+  latestApprovedEffectiveDate?: string;
+}
+
 export interface PortalValuationsWorkspaceData {
   submissions: PortalValuationSubmissionSummary[];
   properties: PortalValuationPropertyGroup[];
@@ -75,6 +88,19 @@ export interface PortalValuationsWorkspaceData {
   pendingCount: number;
   deniedCount: number;
   anonymousCount: number;
+}
+
+interface PortalValuationPropertyOptionRow {
+  route_id: string;
+  property_title: string | null;
+  property_kind: PropertyKind | null;
+  district: string | null;
+  sector: string | null;
+  marketing_type: MarketingType | null;
+  asking_price_rwf: number | string | null;
+  currency: Currency | null;
+  latest_approved_value: number | string | null;
+  latest_approved_effective_date: string | null;
 }
 
 function toNumber(value: number | string | null | undefined) {
@@ -247,4 +273,89 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
     deniedCount: submissions.filter((submission) => submission.status === "denied").length,
     anonymousCount: submissions.filter((submission) => submission.isAnonymous).length,
   };
+}
+
+export async function listPortalValuationPropertyOptions(): Promise<PortalValuationPropertyOption[]> {
+  const result = await getPgPool().query<PortalValuationPropertyOptionRow>(
+    `
+      SELECT
+        COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id, p.parcel_id) AS route_id,
+        COALESCE(active_listing.property_title, primary_asset.property_title, profile.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+        COALESCE(active_listing.property_kind, primary_asset.property_kind) AS property_kind,
+        p.district,
+        p.sector,
+        active_listing.marketing_type,
+        active_listing.asking_price_rwf,
+        COALESCE(active_listing.currency, 'RWF') AS currency,
+        latest_approved.estimated_value_rwf AS latest_approved_value,
+        latest_approved.effective_date::TEXT AS latest_approved_effective_date
+      FROM parcel_app_ready_seed_preview p
+      LEFT JOIN property_profile profile
+        ON profile.parcel_id = p.parcel_id
+      LEFT JOIN LATERAL (
+        SELECT
+          pa.id,
+          pa.public_id,
+          COALESCE(pa.title, profile.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+          pa.asset_type AS property_kind
+        FROM property_asset pa
+        WHERE pa.parcel_id = p.parcel_id
+          AND pa.is_primary_for_parcel
+        ORDER BY pa.created_at ASC, pa.id ASC
+        LIMIT 1
+      ) primary_asset
+        ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
+          pa.public_id AS property_asset_public_id,
+          COALESCE(pa.title, profile.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+          pa.asset_type AS property_kind,
+          l.marketing_type,
+          l.asking_price_rwf,
+          l.currency
+        FROM listing l
+        JOIN property_asset pa
+          ON pa.id = l.property_asset_id
+        WHERE l.parcel_id = p.parcel_id
+          AND l.status = 'active'
+        ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
+        LIMIT 1
+      ) active_listing
+        ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
+          vs.estimated_value_rwf,
+          vs.effective_date
+        FROM valuation_submission vs
+        WHERE vs.status = 'approved'
+          AND (
+            (active_listing.property_asset_public_id IS NOT NULL AND vs.property_id = active_listing.property_asset_public_id)
+            OR (primary_asset.public_id IS NOT NULL AND vs.property_id = primary_asset.public_id)
+            OR vs.property_id = p.public_id
+            OR vs.property_id = p.parcel_id
+          )
+        ORDER BY vs.effective_date DESC, vs.created_at DESC, vs.id DESC
+        LIMIT 1
+      ) latest_approved
+        ON TRUE
+      WHERE COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id, p.parcel_id) IS NOT NULL
+      ORDER BY
+        CASE WHEN active_listing.property_asset_public_id IS NOT NULL THEN 0 ELSE 1 END,
+        property_title ASC,
+        route_id ASC
+    `,
+  );
+
+  return result.rows.map((row) => ({
+    routeId: row.route_id,
+    propertyTitle: row.property_title || row.route_id,
+    propertyKind: row.property_kind || undefined,
+    district: row.district || "Unknown district",
+    sector: row.sector || undefined,
+    listingMarketingType: row.marketing_type || undefined,
+    askingPrice: toNumber(row.asking_price_rwf),
+    currency: row.currency || "RWF",
+    latestApprovedValue: toNumber(row.latest_approved_value),
+    latestApprovedEffectiveDate: row.latest_approved_effective_date || undefined,
+  }));
 }

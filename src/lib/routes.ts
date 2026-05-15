@@ -30,6 +30,7 @@ export const routes = {
     portal: "/portal",
     portalListings: "/portal/listings",
     portalValuations: "/portal/valuations",
+    portalValuationNew: "/portal/valuations/new",
     portalAgency: "/portal/agency",
     portalAgents: "/portal/agents",
     portalProfile: "/portal/profile",

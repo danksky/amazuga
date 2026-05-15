@@ -1,0 +1,153 @@
+.page {
+  padding: 32px 0 48px;
+}
+
+.card {
+  display: grid;
+  gap: 20px;
+  max-width: 920px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(180, 83, 9, 0.12), transparent 38%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 95%, white), color-mix(in srgb, var(--surface-alt) 76%, white));
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.body {
+  max-width: 720px;
+  color: var(--foreground-muted);
+  line-height: 1.6;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.label {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.hint {
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.propertyMeta {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 90%, white);
+}
+
+.propertyMetaTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.propertyMetaBody {
+  color: var(--foreground-muted);
+  line-height: 1.5;
+}
+
+.propertyMetaFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 90%, white);
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+}
+
+.checkboxCopy {
+  display: grid;
+  gap: 4px;
+}
+
+.checkboxTitle {
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .card {
+    padding: 22px;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+}

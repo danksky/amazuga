@@ -7,6 +7,7 @@ import type {
   PropertyClaimRequest,
   Role,
   SubmissionStatus,
+  ValuationSubmission,
   ValuatorApplication,
 } from "@/types/domain";
 
@@ -63,6 +64,18 @@ interface PropertyClaimRequestRow {
   property_id: string;
   property_internal_id: string;
   parcel_id: string;
+  status: SubmissionStatus;
+  created_at: string;
+}
+
+interface ValuationSubmissionRow {
+  id: string;
+  property_id: string | null;
+  submitted_by_user_id: string;
+  is_anonymous: boolean;
+  effective_date: string;
+  estimated_value_rwf: number | string;
+  currency: ValuationSubmission["currency"];
   status: SubmissionStatus;
   created_at: string;
 }
@@ -138,6 +151,20 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
     propertyId: row.property_id,
     propertyInternalId: row.property_internal_id,
     parcelId: row.parcel_id,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
+function toValuationSubmission(row: ValuationSubmissionRow): ValuationSubmission {
+  return {
+    id: row.id,
+    propertyId: row.property_id || "",
+    submittedByUserId: row.submitted_by_user_id,
+    isAnonymous: row.is_anonymous,
+    effectiveDate: row.effective_date,
+    estimatedValue: Number(row.estimated_value_rwf),
+    currency: row.currency,
     status: row.status,
     createdAt: row.created_at,
   };
@@ -450,6 +477,114 @@ export async function createValuatorApplicationInDb(input: {
   );
 
   return toValuatorApplication(result.rows[0]);
+}
+
+async function resolveValuationTarget(routeId: string) {
+  const result = await getPgPool().query<{
+    parcel_id: string;
+    property_id: string;
+    property_asset_id: string | null;
+  }>(
+    `
+      WITH target_parcel AS (
+        SELECT p.parcel_id
+        FROM parcel_app_ready_seed_preview p
+        WHERE p.public_id = $1
+           OR p.parcel_id = $1
+        UNION
+        SELECT pa.parcel_id
+        FROM property_asset pa
+        WHERE pa.public_id = $1
+           OR pa.id = $1
+        LIMIT 1
+      )
+      SELECT
+        p.parcel_id,
+        COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_id,
+        pa.id AS property_asset_id
+      FROM target_parcel tp
+      JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = tp.parcel_id
+      LEFT JOIN LATERAL (
+        SELECT pa_inner.id, pa_inner.public_id
+        FROM property_asset pa_inner
+        LEFT JOIN listing l
+          ON l.property_asset_id = pa_inner.id
+         AND l.status = 'active'
+        WHERE pa_inner.parcel_id = p.parcel_id
+        ORDER BY
+          CASE
+            WHEN pa_inner.public_id = $1 THEN 0
+            WHEN pa_inner.id = $1 THEN 0
+            WHEN l.id IS NOT NULL THEN 1
+            WHEN pa_inner.is_primary_for_parcel THEN 2
+            ELSE 3
+          END,
+          pa_inner.created_at ASC,
+          pa_inner.id ASC
+        LIMIT 1
+      ) pa
+        ON TRUE
+      LIMIT 1
+    `,
+    [routeId],
+  );
+
+  return result.rows[0];
+}
+
+export async function createValuationSubmissionInDb(input: {
+  userId: string;
+  propertyRouteId: string;
+  effectiveDate: string;
+  estimatedValue: number;
+  isAnonymous: boolean;
+}) {
+  const target = await resolveValuationTarget(input.propertyRouteId);
+
+  if (!target?.property_asset_id) {
+    throw new Error("Could not resolve property for valuation submission");
+  }
+
+  const id = createRecordId("valuation-submission");
+  const result = await getPgPool().query<ValuationSubmissionRow>(
+    `
+      INSERT INTO valuation_submission (
+        id,
+        property_id,
+        property_asset_id,
+        submitted_by_user_id,
+        is_anonymous,
+        effective_date,
+        estimated_value_rwf,
+        currency,
+        status,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'RWF', 'pending', 'manual_workflow_v1')
+      RETURNING
+        id,
+        property_id,
+        submitted_by_user_id,
+        is_anonymous,
+        effective_date::TEXT,
+        estimated_value_rwf,
+        currency,
+        status,
+        created_at::TEXT
+    `,
+    [
+      id,
+      target.property_id,
+      target.property_asset_id,
+      input.userId,
+      input.isAnonymous,
+      input.effectiveDate,
+      Math.round(input.estimatedValue),
+    ],
+  );
+
+  return toValuationSubmission(result.rows[0]);
 }
 
 export async function activateApprovedAgentMembershipInDb(applicationId: string) {
