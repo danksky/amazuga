@@ -1,11 +1,17 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { PortalListingsPage } from "@/features/portal/portal-listings-page";
+import { requireCurrentUser } from "@/lib/auth";
+import { getPortalListingsWorkspaceData } from "@/lib/server/portal-listings";
 
-export default function PortalListingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PortalListingsRoute() {
+  const currentUser = await requireCurrentUser();
+  const data = await getPortalListingsWorkspaceData(currentUser.id);
+
   return (
-    <PlaceholderPage
-      eyebrow="Portal"
-      title="Listings"
-      description="Internal listing management belongs here, separate from the public property browsing surface."
+    <PortalListingsPage
+      currentUserFirstName={currentUser.fullName.split(" ")[0] ?? currentUser.fullName}
+      data={data}
     />
   );
 }
