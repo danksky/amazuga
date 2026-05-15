@@ -316,7 +316,7 @@ unlisted_house_rows AS (
     NULL::TEXT AS marketing_type,
     'not_listed'::TEXT AS listing_status,
     NULL::BIGINT AS asking_price_rwf,
-    'Preview Unlisted House'::TEXT AS title_suffix,
+    'Unlisted House'::TEXT AS title_suffix,
     'Preview unlisted house to validate map-first pages that still carry strong residential context.'::TEXT AS property_description,
     NULL::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -365,7 +365,7 @@ unlisted_apartment_rows AS (
     NULL::TEXT AS marketing_type,
     'not_listed'::TEXT AS listing_status,
     NULL::BIGINT AS asking_price_rwf,
-    'Preview Unlisted Apartment'::TEXT AS title_suffix,
+    'Unlisted Apartment'::TEXT AS title_suffix,
     'Preview unlisted apartment unit for validating unit-first copy and map-first unlisted behavior together.'::TEXT AS property_description,
     NULL::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -406,7 +406,7 @@ unlisted_land_rows AS (
     NULL::TEXT AS marketing_type,
     'not_listed'::TEXT AS listing_status,
     NULL::BIGINT AS asking_price_rwf,
-    'Preview Unlisted Parcel'::TEXT AS title_suffix,
+    'Unlisted Parcel'::TEXT AS title_suffix,
     'Preview unlisted land parcel for validating pure parcel-context pages without gallery content.'::TEXT AS property_description,
     NULL::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -445,7 +445,10 @@ upsert_profiles AS (
   SELECT
     ssr.parcel_id,
     ssr.agent_user_id,
-    CONCAT(ssr.sector, ' ', ssr.title_suffix),
+    CASE
+      WHEN ssr.listing_status = 'not_listed' THEN 'Unlisted property'
+      ELSE CONCAT(ssr.sector, ' ', ssr.title_suffix)
+    END,
     ssr.property_description,
     ssr.property_type,
     ssr.bedrooms,
@@ -473,7 +476,10 @@ upsert_assets AS (
     ssr.asset_type,
     UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)),
-    CONCAT(ssr.sector, ' ', ssr.title_suffix),
+    CASE
+      WHEN ssr.listing_status = 'not_listed' THEN 'Unlisted property'
+      ELSE CONCAT(ssr.sector, ' ', ssr.title_suffix)
+    END,
     ssr.property_description,
     TRUE,
     'preview_property_page_variants_v1'
@@ -513,7 +519,10 @@ upsert_listings AS (
     lsr.marketing_type,
     lsr.asking_price_rwf,
     'RWF',
-    CONCAT(lsr.sector, ' ', lsr.title_suffix),
+    CASE
+      WHEN lsr.listing_status = 'not_listed' THEN 'Unlisted property'
+      ELSE CONCAT(lsr.sector, ' ', lsr.title_suffix)
+    END,
     lsr.listing_description,
     'preview_property_page_variants_v1',
     NOW()

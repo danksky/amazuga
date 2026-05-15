@@ -13,16 +13,16 @@ Route format:
 - Listed apartment unit
   - `0A42C2AE33` - Kicukiro Balcony Apartment
 - Unlisted house
-  - `5974CFE46F` - Gatenga Preview Unlisted House
+  - `5974CFE46F` - Unlisted property
 - Unlisted apartment unit
-  - `ABB6924971` - Kagarama Preview Unlisted Apartment
+  - `ABB6924971` - Unlisted property
 
 ## Land
 
 - Listed land
   - `EDDBB70270` - Masaka Preview Hillside Parcel
 - Unlisted land
-  - `9CF1CE1B90` - Niboye Preview Unlisted Parcel
+  - `9CF1CE1B90` - Unlisted property
 
 ## Building
 

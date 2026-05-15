@@ -169,15 +169,15 @@ function buildPlaceholderGeometry(row: ListingParcelRow): Property["geometry"] {
 
 function buildPropertyFromRow(row: ListingParcelRow): Property {
   const propertyId = row.property_public_id || row.public_id || row.parcel_id;
-  const title = row.property_title || row.profile_title || row.display_id || `Parcel ${propertyId}`;
-  const description = row.property_description_override || row.profile_description;
   const zoningLabel = row.zoning || row.gen_lu || row.zone_code;
   const listingState = row.listing_id ? "listed" : "not_listed";
+  const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
+  const title = listingState === "listed" ? row.property_title || row.profile_title || row.display_id || `Parcel ${propertyId}` : "Unlisted property";
+  const description = row.property_description_override || row.profile_description;
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
   const maxLng = toNullableNumber(row.bbox_max_lon);
   const maxLat = toNullableNumber(row.bbox_max_lat);
-  const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
 
   return {
     id: propertyId,
