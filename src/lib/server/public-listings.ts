@@ -8,7 +8,7 @@ import type {
   ValuationSubmission,
 } from "@/types/domain";
 
-import { pgPool } from "./postgres";
+import { getPgPool } from "./postgres";
 
 type MarketingType = "sale" | "rent";
 
@@ -264,7 +264,7 @@ function buildAgencyFromRow(row: AgencyRow): Agency {
 }
 
 async function getListingImages(listingId: string) {
-  const result = await pgPool.query<ListingImageRow>(
+  const result = await getPgPool().query<ListingImageRow>(
     `
       SELECT image_url
       FROM listing_image
@@ -278,7 +278,7 @@ async function getListingImages(listingId: string) {
 }
 
 async function getAgencyByIdFromDb(agencyId: string) {
-  const result = await pgPool.query<AgencyRow>(
+  const result = await getPgPool().query<AgencyRow>(
     `
       SELECT
         a.id,
@@ -319,7 +319,7 @@ async function getAgencyByIdFromDb(agencyId: string) {
 }
 
 export async function getBrowseListingCards(marketingType: MarketingType): Promise<PublicListingCardData[]> {
-  const result = await pgPool.query<ListingParcelRow>(
+  const result = await getPgPool().query<ListingParcelRow>(
     `
       SELECT
         p.parcel_id,
@@ -405,7 +405,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
 }
 
 export async function getPublicPropertyPageData(propertyId: string): Promise<PublicPropertyPageData | undefined> {
-  const result = await pgPool.query<ListingParcelRow>(
+  const result = await getPgPool().query<ListingParcelRow>(
     `
       WITH target_parcel AS (
         SELECT p.parcel_id

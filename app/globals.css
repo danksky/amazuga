@@ -18,6 +18,10 @@
   --radius-md: 14px;
   --radius-lg: 18px;
   --page-max-width: 1600px;
+  --font-sans:
+    "Avenir Next", Avenir, "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:
+    "SFMono-Regular", "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 * {
@@ -39,7 +43,7 @@ input,
 button,
 select,
 textarea {
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: var(--font-sans);
 }
 
 a {

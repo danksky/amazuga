@@ -1,9 +1,9 @@
 import "server-only";
 
-import { pgPool } from "./postgres";
+import { getPgPool } from "./postgres";
 
 export async function findPropertyIdByUpi(upi: string): Promise<string | undefined> {
-  const result = await pgPool.query<{ route_id: string }>(
+  const result = await getPgPool().query<{ route_id: string }>(
     `
       SELECT
         COALESCE(

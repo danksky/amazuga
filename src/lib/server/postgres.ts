@@ -5,6 +5,9 @@ import path from "node:path";
 
 import { Pool } from "pg";
 
+const MISSING_DATABASE_URL_ERROR =
+  "DATABASE_URL or DATABASE_URL_PREVIEW must be set for server-side parcel queries.";
+
 function isRemoteRuntime() {
   return Boolean(process.env.VERCEL || process.env.CI === "true");
 }
@@ -62,28 +65,42 @@ function readLocalInfraDatabaseUrl() {
   }
 }
 
-const connectionString =
-  selectPreferredUrl({
-    databaseUrl: process.env.DATABASE_URL,
-    previewDatabaseUrl: process.env.DATABASE_URL_PREVIEW,
-  }) || readLocalInfraDatabaseUrl();
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL or DATABASE_URL_PREVIEW must be set for server-side parcel queries.");
-}
-
 declare global {
   var __amazugaPgPool: Pool | undefined;
 }
 
-export const pgPool =
-  global.__amazugaPgPool ??
-  new Pool({
+function resolveConnectionString() {
+  return (
+    selectPreferredUrl({
+      databaseUrl: process.env.DATABASE_URL,
+      previewDatabaseUrl: process.env.DATABASE_URL_PREVIEW,
+    }) || readLocalInfraDatabaseUrl()
+  );
+}
+
+export function getPgPool() {
+  if (global.__amazugaPgPool) {
+    return global.__amazugaPgPool;
+  }
+
+  const connectionString = resolveConnectionString();
+  if (!connectionString) {
+    throw new Error(MISSING_DATABASE_URL_ERROR);
+  }
+
+  const pool = new Pool({
     connectionString,
     max: 5,
     ssl: { rejectUnauthorized: false },
   });
 
-if (process.env.NODE_ENV !== "production") {
-  global.__amazugaPgPool = pgPool;
+  if (process.env.NODE_ENV !== "production") {
+    global.__amazugaPgPool = pool;
+  }
+
+  return pool;
+}
+
+export function isDatabaseUrlMissingError(error: unknown) {
+  return error instanceof Error && error.message === MISSING_DATABASE_URL_ERROR;
 }
