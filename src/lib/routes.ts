@@ -29,6 +29,8 @@ export const routes = {
     saved: "/saved",
     portal: "/portal",
     portalListings: "/portal/listings",
+    portalListingNew: "/portal/listings/new",
+    portalListingEdit: (listingId: string) => `/portal/listings/${listingId}/edit`,
     portalValuations: "/portal/valuations",
     portalValuationNew: "/portal/valuations/new",
     portalAgency: "/portal/agency",

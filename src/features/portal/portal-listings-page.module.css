@@ -12,6 +12,12 @@
   gap: 10px;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .eyebrow {
   color: var(--foreground-muted);
   text-transform: uppercase;
@@ -217,6 +223,10 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.inlineForm {
+  margin: 0;
 }
 
 .primaryAction,

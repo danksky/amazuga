@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { setListingStatusAction } from "@/features/portal/actions";
 import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
 import type { PortalListingsWorkspaceData } from "@/lib/server/portal-listings";
 import { routes } from "@/lib/routes";
@@ -25,9 +26,15 @@ function buildListingFacts(listing: PortalListingsWorkspaceData["listings"][numb
 }
 
 export function PortalListingsPage({
+  canCreateListing,
+  canEditListing,
+  canManageListingLifecycle,
   currentUserFirstName,
   data,
 }: {
+  canCreateListing: boolean;
+  canEditListing: boolean;
+  canManageListingLifecycle: boolean;
   currentUserFirstName: string;
   data: PortalListingsWorkspaceData;
 }) {
@@ -46,6 +53,13 @@ export function PortalListingsPage({
             This view shows the listings your current agency access can work with, including which listings are assigned
             directly to {currentUserFirstName}.
           </div>
+          {canCreateListing ? (
+            <div className={styles.headerActions}>
+              <Link className={styles.primaryAction} href={routes.app.portalListingNew}>
+                Create listing
+              </Link>
+            </div>
+          ) : null}
         </div>
 
         {data.agencies.length > 0 ? (
@@ -136,6 +150,24 @@ export function PortalListingsPage({
                             <Link className={styles.primaryAction} href={routes.public.property(listing.propertyId)}>
                               Open property page
                             </Link>
+                            {canEditListing ? (
+                              <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(listing.id)}>
+                                Edit listing
+                              </Link>
+                            ) : null}
+                            {canManageListingLifecycle ? (
+                              <form action={setListingStatusAction} className={styles.inlineForm}>
+                                <input name="listingId" type="hidden" value={listing.id} />
+                                <input
+                                  name="status"
+                                  type="hidden"
+                                  value={listing.status === "active" ? "inactive" : "active"}
+                                />
+                                <button className={styles.secondaryAction} type="submit">
+                                  {listing.status === "active" ? "Deactivate" : "Reactivate"}
+                                </button>
+                              </form>
+                            ) : null}
                             <Link className={styles.secondaryAction} href={routes.app.portalAgency}>
                               Agency tools
                             </Link>
