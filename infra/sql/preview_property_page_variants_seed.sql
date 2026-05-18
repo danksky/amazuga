@@ -57,7 +57,6 @@ listed_land_templates AS (
         1,
         'sale',
         42000000::BIGINT,
-        'Preview Hillside Parcel',
         'Preview land parcel positioned for a map-first page with zoning, size, and road context carrying the story.',
         'Preview land listing intended to validate parcel-first property pages.',
         'user-5',
@@ -71,7 +70,6 @@ listed_land_templates AS (
         2,
         'sale',
         58000000::BIGINT,
-        'Preview Expansion Parcel',
         'Preview land parcel with a larger footprint for validating land-oriented detail hierarchy and map emphasis.',
         'Second land listing for previewing browse cards and detail pages outside residential defaults.',
         'user-5',
@@ -85,7 +83,6 @@ listed_land_templates AS (
     seq,
     marketing_type,
     asking_price_rwf,
-    title_suffix,
     property_description,
     listing_description,
     agent_user_id,
@@ -123,7 +120,6 @@ listed_land_rows AS (
     llt.marketing_type,
     'active'::TEXT AS listing_status,
     llt.asking_price_rwf,
-    llt.title_suffix,
     llt.property_description,
     llt.listing_description,
     llt.agent_user_id,
@@ -143,7 +139,6 @@ listed_commercial_templates AS (
         1,
         'rent',
         3200000::BIGINT,
-        'Preview Retail Frontage',
         'Preview commercial unit seeded to validate utility-first page behavior with mixed-use zoning support.',
         'Commercial preview listing with rent-first CTA and mixed-use parcel context.',
         'user-5',
@@ -157,7 +152,6 @@ listed_commercial_templates AS (
         2,
         'sale',
         265000000::BIGINT,
-        'Preview Office Suite',
         'Preview commercial unit intended to test broader area, access, and business-use framing on the property page.',
         'Second commercial preview listing for card variety and detail layout validation.',
         'user-5',
@@ -171,7 +165,6 @@ listed_commercial_templates AS (
     seq,
     marketing_type,
     asking_price_rwf,
-    title_suffix,
     property_description,
     listing_description,
     agent_user_id,
@@ -218,7 +211,6 @@ listed_commercial_rows AS (
     lct.marketing_type,
     'active'::TEXT AS listing_status,
     lct.asking_price_rwf,
-    lct.title_suffix,
     lct.property_description,
     lct.listing_description,
     lct.agent_user_id,
@@ -263,7 +255,6 @@ listed_building_rows AS (
     'sale'::TEXT AS marketing_type,
     'active'::TEXT AS listing_status,
     910000000::BIGINT AS asking_price_rwf,
-    'Preview Apartment Building'::TEXT AS title_suffix,
     'Preview building asset seeded to exercise building-level page behavior before unit pages exist.'::TEXT AS property_description,
     'Building-level listing for validating a summary-first page that can later branch to child units.'::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -316,7 +307,6 @@ unlisted_house_rows AS (
     NULL::TEXT AS marketing_type,
     'not_listed'::TEXT AS listing_status,
     NULL::BIGINT AS asking_price_rwf,
-    'Unlisted House'::TEXT AS title_suffix,
     'Preview unlisted house to validate map-first pages that still carry strong residential context.'::TEXT AS property_description,
     NULL::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -365,7 +355,6 @@ unlisted_apartment_rows AS (
     NULL::TEXT AS marketing_type,
     'not_listed'::TEXT AS listing_status,
     NULL::BIGINT AS asking_price_rwf,
-    'Unlisted Apartment'::TEXT AS title_suffix,
     'Preview unlisted apartment unit for validating unit-first copy and map-first unlisted behavior together.'::TEXT AS property_description,
     NULL::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -406,7 +395,6 @@ unlisted_land_rows AS (
     NULL::TEXT AS marketing_type,
     'not_listed'::TEXT AS listing_status,
     NULL::BIGINT AS asking_price_rwf,
-    'Unlisted Parcel'::TEXT AS title_suffix,
     'Preview unlisted land parcel for validating pure parcel-context pages without gallery content.'::TEXT AS property_description,
     NULL::TEXT AS listing_description,
     'user-5'::TEXT AS agent_user_id,
@@ -433,7 +421,6 @@ upsert_profiles AS (
   INSERT INTO property_profile (
     parcel_id,
     created_by_user_id,
-    title,
     description,
     property_type,
     bedrooms,
@@ -445,10 +432,6 @@ upsert_profiles AS (
   SELECT
     ssr.parcel_id,
     ssr.agent_user_id,
-    CASE
-      WHEN ssr.listing_status = 'not_listed' THEN 'Unlisted property'
-      ELSE CONCAT(ssr.sector, ' ', ssr.title_suffix)
-    END,
     ssr.property_description,
     ssr.property_type,
     ssr.bedrooms,
@@ -465,7 +448,6 @@ upsert_assets AS (
     asset_type,
     public_id,
     display_code,
-    title,
     description,
     is_primary_for_parcel,
     seed_source
@@ -476,10 +458,6 @@ upsert_assets AS (
     ssr.asset_type,
     UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)),
-    CASE
-      WHEN ssr.listing_status = 'not_listed' THEN 'Unlisted property'
-      ELSE CONCAT(ssr.sector, ' ', ssr.title_suffix)
-    END,
     ssr.property_description,
     TRUE,
     'preview_property_page_variants_v1'
@@ -519,10 +497,7 @@ upsert_listings AS (
     lsr.marketing_type,
     lsr.asking_price_rwf,
     'RWF',
-    CASE
-      WHEN lsr.listing_status = 'not_listed' THEN 'Unlisted property'
-      ELSE CONCAT(lsr.sector, ' ', lsr.title_suffix)
-    END,
+    lsr.listing_description,
     lsr.listing_description,
     'preview_property_page_variants_v1',
     NOW()
