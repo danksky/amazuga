@@ -8,6 +8,7 @@ import {
   activateApprovedAgentMembershipInDb,
   activatePendingAgencyManagerInDb,
   ensureAgencyFromApprovedApplicationInDb,
+  updatePropertyClaimRequestStatusInDb,
   updateValuationSubmissionStatusInDb,
   updateApplicationStatusInDb,
 } from "@/lib/server/workflows";
@@ -19,8 +20,11 @@ const reviewPaths = [
   routes.admin.agents,
   routes.admin.valuators,
   routes.admin.valuations,
+  routes.admin.properties,
+  routes.app.portalProperties,
   routes.app.portalValuations,
   routes.app.portalValuationNew,
+  routes.app.portalListingNew,
 ];
 
 export async function reviewApplicationAction(formData: FormData) {
@@ -31,7 +35,7 @@ export async function reviewApplicationAction(formData: FormData) {
   const decision = formData.get("decision");
 
   if (
-    (kind !== "agency" && kind !== "agent" && kind !== "valuator" && kind !== "valuation") ||
+    (kind !== "agency" && kind !== "agent" && kind !== "valuator" && kind !== "valuation" && kind !== "property_claim") ||
     typeof applicationId !== "string" ||
     (decision !== "approved" && decision !== "denied")
   ) {
@@ -51,6 +55,20 @@ export async function reviewApplicationAction(formData: FormData) {
 
     revalidatePath(routes.public.buy);
     revalidatePath(routes.public.rent);
+    return;
+  }
+
+  if (kind === "property_claim") {
+    const claimRequest = await updatePropertyClaimRequestStatusInDb(applicationId, decision as SubmissionStatus);
+
+    reviewPaths.forEach((reviewPath) => {
+      revalidatePath(reviewPath);
+    });
+
+    if (claimRequest?.propertyId) {
+      revalidatePath(routes.public.property(claimRequest.propertyId));
+    }
+
     return;
   }
 

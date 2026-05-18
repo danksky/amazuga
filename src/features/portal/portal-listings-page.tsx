@@ -49,14 +49,16 @@ export function PortalListingsPage({
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
         <div className={styles.header}>
-          <div className={styles.eyebrow}>Portal</div>
-          <h1 className={styles.title}>Listings workspace</h1>
+          <h1 className={styles.title}>Listings</h1>
           <div className={styles.body}>
-            This view shows the listings your current agency access can work with, including which listings are assigned
-            directly to {currentUserFirstName}.
+            This view shows the listings your current agency access can work with, including which owned properties have
+            already been turned into active listings and which listings are assigned directly to {currentUserFirstName}.
           </div>
           {canCreateListing ? (
             <div className={styles.headerActions}>
+              <Link className={styles.secondaryAction} href={routes.app.portalProperties}>
+                View owned properties
+              </Link>
               <Link className={styles.primaryAction} href={routes.app.portalListingNew}>
                 Create listing
               </Link>
@@ -189,7 +191,7 @@ export function PortalListingsPage({
           <div className={styles.empty}>
             You do not have active agency membership yet, so there are no internal listings to manage here. Start from{" "}
             <Link className={styles.secondaryAction} href={routes.onboarding.advertise}>
-              Advertise
+              Sell
             </Link>{" "}
             or return to the{" "}
             <Link className={styles.secondaryAction} href={routes.app.portal}>

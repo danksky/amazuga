@@ -233,11 +233,11 @@ export function ApplicationsHub(props: ApplicationsHubProps) {
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
         <div className={styles.header}>
-          <div className={styles.eyebrow}>Applications</div>
-          <h1 className={styles.title}>Professional access</h1>
+          <h1 className={styles.title}>Applications</h1>
           <div className={styles.body}>
-            This hub keeps your agency, agent, and valuator application state in one place so the next step is always
-            clear. Once approvals are active, the related portal workspaces open from here too.
+            This hub keeps your agency, agent, and valuator application state in one place so the next step in your
+            professional access path is always clear. Once approvals are active, the related portal workspaces open from
+            here too.
           </div>
         </div>
 

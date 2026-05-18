@@ -45,8 +45,7 @@ export function PortalValuationsPage({ data }: { data: PortalValuationsWorkspace
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
         <section className={styles.hero}>
-          <div className={styles.eyebrow}>Portal</div>
-          <h1 className={styles.title}>Valuations workspace</h1>
+          <h1 className={styles.title}>Valuations</h1>
           <div className={styles.body}>
             This workspace shows the Preview-backed valuation history attached to your account, grouped by property so it is
             easier to review estimates, visibility, and the public pages those records support.

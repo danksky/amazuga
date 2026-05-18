@@ -50,6 +50,16 @@
   line-height: 1.6;
 }
 
+.emptyState {
+  display: grid;
+  gap: 14px;
+}
+
+.emptyBody {
+  color: var(--foreground-muted);
+  line-height: 1.6;
+}
+
 .form {
   display: grid;
   gap: 18px;

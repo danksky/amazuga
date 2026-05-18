@@ -5,6 +5,9 @@ import type {
   AgencyApplication,
   AgentApplication,
   PropertyClaimRequest,
+  PropertyOwnership,
+  PropertyOwnershipScope,
+  PropertyKind,
   Role,
   SubmissionStatus,
   ValuationSubmission,
@@ -66,6 +69,39 @@ interface PropertyClaimRequestRow {
   parcel_id: string;
   status: SubmissionStatus;
   created_at: string;
+}
+
+interface PropertyOwnershipRow {
+  id: string;
+  user_id: string;
+  property_id: string;
+  property_internal_id: string;
+  parcel_id: string;
+  ownership_scope: PropertyOwnershipScope;
+  created_at: string;
+}
+
+interface AdminPropertyClaimRequestRow extends PropertyClaimRequestRow {
+  property_route_id: string | null;
+  property_title: string | null;
+  property_kind: PropertyKind | null;
+  district: string | null;
+  sector: string | null;
+  user_full_name: string | null;
+}
+
+export interface AdminPropertyClaimRequest extends PropertyClaimRequest {
+  propertyRouteId?: string;
+  propertyTitle: string;
+  propertyKind?: PropertyKind;
+  district: string;
+  sector?: string;
+  userFullName: string;
+}
+
+interface UserPropertyRelationship {
+  ownership?: PropertyOwnership;
+  latestClaimRequest?: PropertyClaimRequest;
 }
 
 interface ValuationSubmissionRow {
@@ -182,6 +218,36 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
   };
 }
 
+function toPropertyOwnership(row: PropertyOwnershipRow): PropertyOwnership {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    propertyId: row.property_id,
+    propertyInternalId: row.property_internal_id,
+    parcelId: row.parcel_id,
+    ownershipScope: row.ownership_scope,
+    createdAt: row.created_at,
+  };
+}
+
+function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPropertyClaimRequest {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    userFullName: row.user_full_name || row.user_id,
+    propertyId: row.property_id,
+    propertyInternalId: row.property_internal_id,
+    parcelId: row.parcel_id,
+    propertyRouteId: row.property_route_id || undefined,
+    propertyTitle: row.property_title || row.property_route_id || row.property_id || "Preview property",
+    propertyKind: row.property_kind || undefined,
+    district: row.district || "Unknown district",
+    sector: row.sector || undefined,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
 function toValuationSubmission(row: ValuationSubmissionRow): ValuationSubmission {
   return {
     id: row.id,
@@ -213,6 +279,10 @@ function toAdminValuationSubmission(row: AdminValuationSubmissionRow): AdminValu
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function getOwnershipScopeForPropertyKind(propertyKind?: PropertyKind | null): PropertyOwnershipScope {
+  return propertyKind === "apartment_unit" || propertyKind === "commercial_unit" ? "unit" : "full";
 }
 
 async function addRoleToUser(userId: string, role: Role) {
@@ -426,6 +496,126 @@ export async function listValuatorApplicationsFromDb() {
   );
 
   return result.rows.map(toValuatorApplication);
+}
+
+export async function listPropertyClaimRequestsFromDb() {
+  const result = await getPgPool().query<AdminPropertyClaimRequestRow>(
+    `
+      SELECT
+        pcr.id,
+        pcr.user_id,
+        pcr.property_id,
+        pcr.property_internal_id,
+        pcr.parcel_id,
+        pcr.status,
+        pcr.created_at::TEXT,
+        COALESCE(pa.public_id, parcel.public_id) AS property_route_id,
+        COALESCE(pa.title, pp.title, parcel.display_id, pa.public_id, parcel.public_id, parcel.parcel_id) AS property_title,
+        pa.asset_type AS property_kind,
+        parcel.district,
+        parcel.sector,
+        claimant.full_name AS user_full_name
+      FROM property_claim_request pcr
+      JOIN app_user claimant
+        ON claimant.id = pcr.user_id
+      JOIN parcel_app_ready_seed_preview parcel
+        ON parcel.parcel_id = pcr.parcel_id
+      LEFT JOIN property_asset pa
+        ON pa.id = pcr.property_internal_id
+      LEFT JOIN property_profile pp
+        ON pp.parcel_id = pcr.parcel_id
+      ORDER BY pcr.created_at ASC, pcr.id ASC
+    `,
+  );
+
+  return result.rows.map(toAdminPropertyClaimRequest);
+}
+
+export async function listPropertyOwnershipsForUser(userId: string) {
+  const result = await getPgPool().query<PropertyOwnershipRow>(
+    `
+      SELECT
+        id,
+        user_id,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        ownership_scope,
+        created_at::TEXT
+      FROM property_ownership
+      WHERE user_id = $1
+      ORDER BY created_at ASC, id ASC
+    `,
+    [userId],
+  );
+
+  return result.rows.map(toPropertyOwnership);
+}
+
+export async function listPropertyClaimRequestsForUser(userId: string) {
+  const result = await getPgPool().query<PropertyClaimRequestRow>(
+    `
+      SELECT
+        id,
+        user_id,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        status,
+        created_at::TEXT
+      FROM property_claim_request
+      WHERE user_id = $1
+      ORDER BY created_at DESC, id DESC
+    `,
+    [userId],
+  );
+
+  return result.rows.map(toPropertyClaimRequest);
+}
+
+export async function getUserPropertyRelationship(userId: string, propertyInternalId: string): Promise<UserPropertyRelationship> {
+  const [ownerships, claimRequests] = await Promise.all([
+    getPgPool().query<PropertyOwnershipRow>(
+      `
+        SELECT
+          id,
+          user_id,
+          property_id,
+          property_internal_id,
+          parcel_id,
+          ownership_scope,
+          created_at::TEXT
+        FROM property_ownership
+        WHERE user_id = $1
+          AND property_internal_id = $2
+        LIMIT 1
+      `,
+      [userId, propertyInternalId],
+    ),
+    getPgPool().query<PropertyClaimRequestRow>(
+      `
+        SELECT
+          id,
+          user_id,
+          property_id,
+          property_internal_id,
+          parcel_id,
+          status,
+          created_at::TEXT
+        FROM property_claim_request
+        WHERE user_id = $1
+          AND property_internal_id = $2
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      `,
+      [userId, propertyInternalId],
+    ),
+  ]);
+
+  return {
+    ownership: ownerships.rows[0] ? toPropertyOwnership(ownerships.rows[0]) : undefined,
+    latestClaimRequest: claimRequests.rows[0] ? toPropertyClaimRequest(claimRequests.rows[0]) : undefined,
+  };
 }
 
 export async function createAgencyApplicationInDb(input: {
@@ -946,6 +1136,31 @@ export async function createPropertyClaimRequestInDb(input: {
   propertyInternalId: string;
   parcelId: string;
 }) {
+  const existingOwnership = await getPgPool().query<PropertyOwnershipRow>(
+    `
+      SELECT
+        id,
+        user_id,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        ownership_scope,
+        created_at::TEXT
+      FROM property_ownership
+      WHERE user_id = $1
+        AND property_internal_id = $2
+      LIMIT 1
+    `,
+    [input.userId, input.propertyInternalId],
+  );
+
+  if (existingOwnership.rows[0]) {
+    return {
+      outcome: "already_owned" as const,
+      request: null,
+    };
+  }
+
   const existing = await getPgPool().query<PropertyClaimRequestRow>(
     `
       SELECT
@@ -966,7 +1181,10 @@ export async function createPropertyClaimRequestInDb(input: {
   );
 
   if (existing.rows[0]) {
-    return toPropertyClaimRequest(existing.rows[0]);
+    return {
+      outcome: "existing_pending" as const,
+      request: toPropertyClaimRequest(existing.rows[0]),
+    };
   }
 
   const id = createRecordId("property-claim");
@@ -994,5 +1212,146 @@ export async function createPropertyClaimRequestInDb(input: {
     [id, input.userId, input.propertyId, input.propertyInternalId, input.parcelId],
   );
 
-  return toPropertyClaimRequest(result.rows[0]);
+  return {
+    outcome: "created" as const,
+    request: toPropertyClaimRequest(result.rows[0]),
+  };
+}
+
+export async function updatePropertyClaimRequestStatusInDb(
+  claimRequestId: string,
+  status: SubmissionStatus,
+) {
+  const existingResult = await getPgPool().query<PropertyClaimRequestRow>(
+    `
+      SELECT
+        id,
+        user_id,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        status,
+        created_at::TEXT
+      FROM property_claim_request
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [claimRequestId],
+  );
+
+  const existingClaimRequest = existingResult.rows[0] ? toPropertyClaimRequest(existingResult.rows[0]) : null;
+
+  if (!existingClaimRequest) {
+    return null;
+  }
+
+  if (status === "approved") {
+    const targetResult = await getPgPool().query<{
+      property_kind: PropertyKind | null;
+    }>(
+      `
+        SELECT asset_type AS property_kind
+        FROM property_asset
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [existingClaimRequest.propertyInternalId],
+    );
+
+    const ownershipScope = getOwnershipScopeForPropertyKind(targetResult.rows[0]?.property_kind);
+    const ownershipConflict = await getPgPool().query<{ id: string }>(
+      `
+        SELECT id
+        FROM property_ownership
+        WHERE
+          (
+            property_internal_id = $1
+            OR ($2 = 'full' AND parcel_id = $3)
+            OR (ownership_scope = 'full' AND parcel_id = $3)
+          )
+          AND user_id <> $4
+        LIMIT 1
+      `,
+      [existingClaimRequest.propertyInternalId, ownershipScope, existingClaimRequest.parcelId, existingClaimRequest.userId],
+    );
+
+    if (ownershipConflict.rows[0]) {
+      throw new Error("This property or parcel already has an owner in Preview.");
+    }
+  }
+
+  const updateResult = await getPgPool().query<PropertyClaimRequestRow>(
+    `
+      UPDATE property_claim_request
+      SET
+        status = $2,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        user_id,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        status,
+        created_at::TEXT
+    `,
+    [claimRequestId, status],
+  );
+
+  const claimRequest = updateResult.rows[0] ? toPropertyClaimRequest(updateResult.rows[0]) : null;
+
+  if (!claimRequest || status !== "approved") {
+    return claimRequest;
+  }
+
+  const targetResult = await getPgPool().query<{
+    property_kind: PropertyKind | null;
+  }>(
+    `
+      SELECT asset_type AS property_kind
+      FROM property_asset
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [claimRequest.propertyInternalId],
+  );
+
+  const ownershipScope = getOwnershipScopeForPropertyKind(targetResult.rows[0]?.property_kind);
+  const ownershipId = `property-ownership-${claimRequest.propertyInternalId}`;
+  await getPgPool().query(
+    `
+      INSERT INTO property_ownership (
+        id,
+        user_id,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        ownership_scope,
+        created_from_claim_request_id,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'manual_workflow_v1')
+      ON CONFLICT (property_internal_id) DO UPDATE
+      SET
+        user_id = EXCLUDED.user_id,
+        property_id = EXCLUDED.property_id,
+        parcel_id = EXCLUDED.parcel_id,
+        ownership_scope = EXCLUDED.ownership_scope,
+        created_from_claim_request_id = EXCLUDED.created_from_claim_request_id,
+        seed_source = EXCLUDED.seed_source,
+        updated_at = NOW()
+    `,
+    [
+      ownershipId,
+      claimRequest.userId,
+      claimRequest.propertyId,
+      claimRequest.propertyInternalId,
+      claimRequest.parcelId,
+      ownershipScope,
+      claimRequest.id,
+    ],
+  );
+
+  return claimRequest;
 }

@@ -16,8 +16,7 @@ export function PortalAgencyPage({
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
         <div className={styles.header}>
-          <div className={styles.eyebrow}>Portal</div>
-          <h1 className={styles.title}>Agency workspace</h1>
+          <h1 className={styles.title}>Agency</h1>
           <div className={styles.body}>
             This area now shows the real Preview-backed agency profile, team roster, and current manager state for the
             agencies {currentUserFirstName} can access.
@@ -180,7 +179,7 @@ export function PortalAgencyPage({
           <div className={styles.empty}>
             You do not have active agency access yet, so there is no agency workspace to show here. Return to{" "}
             <Link className={styles.secondaryAction} href={routes.onboarding.advertise}>
-              Advertise
+              Sell applications
             </Link>{" "}
             or the{" "}
             <Link className={styles.secondaryAction} href={routes.app.portal}>

@@ -111,7 +111,7 @@ async function getAccessibleListingAgencies(userId: string): Promise<PortalListi
   }));
 }
 
-async function listAvailablePropertyOptions(): Promise<PortalListingPropertyOption[]> {
+async function listAvailablePropertyOptions(userId: string): Promise<PortalListingPropertyOption[]> {
   const result = await getPgPool().query<PropertyOptionRow>(
     `
       SELECT
@@ -122,7 +122,9 @@ async function listAvailablePropertyOptions(): Promise<PortalListingPropertyOpti
         p.district,
         p.sector,
         active_listing.id AS active_listing_id
-      FROM property_asset pa
+      FROM property_ownership po
+      JOIN property_asset pa
+        ON pa.id = po.property_internal_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = pa.parcel_id
       LEFT JOIN property_profile pp
@@ -130,11 +132,13 @@ async function listAvailablePropertyOptions(): Promise<PortalListingPropertyOpti
       LEFT JOIN listing active_listing
         ON active_listing.property_asset_id = pa.id
        AND active_listing.status = 'active'
-      WHERE active_listing.id IS NULL
+      WHERE po.user_id = $1
+        AND active_listing.id IS NULL
       ORDER BY
         COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) ASC,
         pa.public_id ASC
     `,
+    [userId],
   );
 
   return result.rows.map((row) => ({
@@ -279,10 +283,27 @@ async function ensureNoOtherActiveListing(propertyAssetId: string, exceptListing
   }
 }
 
+async function ensureCurrentUserOwnsProperty(userId: string, propertyAssetId: string) {
+  const result = await getPgPool().query<{ id: string }>(
+    `
+      SELECT id
+      FROM property_ownership
+      WHERE user_id = $1
+        AND property_internal_id = $2
+      LIMIT 1
+    `,
+    [userId, propertyAssetId],
+  );
+
+  if (!result.rows[0]) {
+    throw new Error("Current user does not own this property yet");
+  }
+}
+
 export async function getPortalListingEditorData(userId: string): Promise<PortalListingEditorData> {
   const [agencies, propertyOptions] = await Promise.all([
     getAccessibleListingAgencies(userId),
-    listAvailablePropertyOptions(),
+    listAvailablePropertyOptions(userId),
   ]);
 
   return {
@@ -350,6 +371,7 @@ export async function createPortalListingInDb(input: {
     throw new Error("Could not resolve property for listing creation");
   }
 
+  await ensureCurrentUserOwnsProperty(input.userId, propertyTarget.property_asset_id);
   await ensureNoOtherActiveListing(propertyTarget.property_asset_id);
 
   const id = `listing-${randomUUID()}`;

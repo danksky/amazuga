@@ -92,7 +92,7 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
                 </Link>
               ) : (
                 <Link className={styles.primaryAction} href={routes.onboarding.advertise}>
-                  Start advertise flow
+                  Open sell options
                 </Link>
               )}
             </div>

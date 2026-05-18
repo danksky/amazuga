@@ -168,6 +168,19 @@ CREATE TABLE IF NOT EXISTS property_claim_request (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS property_ownership (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_user(id),
+  property_id TEXT NOT NULL,
+  property_internal_id TEXT NOT NULL REFERENCES property_asset(id),
+  parcel_id TEXT NOT NULL,
+  ownership_scope TEXT NOT NULL CHECK (ownership_scope IN ('full', 'unit')),
+  created_from_claim_request_id TEXT REFERENCES property_claim_request(id),
+  seed_source TEXT NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS valuation_submission (
   id TEXT PRIMARY KEY,
   property_id TEXT,
@@ -236,6 +249,18 @@ CREATE INDEX IF NOT EXISTS property_claim_request_status_idx
 CREATE UNIQUE INDEX IF NOT EXISTS property_claim_request_one_pending_per_user_property_idx
   ON property_claim_request (user_id, property_internal_id)
   WHERE status = 'pending';
+
+CREATE UNIQUE INDEX IF NOT EXISTS property_ownership_property_internal_id_idx
+  ON property_ownership (property_internal_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS property_ownership_user_property_internal_id_idx
+  ON property_ownership (user_id, property_internal_id);
+
+CREATE INDEX IF NOT EXISTS property_ownership_user_id_idx
+  ON property_ownership (user_id);
+
+CREATE INDEX IF NOT EXISTS property_ownership_parcel_id_idx
+  ON property_ownership (parcel_id);
 
 CREATE INDEX IF NOT EXISTS valuation_submission_property_asset_id_idx
   ON valuation_submission (property_asset_id);

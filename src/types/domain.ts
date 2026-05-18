@@ -7,6 +7,7 @@ export type SubmissionStatus = "pending" | "approved" | "denied";
 export type PropertyListingState = "listed" | "not_listed";
 
 export type AgencyMembershipRole = "agent" | "manager";
+export type PropertyOwnershipScope = "full" | "unit";
 
 export type PropertyKind =
   | "house"
@@ -193,5 +194,15 @@ export interface PropertyClaimRequest {
   propertyInternalId: string;
   parcelId: string;
   status: SubmissionStatus;
+  createdAt: string;
+}
+
+export interface PropertyOwnership {
+  id: string;
+  userId: string;
+  propertyId: string;
+  propertyInternalId: string;
+  parcelId: string;
+  ownershipScope: PropertyOwnershipScope;
   createdAt: string;
 }

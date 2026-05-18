@@ -1,29 +1,15 @@
 import { redirect } from "next/navigation";
 
-import { PortalShell } from "@/features/portal/portal-shell";
-import { submitListingCreateAction } from "@/features/portal/actions";
-import { ListingForm } from "@/features/portal/listing-form";
-import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
-import { getPortalAccessState, getPortalEntryHref } from "@/lib/server/portal-access";
-import { getPortalListingEditorData } from "@/lib/server/portal-listing-editor";
-import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
 
-export default async function PortalListingCreateRoute() {
-  const currentUser = await requireCurrentUser(routes.app.portalListingNew);
-  const access = await getPortalAccessState(currentUser.id);
+export default async function PortalListingCreateRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ property?: string }>;
+}) {
+  const { property } = await searchParams;
 
-  if (!access.hasAgencyPortalAccess || !hasCapability(currentUser.roles, "create_listing")) {
-    redirect(getPortalEntryHref(access));
-  }
-
-  const data = await getPortalListingEditorData(currentUser.id);
-
-  return (
-    <PortalShell access={access}>
-      <ListingForm agencies={data.agencies} mode="create" propertyOptions={data.propertyOptions} submitAction={submitListingCreateAction} />
-    </PortalShell>
-  );
+  redirect(typeof property === "string" ? `${routes.app.portalListingNew}?property=${encodeURIComponent(property)}` : routes.app.portalListingNew);
 }

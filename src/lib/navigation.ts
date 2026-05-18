@@ -3,7 +3,7 @@ import { routes } from "./routes";
 export const publicTopNav = [
   { label: "Buy", href: routes.public.buy },
   { label: "Rent", href: routes.public.rent },
-  { label: "Applications", href: routes.onboarding.advertise },
+  { label: "Sell", href: routes.public.sell },
 ] as const;
 
 export const accountNav = [
@@ -12,6 +12,8 @@ export const accountNav = [
 ] as const;
 
 export const portalNav = [
+  { label: "Applications", href: routes.app.portalApplications },
+  { label: "Properties", href: routes.app.portalProperties },
   { label: "Listings", href: routes.app.portalListings },
   { label: "Agency", href: routes.app.portalAgency },
   { label: "Team", href: routes.app.portalAgents },

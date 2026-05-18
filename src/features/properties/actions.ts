@@ -6,6 +6,7 @@ import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { toggleSavedPropertyForUserInDb } from "@/lib/server/users";
 import { createPropertyClaimRequestInDb } from "@/lib/server/workflows";
+import { revalidatePath } from "next/cache";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -42,12 +43,22 @@ export async function createPropertyClaimRequestAction(formData: FormData) {
   const parcelId = getRequiredString(formData, "parcelId");
   const currentUser = await requireCurrentUser(propertyPath);
 
-  await createPropertyClaimRequestInDb({
+  const result = await createPropertyClaimRequestInDb({
     userId: currentUser.id,
     propertyId,
     propertyInternalId,
     parcelId,
   });
+  revalidatePath(routes.app.portal);
+  revalidatePath(routes.app.portalListings);
+  revalidatePath(routes.app.portalProperties);
+  revalidatePath(propertyPath);
 
-  redirect(`${propertyPath}?claim=1`);
+  const claimState =
+    result.outcome === "already_owned"
+      ? "owned"
+      : result.outcome === "existing_pending"
+        ? "pending"
+        : "created";
+  redirect(`${propertyPath}?claim=${claimState}`);
 }

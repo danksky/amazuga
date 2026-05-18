@@ -16,8 +16,7 @@ export function PortalAgentsPage({
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
         <div className={styles.header}>
-          <div className={styles.eyebrow}>Portal</div>
-          <h1 className={styles.title}>Agent roster</h1>
+          <h1 className={styles.title}>Team</h1>
           <div className={styles.body}>
             This roster view makes it clear which members belong to each accessible agency, what role they hold, and how
             current listing assignments are distributed across the team.

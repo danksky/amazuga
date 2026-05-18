@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
 import { createPropertyClaimRequestAction, toggleSavePropertyAction } from "@/features/properties/actions";
@@ -18,6 +19,8 @@ interface PropertyPageProps {
   valuations: ValuationSubmission[];
   isSaved?: boolean;
   statusMessage?: string;
+  claimState?: "claimable" | "pending" | "owned";
+  canCreateListing?: boolean;
 }
 
 interface FactItem {
@@ -299,7 +302,16 @@ function buildListingStateLabel(listing?: Listing) {
   return listing.marketingType === "rent" ? "Listed for rent" : "Listed for sale";
 }
 
-export function PropertyPage({ property, listing, agency, valuations, isSaved = false, statusMessage }: PropertyPageProps) {
+export function PropertyPage({
+  property,
+  listing,
+  agency,
+  valuations,
+  isSaved = false,
+  statusMessage,
+  claimState = "claimable",
+  canCreateListing = false,
+}: PropertyPageProps) {
   const [showWhatsapp, setShowWhatsapp] = useState(false);
   const latestValuation = valuations[0];
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
@@ -492,7 +504,23 @@ export function PropertyPage({ property, listing, agency, valuations, isSaved = 
                 <div className={styles.nonListedTitle}>{behavior.nonListedTitle}</div>
                 <div className={styles.nonListedBody}>{behavior.nonListedBody}</div>
                 <div className={styles.ctaGroup}>
-                  {property.internalId ? (
+                  {claimState === "owned" ? (
+                    <>
+                      <Link className={styles.actionLinkPrimary} href={routes.app.portalProperties}>
+                        View owned properties
+                      </Link>
+                      {canCreateListing ? (
+                        <Link
+                          className={styles.actionLinkSecondary}
+                          href={`${routes.app.portalListingNew}?property=${encodeURIComponent(propertyRouteId)}`}
+                        >
+                          Create listing
+                        </Link>
+                      ) : null}
+                    </>
+                  ) : claimState === "pending" ? (
+                    <Button disabled>Claim pending review</Button>
+                  ) : property.internalId ? (
                     <form action={createPropertyClaimRequestAction}>
                       <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                       <input name="propertyPath" type="hidden" value={propertyPath} />

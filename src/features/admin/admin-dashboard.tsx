@@ -5,6 +5,7 @@ import { routes } from "@/lib/routes";
 import {
   listAgencyApplicationsFromDb,
   listAgentApplicationsFromDb,
+  listPropertyClaimRequestsFromDb,
   listValuationSubmissionsFromDb,
   listValuatorApplicationsFromDb,
 } from "@/lib/server/workflows";
@@ -12,16 +13,18 @@ import {
 import styles from "./admin.module.css";
 
 export async function AdminDashboard() {
-  const [agencyApplications, agentApplications, valuatorApplications, valuationSubmissions] = await Promise.all([
+  const [agencyApplications, agentApplications, valuatorApplications, valuationSubmissions, propertyClaims] = await Promise.all([
     listAgencyApplicationsFromDb(),
     listAgentApplicationsFromDb(),
     listValuatorApplicationsFromDb(),
     listValuationSubmissionsFromDb(),
+    listPropertyClaimRequestsFromDb(),
   ]);
   const pendingAgencies = agencyApplications.filter((application) => application.status === "pending");
   const pendingAgents = agentApplications.filter((application) => application.status === "pending");
   const pendingValuators = valuatorApplications.filter((application) => application.status === "pending");
   const pendingValuations = valuationSubmissions.filter((submission) => submission.status === "pending");
+  const pendingPropertyClaims = propertyClaims.filter((claim) => claim.status === "pending");
 
   return (
     <div className={`container ${styles.page}`}>
@@ -48,6 +51,9 @@ export async function AdminDashboard() {
           <Link className={styles.navLink} href={routes.admin.valuations}>
             Valuations
           </Link>
+          <Link className={styles.navLink} href={routes.admin.properties}>
+            Properties
+          </Link>
         </div>
 
         <div className={styles.stats}>
@@ -66,6 +72,10 @@ export async function AdminDashboard() {
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Pending valuations</div>
             <div className={styles.statValue}>{pendingValuations.length}</div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>Pending property claims</div>
+            <div className={styles.statValue}>{pendingPropertyClaims.length}</div>
           </div>
         </div>
 
@@ -136,9 +146,26 @@ export async function AdminDashboard() {
                 ))
               ) : (
                 <div className={styles.empty}>No pending valuation submissions.</div>
+            )}
+          </div>
+
+          <div className={styles.panel}>
+            <h2 className={styles.panelTitle}>Property claim queue</h2>
+            <div className={styles.list}>
+              {pendingPropertyClaims.length > 0 ? (
+                pendingPropertyClaims.map((claim) => (
+                  <div className={styles.item} key={claim.id}>
+                    <div className={styles.itemTitle}>{claim.propertyTitle}</div>
+                    <div className={styles.itemMeta}>Claimant {claim.userFullName}</div>
+                    <div className={styles.itemMeta}>Submitted {formatDate(claim.createdAt)}</div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.empty}>No pending property claims.</div>
               )}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

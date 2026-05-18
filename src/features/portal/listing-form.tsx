@@ -62,12 +62,14 @@ export function ListingForm({
   listing,
   mode,
   propertyOptions = [],
+  selectedPropertyRouteId,
   submitAction,
 }: {
   agencies: PortalListingAgencyOption[];
   listing?: PortalEditableListing;
   mode: "create" | "edit";
   propertyOptions?: PortalListingPropertyOption[];
+  selectedPropertyRouteId?: string;
   submitAction: (formData: FormData) => void | Promise<void>;
 }) {
   const selectedAgency =
@@ -77,6 +79,7 @@ export function ListingForm({
   const flattenedAgents = flattenAgentOptions(agentAgencies);
   const selectedProperty =
     propertyOptions.find((property) => property.propertyRouteId === listing?.propertyRouteId) ??
+    propertyOptions.find((property) => property.propertyRouteId === selectedPropertyRouteId) ??
     (listing
       ? {
           propertyAssetId: listing.propertyAssetId,
@@ -87,6 +90,7 @@ export function ListingForm({
           sector: listing.sector,
         }
       : propertyOptions[0]);
+  const showCreateEmptyState = mode === "create" && propertyOptions.length === 0;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -95,19 +99,36 @@ export function ListingForm({
         <h1 className={styles.title}>{mode === "create" ? "Create a listing" : "Edit listing"}</h1>
         <div className={styles.body}>
           {mode === "create"
-            ? "Create a new active listing for one of the current Preview-backed properties and attach it to the right agency and agent."
+            ? "Create a new active listing for one of the properties your account already owns, then attach it to the right agency and agent."
             : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
         </div>
         {listing ? (
           <div className={styles.submeta}>Public listing ID: {getPublicListingId(listing.id)}</div>
         ) : null}
-        {mode === "create" && propertyOptions.length === 0 ? (
-          <div className={styles.notice}>
-            Every currently available Preview-backed property already has an active listing. Deactivate an existing
-            listing or wait until another property becomes available to create a new one.
+        {showCreateEmptyState ? (
+          <div className={styles.emptyState}>
+            <div className={styles.notice}>
+              You do not have any owned properties that are currently off-market, so there is nothing new to list right
+              now.
+            </div>
+            <div className={styles.emptyBody}>
+              All of your currently owned properties already have active listings. To create another listing, first
+              claim a different property or deactivate an existing listing so that property becomes listable again.
+            </div>
+            <div className={styles.actions}>
+              <Link href={routes.app.portalProperties}>
+                <Button type="button">View owned properties</Button>
+              </Link>
+              <Link href={routes.app.portalListings}>
+                <Button type="button" variant="secondary">
+                  Back to listings
+                </Button>
+              </Link>
+            </div>
           </div>
         ) : null}
 
+        {showCreateEmptyState ? null : (
         <form action={submitAction} className={styles.form}>
           {listing ? <input name="listingId" type="hidden" value={listing.id} /> : null}
 
@@ -183,7 +204,7 @@ export function ListingForm({
                 ))}
               </select>
               <div className={styles.hint}>
-                This first create flow only offers properties that do not currently have an active listing.
+                This flow only offers properties you own and that do not currently have an active listing.
               </div>
             </div>
           ) : null}
@@ -263,7 +284,7 @@ export function ListingForm({
           </div>
 
           <div className={styles.actions}>
-            <Button disabled={mode === "create" && propertyOptions.length === 0} type="submit">
+            <Button type="submit">
               {mode === "create" ? "Create listing" : "Save changes"}
             </Button>
             <Link href={routes.app.portalListings}>
@@ -273,6 +294,7 @@ export function ListingForm({
             </Link>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

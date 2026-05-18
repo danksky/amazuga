@@ -66,7 +66,8 @@
 }
 
 .actions form,
-.mobileMenuActions form {
+.mobileMenuActions form,
+.accountFooter form {
   margin: 0;
 }
 
@@ -96,8 +97,109 @@
   font-size: 0.95rem;
 }
 
+.accountMenuWrap {
+  position: relative;
+}
+
+.accountMenuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.accountMenuIcon {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.accountDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 12px;
+  min-width: 220px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 97%, white);
+  box-shadow: var(--shadow);
+}
+
+.accountHeading {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.accountIdentity {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.accountLinkList {
+  display: grid;
+  gap: 4px;
+}
+
+.dropdownLink {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--foreground-muted);
+  font-weight: 600;
+}
+
+.dropdownLink:hover {
+  background: var(--surface-muted);
+  color: var(--foreground);
+}
+
+.accountFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.accountFooterLabel {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+}
+
+.signOutLink {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .mobileOverlay {
   display: none;
+}
+
+.mobileSignOutRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 900px) {

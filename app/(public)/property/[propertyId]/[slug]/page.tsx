@@ -4,6 +4,8 @@ import { PropertyPage } from "@/components/property/property-page";
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getPublicPropertyPageData } from "@/lib/server/public-listings";
+import { getUserPropertyRelationship } from "@/lib/server/workflows";
+import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,19 +49,35 @@ export default async function PropertySlugDetailsPage({ params, searchParams }: 
   }
 
   const propertyRouteId = propertyPageData.property.id;
+  const propertyRelationship =
+    currentUser && propertyPageData.property.internalId
+      ? await getUserPropertyRelationship(currentUser.id, propertyPageData.property.internalId)
+      : undefined;
   const isSaved = Boolean(currentUser?.savedPropertyIds.includes(propertyRouteId));
   const statusMessage =
     saved === "1"
       ? "Saved to your account."
       : saved === "0"
         ? "Removed from your saved properties."
-        : claim === "1"
-          ? "Claim request received. We can use this as the starting point for the future verification flow."
+        : claim === "created"
+          ? "Claim request received and sent for review."
+          : claim === "pending"
+            ? "Your claim request is already pending review."
+            : claim === "owned"
+              ? "This property is already owned by your account in the portal."
           : undefined;
 
   return (
     <PropertyPage
       agency={propertyPageData.agency}
+      canCreateListing={Boolean(currentUser && hasCapability(currentUser.roles, "create_listing"))}
+      claimState={
+        propertyRelationship?.ownership
+          ? "owned"
+          : propertyRelationship?.latestClaimRequest?.status === "pending"
+            ? "pending"
+            : "claimable"
+      }
       isSaved={isSaved}
       listing={propertyPageData.listing}
       property={propertyPageData.property}

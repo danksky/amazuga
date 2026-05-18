@@ -10,6 +10,8 @@ import {
   listAgenciesFromDb,
   listAgencyApplicationsFromDb,
   listAgentApplicationsFromDb,
+  listPropertyClaimRequestsForUser,
+  listPropertyOwnershipsForUser,
   listValuatorApplicationsFromDb,
 } from "./workflows";
 
@@ -20,9 +22,12 @@ export interface PortalAccessState {
   hasManagedAgencyAccess: boolean;
   hasAgencyMembership: boolean;
   hasAgencyPortalAccess: boolean;
+  hasPropertyWorkspaceAccess: boolean;
   hasValuatorPortalAccess: boolean;
   hasAnyPortalAccess: boolean;
   hasPendingManagerActivation: boolean;
+  hasApplicationAttention: boolean;
+  hasProfessionalExpansionOptions: boolean;
   primaryPortalHref: string | null;
   primaryPortalLabel: string | null;
   shouldShowApplicationsNav: boolean;
@@ -45,11 +50,13 @@ function getLatestUserApplicationStatus<
 }
 
 export const getPortalAccessState = cache(async (userId: string): Promise<PortalAccessState> => {
-  const [agencies, agencyApplications, agentApplications, valuatorApplications] = await Promise.all([
+  const [agencies, agencyApplications, agentApplications, valuatorApplications, propertyOwnerships, propertyClaims] = await Promise.all([
     listAgenciesFromDb(),
     listAgencyApplicationsFromDb(),
     listAgentApplicationsFromDb(),
     listValuatorApplicationsFromDb(),
+    listPropertyOwnershipsForUser(userId),
+    listPropertyClaimRequestsForUser(userId),
   ]);
 
   const hasManagedAgencyAccess = agencies.some((agency) => agency.managerUserId === userId);
@@ -63,11 +70,16 @@ export const getPortalAccessState = cache(async (userId: string): Promise<Portal
   const valuatorApplicationStatus = getLatestUserApplicationStatus(valuatorApplications, userId);
 
   const hasAgencyPortalAccess = hasManagedAgencyAccess || hasAgencyMembership;
+  const hasPropertyWorkspaceAccess =
+    propertyOwnerships.length > 0 || propertyClaims.some((claim) => claim.status === "pending" || claim.status === "approved");
   const hasValuatorPortalAccess = valuatorApplicationStatus === "approved";
-  const hasAnyPortalAccess = hasAgencyPortalAccess || hasValuatorPortalAccess;
+  const hasAnyPortalAccess = hasAgencyPortalAccess || hasValuatorPortalAccess || hasPropertyWorkspaceAccess;
   const hasApplicationAttention = [agencyApplicationStatus, agentApplicationStatus, valuatorApplicationStatus].some(
     (status) => status === "pending" || status === "denied",
   );
+  const hasProfessionalExpansionOptions = !hasAgencyPortalAccess || !hasValuatorPortalAccess;
+  const shouldShowApplicationsNav =
+    !hasAnyPortalAccess || hasPendingManagerActivation || hasApplicationAttention || hasProfessionalExpansionOptions;
 
   return {
     agencyApplicationStatus,
@@ -76,25 +88,52 @@ export const getPortalAccessState = cache(async (userId: string): Promise<Portal
     hasManagedAgencyAccess,
     hasAgencyMembership,
     hasAgencyPortalAccess,
+    hasPropertyWorkspaceAccess,
     hasValuatorPortalAccess,
     hasAnyPortalAccess,
     hasPendingManagerActivation,
+    hasApplicationAttention,
+    hasProfessionalExpansionOptions,
     primaryPortalHref: hasAgencyPortalAccess
       ? routes.app.portalListings
+      : hasPropertyWorkspaceAccess
+        ? routes.app.portalProperties
       : hasValuatorPortalAccess
         ? routes.app.portalValuations
         : null,
-    primaryPortalLabel: hasAgencyPortalAccess ? "Listings" : hasValuatorPortalAccess ? "Valuations" : null,
-    shouldShowApplicationsNav: !hasAnyPortalAccess || hasPendingManagerActivation || hasApplicationAttention,
+    primaryPortalLabel: hasAgencyPortalAccess
+      ? "Listings"
+      : hasPropertyWorkspaceAccess
+        ? "Properties"
+      : hasValuatorPortalAccess
+          ? "Valuations"
+          : null,
+    shouldShowApplicationsNav,
   };
 });
 
 export function getPortalEntryHref(access: PortalAccessState) {
-  return access.primaryPortalHref ?? routes.onboarding.advertise;
+  if (access.primaryPortalHref) {
+    return access.primaryPortalHref;
+  }
+
+  if (access.hasPendingManagerActivation || access.hasApplicationAttention) {
+    return routes.app.portalApplications;
+  }
+
+  return routes.public.sell;
 }
 
 export function getPortalNavItems(access: PortalAccessState) {
   const allowedHrefs = new Set<string>();
+
+  if (access.shouldShowApplicationsNav) {
+    allowedHrefs.add(routes.app.portalApplications);
+  }
+
+  if (access.hasPropertyWorkspaceAccess) {
+    allowedHrefs.add(routes.app.portalProperties);
+  }
 
   if (access.hasAgencyPortalAccess) {
     allowedHrefs.add(routes.app.portalListings);

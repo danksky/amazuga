@@ -156,33 +156,35 @@ function buildSubmission(row: PortalValuationRow): PortalValuationSubmissionSumm
 export async function getPortalValuationsWorkspaceData(userId: string): Promise<PortalValuationsWorkspaceData> {
   const result = await getPgPool().query<PortalValuationRow>(
     `
-      SELECT
-        vs.id,
-        vs.property_id,
-        vs.submitted_by_user_id,
-        vs.is_anonymous,
-        vs.effective_date::TEXT,
-        vs.estimated_value_rwf,
-        vs.currency,
-        vs.status,
-        vs.created_at::TEXT,
-        vs.updated_at::TEXT,
-        prop.parcel_id,
-        prop.parcel_public_id,
-        prop.display_id,
-        prop.district,
-        prop.sector,
-        prop.property_public_id,
-        prop.property_kind,
-        prop.property_title,
-        prop.profile_title,
-        listing.id AS listing_id,
-        listing.marketing_type,
-        listing.asking_price_rwf,
-        listing.currency AS listing_currency
-      FROM valuation_submission vs
-      LEFT JOIN LATERAL (
+      WITH user_submissions AS (
         SELECT
+          vs.id,
+          vs.property_id,
+          vs.property_asset_id,
+          vs.submitted_by_user_id,
+          vs.is_anonymous,
+          vs.effective_date,
+          vs.estimated_value_rwf,
+          vs.currency,
+          vs.status,
+          vs.created_at,
+          vs.updated_at
+        FROM valuation_submission vs
+        WHERE vs.submitted_by_user_id = $1
+      )
+      SELECT *
+      FROM (
+        SELECT
+          vs.id,
+          vs.property_id,
+          vs.submitted_by_user_id,
+          vs.is_anonymous,
+          vs.effective_date::TEXT,
+          vs.estimated_value_rwf,
+          vs.currency,
+          vs.status,
+          vs.created_at::TEXT,
+          vs.updated_at::TEXT,
           p.parcel_id,
           p.public_id AS parcel_public_id,
           p.display_id,
@@ -191,47 +193,87 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           pa.public_id AS property_public_id,
           pa.asset_type AS property_kind,
           pa.title AS property_title,
-          pp.title AS profile_title
-        FROM parcel_app_ready_seed_preview p
+          pp.title AS profile_title,
+          listing.id AS listing_id,
+          listing.marketing_type,
+          listing.asking_price_rwf,
+          listing.currency AS listing_currency
+        FROM user_submissions vs
         LEFT JOIN property_asset pa
-          ON pa.parcel_id = p.parcel_id
-         AND (
-           pa.id = vs.property_asset_id
-           OR pa.public_id = vs.property_id
-           OR (vs.property_asset_id IS NULL AND pa.is_primary_for_parcel)
-         )
+          ON pa.id = vs.property_asset_id
+        LEFT JOIN parcel_app_ready_seed_preview p
+          ON p.parcel_id = pa.parcel_id
         LEFT JOIN property_profile pp
           ON pp.parcel_id = p.parcel_id
-        WHERE
-          (vs.property_asset_id IS NOT NULL AND pa.id = vs.property_asset_id)
-          OR p.public_id = vs.property_id
-        ORDER BY
-          CASE
-            WHEN vs.property_asset_id IS NOT NULL AND pa.id = vs.property_asset_id THEN 0
-            WHEN pa.public_id = vs.property_id THEN 1
-            WHEN pa.is_primary_for_parcel THEN 2
-            ELSE 3
-          END,
-          pa.created_at ASC NULLS LAST,
-          p.parcel_id ASC
-        LIMIT 1
-      ) prop
-        ON TRUE
-      LEFT JOIN LATERAL (
+        LEFT JOIN LATERAL (
+          SELECT
+            l.id,
+            l.marketing_type,
+            l.asking_price_rwf,
+            l.currency
+          FROM listing l
+          WHERE l.parcel_id = p.parcel_id
+            AND l.status = 'active'
+          ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
+          LIMIT 1
+        ) listing
+          ON TRUE
+        WHERE vs.property_asset_id IS NOT NULL
+
+        UNION ALL
+
         SELECT
-          l.id,
-          l.marketing_type,
-          l.asking_price_rwf,
-          l.currency
-        FROM listing l
-        WHERE l.parcel_id = prop.parcel_id
-          AND l.status = 'active'
-        ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
-        LIMIT 1
-      ) listing
-        ON TRUE
-      WHERE vs.submitted_by_user_id = $1
-      ORDER BY vs.effective_date DESC, vs.created_at DESC, vs.id DESC
+          vs.id,
+          vs.property_id,
+          vs.submitted_by_user_id,
+          vs.is_anonymous,
+          vs.effective_date::TEXT,
+          vs.estimated_value_rwf,
+          vs.currency,
+          vs.status,
+          vs.created_at::TEXT,
+          vs.updated_at::TEXT,
+          COALESCE(parcel_from_asset.parcel_id, parcel_direct.parcel_id) AS parcel_id,
+          COALESCE(parcel_from_asset.public_id, parcel_direct.public_id) AS parcel_public_id,
+          COALESCE(parcel_from_asset.display_id, parcel_direct.display_id) AS display_id,
+          COALESCE(parcel_from_asset.district, parcel_direct.district) AS district,
+          COALESCE(parcel_from_asset.sector, parcel_direct.sector) AS sector,
+          property_by_public_id.public_id AS property_public_id,
+          property_by_public_id.asset_type AS property_kind,
+          property_by_public_id.title AS property_title,
+          COALESCE(profile_from_asset.title, profile_direct.title) AS profile_title,
+          listing.id AS listing_id,
+          listing.marketing_type,
+          listing.asking_price_rwf,
+          listing.currency AS listing_currency
+        FROM user_submissions vs
+        LEFT JOIN property_asset property_by_public_id
+          ON property_by_public_id.public_id = vs.property_id
+        LEFT JOIN parcel_app_ready_seed_preview parcel_from_asset
+          ON parcel_from_asset.parcel_id = property_by_public_id.parcel_id
+        LEFT JOIN property_profile profile_from_asset
+          ON profile_from_asset.parcel_id = parcel_from_asset.parcel_id
+        LEFT JOIN parcel_app_ready_seed_preview parcel_direct
+          ON parcel_direct.public_id = vs.property_id
+         AND property_by_public_id.id IS NULL
+        LEFT JOIN property_profile profile_direct
+          ON profile_direct.parcel_id = parcel_direct.parcel_id
+        LEFT JOIN LATERAL (
+          SELECT
+            l.id,
+            l.marketing_type,
+            l.asking_price_rwf,
+            l.currency
+          FROM listing l
+          WHERE l.parcel_id = COALESCE(parcel_from_asset.parcel_id, parcel_direct.parcel_id)
+            AND l.status = 'active'
+          ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
+          LIMIT 1
+        ) listing
+          ON TRUE
+        WHERE vs.property_asset_id IS NULL
+      ) resolved
+      ORDER BY resolved.effective_date DESC, resolved.created_at DESC, resolved.id DESC
     `,
     [userId],
   );
