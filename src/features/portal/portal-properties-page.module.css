@@ -1,11 +1,10 @@
 .page {
-  padding-top: 32px;
-  padding-bottom: 56px;
+  padding: 32px 0 48px;
 }
 
 .stack {
   display: grid;
-  gap: 24px;
+  gap: 20px;
 }
 
 .section,
@@ -29,16 +28,14 @@
 
 .title {
   margin: 0;
-  font-size: clamp(2.2rem, 5vw, 4rem);
-  line-height: 0.95;
-  letter-spacing: -0.06em;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
 }
 
 .body {
-  margin-top: 18px;
-  max-width: 900px;
+  max-width: 760px;
   color: var(--foreground-muted);
-  font-size: 1.15rem;
   line-height: 1.6;
 }
 
