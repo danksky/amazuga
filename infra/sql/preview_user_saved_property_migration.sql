@@ -65,8 +65,8 @@ WITH persona_source AS (
       ),
       (
         'user-3',
-        'New agent applicant',
-        'Has no approvals yet and should start the advertise flow from scratch.',
+        'Prospective agent',
+        'Has not applied yet and should start the sell flow from scratch.',
         0
       ),
       (

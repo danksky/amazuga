@@ -55,7 +55,7 @@ INSERT INTO app_user (
 VALUES
   ('user-1', 'daniel.kawalsky@gmail.com', 'Daniel Kawalsky', ARRAY['user', 'admin']::TEXT[], 'Admin', 'Moderates applications and reviews platform activity.', 0, 'active', 'mock_import_listing_surface_v1'),
   ('user-2', 'buyer@amazuga.test', 'Aline Uwimana', ARRAY['user']::TEXT[], 'Consumer', 'Typical buyer browsing homes and saving properties.', 3, 'active', 'mock_import_listing_surface_v1'),
-  ('user-3', 'new.agent@amazuga.test', 'Eric Habimana', ARRAY['user']::TEXT[], 'New agent applicant', 'Has no approvals yet and should start the advertise flow from scratch.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-3', 'new.agent@amazuga.test', 'Eric Habimana', ARRAY['user']::TEXT[], 'Prospective agent', 'Has not applied yet and should start the sell flow from scratch.', 0, 'active', 'mock_import_listing_surface_v1'),
   ('user-4', 'pending.founder@amazuga.test', 'Chantal Uwase', ARRAY['user']::TEXT[], 'Pending agency founder', 'Submitted an agency registration that is still under review.', 0, 'active', 'mock_import_listing_surface_v1'),
   ('user-5', 'manager@amazuga.test', 'Alice Mukamana', ARRAY['user', 'agent', 'agency_manager']::TEXT[], 'Approved agency manager', 'Approved as both agent and manager, with an active agency.', 0, 'active', 'mock_import_listing_surface_v1'),
   ('user-6', 'pending.valuator@amazuga.test', 'Claude Mukiza', ARRAY['user']::TEXT[], 'Pending valuator', 'Submitted valuator recognition and is waiting for review.', 0, 'active', 'mock_import_listing_surface_v1'),

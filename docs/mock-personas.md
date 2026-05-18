@@ -15,8 +15,8 @@ The JSON files in `data/` are now reference material only for these personas and
   - Standard user with saved properties for testing the normal browsing journey
 
 - `new.agent@amazuga.test`
-  - New agent applicant
-  - No approvals or existing applications; should start from the shared applications hub
+  - Prospective agent
+  - No approvals or existing applications; should start from the public `/sell` entry
 
 - `pending.founder@amazuga.test`
   - Pending agency founder
@@ -62,7 +62,7 @@ The JSON files in `data/` are now reference material only for these personas and
 
 ## Current flow notes
 
-- Business and professional onboarding now runs through the shared `/advertise` applications hub rather than separate `Advertise` and `Assess` entry experiences.
+- Business and professional onboarding now runs through `/sell`, which branches into the sell portal and professional application flows.
 - Approved agency users should land in the portal listings workspace.
 - Approved valuators should land in the valuations workspace and can submit new valuation records for admin review.
 - Admin valuation approval affects both the valuator portal history and the public property page valuation history.

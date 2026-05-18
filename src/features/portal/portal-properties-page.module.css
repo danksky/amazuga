@@ -8,7 +8,6 @@
   gap: 24px;
 }
 
-.header,
 .section,
 .statCard,
 .card,
@@ -18,10 +17,14 @@
   background: var(--surface);
 }
 
-.header,
 .section,
 .empty {
   padding: 28px;
+}
+
+.header {
+  display: grid;
+  gap: 10px;
 }
 
 .title {

@@ -8,24 +8,8 @@
 }
 
 .hero {
-  position: relative;
-  overflow: hidden;
   display: grid;
-  gap: 12px;
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.16), transparent 36%),
-    linear-gradient(135deg, color-mix(in srgb, var(--surface) 94%, white), color-mix(in srgb, var(--surface-alt) 74%, white));
-  box-shadow: var(--shadow);
-}
-
-.eyebrow {
-  color: var(--foreground-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.8rem;
+  gap: 10px;
 }
 
 .title {
