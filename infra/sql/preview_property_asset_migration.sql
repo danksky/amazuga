@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS property_asset (
   public_id TEXT UNIQUE,
   display_code TEXT NOT NULL UNIQUE,
   unit_label TEXT,
-  title TEXT NOT NULL,
+  title TEXT,
   description TEXT,
   is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
   seed_source TEXT NOT NULL DEFAULT 'manual',
@@ -57,7 +57,7 @@ WITH parcel_asset_source AS (
   SELECT DISTINCT
     source.parcel_id,
     p.public_id,
-    COALESCE(pp.title, p.display_id, CONCAT('Parcel ', COALESCE(p.public_id, source.parcel_id))) AS title,
+    pp.title AS title,
     pp.description,
     CASE
       WHEN LOWER(COALESCE(pp.property_type, '')) = 'house' THEN 'house'

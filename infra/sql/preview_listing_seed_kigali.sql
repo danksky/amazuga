@@ -124,14 +124,14 @@ WITH listing_templates AS (
   SELECT *
   FROM (
     VALUES
-      (1, 'sale', 'House', 4, 3.0::NUMERIC, 245::NUMERIC, 2019, 185000000::BIGINT, 'Preview Residence', 'Preview hillside residence with a practical family layout and easy road access.', 'Modern Kigali home ready for a preview sale flow.', 'usr_preview_manager'),
-      (2, 'rent', 'Apartment', 2, 2.0::NUMERIC, 92::NUMERIC, 2021, 950000::BIGINT, 'Preview Rental Apartment', 'Preview rental apartment with a bright living area and easy access to services.', 'Simple preview rental listing for end-to-end browse and detail validation.', 'usr_preview_agent'),
-      (3, 'sale', 'House', 3, 2.0::NUMERIC, 198::NUMERIC, 2017, 132000000::BIGINT, 'Preview Garden House', 'Preview house with enclosed outdoor space and balanced day-to-day circulation.', 'Preview family listing with placeholder imagery and parcel-backed identity.', 'usr_preview_manager'),
-      (4, 'sale', 'House', 5, 4.0::NUMERIC, 372::NUMERIC, 2020, 248000000::BIGINT, 'Preview Family Residence', 'Preview larger home arranged for flexible household use and strong frontage.', 'Higher-end preview listing for testing a more premium sale card.', 'usr_preview_manager'),
-      (5, 'sale', 'House', 3, 2.0::NUMERIC, 154::NUMERIC, 2016, 99000000::BIGINT, 'Preview Starter Home', 'Preview detached home with efficient planning and a manageable parcel footprint.', 'Mid-market preview sale listing for browse density and route validation.', 'usr_preview_agent'),
-      (6, 'sale', 'House', 4, 3.0::NUMERIC, 232::NUMERIC, 2018, 158000000::BIGINT, 'Preview Corner House', 'Preview home with stronger street presence and flexible everyday use.', 'Additional sale inventory to exercise map, card, and property states.', 'usr_preview_agent'),
-      (7, 'rent', 'Apartment', 2, 2.0::NUMERIC, 94::NUMERIC, 2022, 1200000::BIGINT, 'Preview Balcony Apartment', 'Preview apartment with a practical kitchen, balcony edge, and good light.', 'Second rental listing for preview variety without external media sourcing.', 'usr_preview_agent'),
-      (8, 'rent', 'Apartment', 3, 2.0::NUMERIC, 118::NUMERIC, 2020, 1500000::BIGINT, 'Preview Flexible Rental', 'Preview rental layout with space for a guest room, office, or shared use.', 'Third rental listing to validate rent-specific browse behavior.', 'usr_preview_agent')
+      (1, 'sale', 'House', 4, 3.0::NUMERIC, 245::NUMERIC, 2019, 185000000::BIGINT, 'Preview hillside residence with a practical family layout and easy road access.', 'Modern Kigali home ready for a preview sale flow.', 'usr_preview_manager'),
+      (2, 'rent', 'Apartment', 2, 2.0::NUMERIC, 92::NUMERIC, 2021, 950000::BIGINT, 'Preview rental apartment with a bright living area and easy access to services.', 'Simple preview rental listing for end-to-end browse and detail validation.', 'usr_preview_agent'),
+      (3, 'sale', 'House', 3, 2.0::NUMERIC, 198::NUMERIC, 2017, 132000000::BIGINT, 'Preview house with enclosed outdoor space and balanced day-to-day circulation.', 'Preview family listing with placeholder imagery and parcel-backed identity.', 'usr_preview_manager'),
+      (4, 'sale', 'House', 5, 4.0::NUMERIC, 372::NUMERIC, 2020, 248000000::BIGINT, 'Preview larger home arranged for flexible household use and strong frontage.', 'Higher-end preview listing for testing a more premium sale card.', 'usr_preview_manager'),
+      (5, 'sale', 'House', 3, 2.0::NUMERIC, 154::NUMERIC, 2016, 99000000::BIGINT, 'Preview detached home with efficient planning and a manageable parcel footprint.', 'Mid-market preview sale listing for browse density and route validation.', 'usr_preview_agent'),
+      (6, 'sale', 'House', 4, 3.0::NUMERIC, 232::NUMERIC, 2018, 158000000::BIGINT, 'Preview home with stronger street presence and flexible everyday use.', 'Additional sale inventory to exercise map, card, and property states.', 'usr_preview_agent'),
+      (7, 'rent', 'Apartment', 2, 2.0::NUMERIC, 94::NUMERIC, 2022, 1200000::BIGINT, 'Preview apartment with a practical kitchen, balcony edge, and good light.', 'Second rental listing for preview variety without external media sourcing.', 'usr_preview_agent'),
+      (8, 'rent', 'Apartment', 3, 2.0::NUMERIC, 118::NUMERIC, 2020, 1500000::BIGINT, 'Preview rental layout with space for a guest room, office, or shared use.', 'Third rental listing to validate rent-specific browse behavior.', 'usr_preview_agent')
   ) AS t(
     seq,
     marketing_type,
@@ -141,7 +141,6 @@ WITH listing_templates AS (
     interior_area_sqm,
     year_built,
     asking_price_rwf,
-    title_suffix,
     property_description,
     listing_description,
     agent_user_id
@@ -193,7 +192,6 @@ selected_seed_rows AS (
     lt.interior_area_sqm,
     lt.year_built,
     lt.asking_price_rwf,
-    lt.title_suffix,
     lt.property_description,
     lt.listing_description,
     lt.agent_user_id,
@@ -236,7 +234,6 @@ upsert_assets AS (
     asset_type,
     public_id,
     display_code,
-    title,
     description,
     is_primary_for_parcel,
     seed_source
@@ -255,7 +252,6 @@ upsert_assets AS (
     END,
     UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)),
-    CONCAT(ssr.sector, ' ', ssr.title_suffix),
     ssr.property_description,
     TRUE,
     'preview_kigali_seed_v1'
@@ -264,7 +260,6 @@ upsert_assets AS (
   SET
     asset_type = EXCLUDED.asset_type,
     public_id = EXCLUDED.public_id,
-    title = EXCLUDED.title,
     description = EXCLUDED.description,
     is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
     seed_source = EXCLUDED.seed_source,
@@ -275,7 +270,6 @@ upsert_profiles AS (
   INSERT INTO property_profile (
     parcel_id,
     created_by_user_id,
-    title,
     description,
     property_type,
     bedrooms,
@@ -287,7 +281,6 @@ upsert_profiles AS (
   SELECT
     ssr.parcel_id,
     ssr.agent_user_id,
-    CONCAT(ssr.sector, ' ', ssr.title_suffix),
     ssr.property_description,
     ssr.property_type,
     ssr.bedrooms,
@@ -299,7 +292,6 @@ upsert_profiles AS (
   ON CONFLICT (parcel_id) DO UPDATE
   SET
     created_by_user_id = EXCLUDED.created_by_user_id,
-    title = EXCLUDED.title,
     description = EXCLUDED.description,
     property_type = EXCLUDED.property_type,
     bedrooms = EXCLUDED.bedrooms,
@@ -336,7 +328,7 @@ upsert_listings AS (
     ssr.marketing_type,
     ssr.asking_price_rwf,
     'RWF',
-    CONCAT(ssr.sector, ' ', ssr.title_suffix),
+    ssr.listing_description,
     ssr.listing_description,
     'preview_kigali_seed_v1',
     NOW()

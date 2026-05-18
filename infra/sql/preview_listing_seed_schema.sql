@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS agency_membership (
 CREATE TABLE IF NOT EXISTS property_profile (
   parcel_id TEXT PRIMARY KEY,
   created_by_user_id TEXT REFERENCES app_user(id),
-  title TEXT NOT NULL,
+  title TEXT,
   description TEXT,
   property_type TEXT NOT NULL,
   bedrooms INTEGER,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS property_asset (
   public_id TEXT NOT NULL UNIQUE,
   display_code TEXT NOT NULL UNIQUE,
   unit_label TEXT,
-  title TEXT NOT NULL,
+  title TEXT,
   description TEXT,
   is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
   seed_source TEXT NOT NULL DEFAULT 'manual',
