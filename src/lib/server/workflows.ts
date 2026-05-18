@@ -535,17 +535,15 @@ async function resolveValuationTarget(routeId: string) {
         SELECT p.parcel_id
         FROM parcel_app_ready_seed_preview p
         WHERE p.public_id = $1
-           OR p.parcel_id = $1
         UNION
         SELECT pa.parcel_id
         FROM property_asset pa
         WHERE pa.public_id = $1
-           OR pa.id = $1
         LIMIT 1
       )
       SELECT
         p.parcel_id,
-        COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_id,
+        COALESCE(pa.public_id, p.public_id) AS property_id,
         pa.id AS property_asset_id
       FROM target_parcel tp
       JOIN parcel_app_ready_seed_preview p
@@ -560,7 +558,6 @@ async function resolveValuationTarget(routeId: string) {
         ORDER BY
           CASE
             WHEN pa_inner.public_id = $1 THEN 0
-            WHEN pa_inner.id = $1 THEN 0
             WHEN l.id IS NOT NULL THEN 1
             WHEN pa_inner.is_primary_for_parcel THEN 2
             ELSE 3
@@ -897,13 +894,6 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
       agencyId,
       userId: application.createdByUserId,
       role: "manager",
-      seedSource: "manual_workflow_v1",
-    });
-    await ensureAgencyMembership({
-      id: `${agencyId}-agent-${application.createdByUserId}`,
-      agencyId,
-      userId: application.createdByUserId,
-      role: "agent",
       seedSource: "manual_workflow_v1",
     });
     await addRoleToUser(application.createdByUserId, "agency_manager");

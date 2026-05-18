@@ -87,9 +87,12 @@ async function getAgencyMembers(agencyIds: string[]) {
         am.user_id,
         u.full_name,
         u.email,
-        am.role AS membership_role,
+        CASE
+          WHEN BOOL_OR(am.role = 'manager') THEN 'manager'::TEXT
+          ELSE 'agent'::TEXT
+        END AS membership_role,
         u.roles AS app_roles,
-        COUNT(l.id)::INT AS listing_count
+        COUNT(DISTINCT l.id)::INT AS listing_count
       FROM agency_membership am
       JOIN app_user u
         ON u.id = am.user_id
@@ -103,12 +106,11 @@ async function getAgencyMembers(agencyIds: string[]) {
         am.user_id,
         u.full_name,
         u.email,
-        am.role,
         u.roles
       ORDER BY
         am.agency_id ASC,
-        CASE am.role
-          WHEN 'manager' THEN 0
+        CASE
+          WHEN BOOL_OR(am.role = 'manager') THEN 0
           ELSE 1
         END,
         u.full_name ASC

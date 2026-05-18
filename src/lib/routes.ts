@@ -1,9 +1,23 @@
+import { buildPublicPropertyPath } from "./property-slug";
+import type { PropertyKind } from "@/types/domain";
+
 export const routes = {
   public: {
     home: "/",
     buy: "/buy",
     rent: "/rent",
-    property: (propertyId: string) => `/property/${propertyId}`,
+    property: (
+      propertyId: string,
+      propertyContext?:
+        | string
+        | {
+            propertyTitle?: string | null;
+            parcelDisplayId?: string | null;
+            propertyKind?: PropertyKind | null;
+            unitLabel?: string | null;
+          }
+        | null,
+    ) => buildPublicPropertyPath(propertyId, propertyContext),
     area: (slug: string) => `/area/${slug}`,
     agencies: "/agencies",
     agency: (agencySlug: string) => `/agencies/${agencySlug}`,

@@ -125,11 +125,11 @@ function normalizePropertyTitle(row: PortalValuationRow) {
     return row.display_id.trim();
   }
 
-  return row.property_public_id || row.parcel_public_id || row.parcel_id || row.property_id || "Preview property";
+  return row.property_public_id || row.parcel_public_id || row.property_id || "Preview property";
 }
 
 function normalizePropertyId(row: PortalValuationRow) {
-  return row.property_public_id || row.parcel_public_id || row.parcel_id || row.property_id || row.id;
+  return row.property_public_id || row.parcel_public_id || row.property_id || row.id;
 }
 
 function buildSubmission(row: PortalValuationRow): PortalValuationSubmissionSummary {
@@ -205,7 +205,6 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
         WHERE
           (vs.property_asset_id IS NOT NULL AND pa.id = vs.property_asset_id)
           OR p.public_id = vs.property_id
-          OR p.parcel_id = vs.property_id
         ORDER BY
           CASE
             WHEN vs.property_asset_id IS NOT NULL AND pa.id = vs.property_asset_id THEN 0
@@ -279,7 +278,7 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
   const result = await getPgPool().query<PortalValuationPropertyOptionRow>(
     `
       SELECT
-        COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id, p.parcel_id) AS route_id,
+        COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id) AS route_id,
         COALESCE(active_listing.property_title, primary_asset.property_title, profile.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
         COALESCE(active_listing.property_kind, primary_asset.property_kind) AS property_kind,
         p.district,
@@ -332,13 +331,12 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
             (active_listing.property_asset_public_id IS NOT NULL AND vs.property_id = active_listing.property_asset_public_id)
             OR (primary_asset.public_id IS NOT NULL AND vs.property_id = primary_asset.public_id)
             OR vs.property_id = p.public_id
-            OR vs.property_id = p.parcel_id
           )
         ORDER BY vs.effective_date DESC, vs.created_at DESC, vs.id DESC
         LIMIT 1
       ) latest_approved
         ON TRUE
-      WHERE COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id, p.parcel_id) IS NOT NULL
+      WHERE COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id) IS NOT NULL
       ORDER BY
         CASE WHEN active_listing.property_asset_public_id IS NOT NULL THEN 0 ELSE 1 END,
         property_title ASC,

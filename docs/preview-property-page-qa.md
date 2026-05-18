@@ -4,7 +4,8 @@ Use this note as a quick click-through list when reviewing property-page behavio
 
 Route format:
 
-- `/property/<property_id>`
+- lookup: `/property/<public_id>`
+- canonical: `/property/<public_id>/<slug>`
 
 ## Residential
 
@@ -36,9 +37,26 @@ Route format:
 - Listed commercial unit
   - `E73FAFDECE` - Ndera Preview Retail Frontage
 
+## Multi-Unit Parcel Examples
+
+- Apartment building parent asset
+  - `5E97CD1028` - Gahanga Court Apartments
+- Listed apartment child unit
+  - `3C39927443` - Kicukiro · Kabidandi · 313 Unit A-201
+- Unlisted apartment child unit
+  - `AEE8D507EA` - Kicukiro · Kabidandi · 313 Unit A-302
+- Commercial building parent asset
+  - `DEBC01AED5` - Kacyiru Market Arcade
+- Listed commercial child unit
+  - `E6A4CB9300` - Gasabo · Uruhongore · 1993 Unit G-04
+- Unlisted commercial child unit
+  - `6EA6DEA4F6` - Gasabo · Uruhongore · 1993 Unit G-08
+
 ## Seed Cohorts
 
 - `mock_import_listing_surface_v1`
   - Residential baseline imported from the older mock catalog.
 - `preview_property_page_variants_v1`
   - Supplemental validation cohort for `land`, `building`, `commercial_unit`, and unlisted property pages.
+- `preview_multi_unit_examples_v1`
+  - Supplemental validation cohort for true child-unit assets on shared parcels, including apartment and commercial unit examples.

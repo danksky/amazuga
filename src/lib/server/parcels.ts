@@ -9,8 +9,7 @@ export async function findPropertyIdByUpi(upi: string): Promise<string | undefin
         COALESCE(
           active_listing.property_asset_public_id,
           primary_asset.public_id,
-          p.public_id,
-          p.parcel_id
+          p.public_id
         ) AS route_id
       FROM parcel_app_ready_seed_preview p
       LEFT JOIN LATERAL (

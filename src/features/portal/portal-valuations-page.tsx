@@ -157,7 +157,10 @@ export function PortalValuationsPage({ data }: { data: PortalValuationsWorkspace
                       >
                         Value this property
                       </Link>
-                      <Link className={styles.secondaryAction} href={routes.public.property(submission.propertyId)}>
+                      <Link
+                        className={styles.secondaryAction}
+                        href={routes.public.property(submission.propertyId, property.propertyTitle)}
+                      >
                         Open property page
                       </Link>
                       <Link className={styles.secondaryAction} href={routes.public.buy}>

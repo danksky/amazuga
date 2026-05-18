@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { setListingStatusAction } from "@/features/portal/actions";
+import { ListingStatusButton } from "@/features/portal/listing-status-button";
 import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
+import { getPublicListingId } from "@/lib/listing-public-id";
 import type { PortalListingsWorkspaceData } from "@/lib/server/portal-listings";
 import { routes } from "@/lib/routes";
 
@@ -137,8 +139,8 @@ export function PortalListingsPage({
                               <div className={styles.detailValue}>{listing.agentFullName}</div>
                             </div>
                             <div className={styles.detailCard}>
-                              <div className={styles.detailLabel}>Listing ID</div>
-                              <div className={styles.detailValue}>{listing.id}</div>
+                              <div className={styles.detailLabel}>Public listing ID</div>
+                              <div className={styles.detailValue}>{getPublicListingId(listing.id)}</div>
                             </div>
                             <div className={styles.detailCard}>
                               <div className={styles.detailLabel}>Last updated</div>
@@ -147,7 +149,10 @@ export function PortalListingsPage({
                           </div>
 
                           <div className={styles.listingActions}>
-                            <Link className={styles.primaryAction} href={routes.public.property(listing.propertyId)}>
+                            <Link
+                              className={styles.primaryAction}
+                              href={routes.public.property(listing.propertyId, listing.propertyTitle)}
+                            >
                               Open property page
                             </Link>
                             {canEditListing ? (
@@ -163,17 +168,12 @@ export function PortalListingsPage({
                                   type="hidden"
                                   value={listing.status === "active" ? "inactive" : "active"}
                                 />
-                                <button className={styles.secondaryAction} type="submit">
-                                  {listing.status === "active" ? "Deactivate" : "Reactivate"}
-                                </button>
+                                <ListingStatusButton
+                                  className={styles.secondaryAction}
+                                  nextStatus={listing.status === "active" ? "inactive" : "active"}
+                                />
                               </form>
                             ) : null}
-                            <Link className={styles.secondaryAction} href={routes.app.portalAgency}>
-                              Agency tools
-                            </Link>
-                            <Link className={styles.secondaryAction} href={routes.app.portalAgents}>
-                              Team roster
-                            </Link>
                           </div>
                         </article>
                       ))}

@@ -65,8 +65,10 @@ export interface Property {
   internalId?: string;
   parcelId: string;
   parcelPublicId?: string;
+  parcelDisplayId?: string;
   code?: string;
   parentInternalId?: string;
+  unitLabel?: string;
   upi: string;
   title: string;
   description?: string;

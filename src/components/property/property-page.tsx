@@ -220,7 +220,7 @@ function buildPropertyPageBehavior(
         mediaMode,
         focusTitle: "Unit-first overview",
         focusBody: "Apartment pages lead with unit livability and layout, while parcel context stays available as supporting information.",
-        mapTitle: "Building and parcel context",
+        mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Building and parcel context",
         detailsTitle: "Unit details",
         listingTitle: listing ? "Unit listing" : "Unit actions",
         claimLabel: "Claim this unit",
@@ -238,7 +238,7 @@ function buildPropertyPageBehavior(
         mediaMode,
         focusTitle: "Building-level overview",
         focusBody: "This page leads with the building as the marketable object, which gives us room to add child units later without changing the core page model.",
-        mapTitle: "Building footprint and parcel context",
+        mapTitle: mediaMode === "map" ? "Parcel reference" : "Building footprint and parcel context",
         detailsTitle: "Building details",
         listingTitle: listing ? "Building listing" : "Building actions",
         claimLabel: "Claim this building",
@@ -256,7 +256,7 @@ function buildPropertyPageBehavior(
         mediaMode,
         focusTitle: "Business-use overview",
         focusBody: "Commercial pages lead with floor area, zoning, and location utility so business suitability is clearer before a deeper site visit.",
-        mapTitle: "Business location context",
+        mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Business location context",
         detailsTitle: "Commercial details",
         listingTitle: listing ? "Commercial listing" : "Commercial actions",
         claimLabel: "Claim this property",
@@ -306,7 +306,12 @@ export function PropertyPage({ property, listing, agency, valuations, isSaved = 
     .filter(Boolean)
     .join(", ");
   const propertyRouteId = property.id;
-  const propertyPath = routes.public.property(propertyRouteId);
+  const propertyPath = routes.public.property(propertyRouteId, {
+    propertyTitle: property.title,
+    parcelDisplayId: property.parcelDisplayId,
+    propertyKind: property.facts.propertyKind,
+    unitLabel: property.unitLabel,
+  });
   const galleryImages = listing?.imageUrls ?? [];
   const primaryImage = galleryImages[0];
   const secondaryImage = galleryImages[1] ?? galleryImages[0];
@@ -398,20 +403,22 @@ export function PropertyPage({ property, listing, agency, valuations, isSaved = 
         </div>
       </div>
 
-      <div className={styles.mapSection}>
-        <div className={`${styles.panel} ${styles.section}`}>
-          <div className={styles.mapHeader}>
-            <div>
-              <div className={styles.panelEyebrow}>Map</div>
-              <div className={styles.mapTitle}>{behavior.mapTitle}</div>
+      {behavior.mediaMode === "gallery" ? (
+        <div className={styles.mapSection}>
+          <div className={`${styles.panel} ${styles.section}`}>
+            <div className={styles.mapHeader}>
+              <div>
+                <div className={styles.panelEyebrow}>Map</div>
+                <div className={styles.mapTitle}>{behavior.mapTitle}</div>
+              </div>
+              <div className={styles.mapMeta}>{locationLabel}</div>
             </div>
-            <div className={styles.mapMeta}>{locationLabel}</div>
-          </div>
-          <div className={styles.secondaryMapFrame}>
-            <PropertyParcelMap property={property} />
+            <div className={styles.secondaryMapFrame}>
+              <PropertyParcelMap property={property} />
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div className={styles.tertiaryGrid}>
         <div className={`${styles.panel} ${styles.section}`}>

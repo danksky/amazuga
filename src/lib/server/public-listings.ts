@@ -36,6 +36,7 @@ interface ListingParcelRow {
   parent_property_internal_id: string | null;
   property_kind: PropertyKind | null;
   property_code: string | null;
+  property_unit_label: string | null;
   property_title: string | null;
   property_description_override: string | null;
   listing_id: string | null;
@@ -167,12 +168,26 @@ function buildPlaceholderGeometry(row: ListingParcelRow): Property["geometry"] {
   };
 }
 
+function normalizePropertyTitle(row: ListingParcelRow) {
+  const preferredTitle = row.property_title || row.profile_title;
+
+  if (preferredTitle?.trim() && preferredTitle.trim().toLowerCase() !== "unlisted property") {
+    return preferredTitle.trim();
+  }
+
+  if (row.display_id?.trim()) {
+    return row.display_id.trim();
+  }
+
+  return `Parcel ${row.property_public_id || row.public_id}`;
+}
+
 function buildPropertyFromRow(row: ListingParcelRow): Property {
-  const propertyId = row.property_public_id || row.public_id || row.parcel_id;
+  const propertyId = row.property_public_id || row.public_id;
   const zoningLabel = row.zoning || row.gen_lu || row.zone_code;
   const listingState = row.listing_id ? "listed" : "not_listed";
   const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
-  const title = listingState === "listed" ? row.property_title || row.profile_title || row.display_id || `Parcel ${propertyId}` : "Unlisted property";
+  const title = normalizePropertyTitle(row);
   const description = row.property_description_override || row.profile_description;
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
@@ -184,8 +199,10 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
     internalId: row.property_internal_id || undefined,
     parcelId: row.parcel_id,
     parcelPublicId: row.public_id,
+    parcelDisplayId: row.display_id || undefined,
     code: row.property_code || undefined,
     parentInternalId: row.parent_property_internal_id || undefined,
+    unitLabel: row.property_unit_label || undefined,
     upi: row.upi,
     title,
     description: description || undefined,
@@ -243,7 +260,7 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
 
   return {
     id: row.listing_id,
-    propertyId: row.property_public_id || row.public_id || row.parcel_id,
+    propertyId: row.property_public_id || row.public_id,
     propertyInternalId: row.property_internal_id || undefined,
     agencyId: row.agency_id,
     agentUserId: row.agent_user_id,
@@ -401,6 +418,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         pa.parent_asset_id AS parent_property_internal_id,
         pa.asset_type AS property_kind,
         pa.display_code AS property_code,
+        to_jsonb(pa)->>'unit_label' AS property_unit_label,
         pa.title AS property_title,
         pa.description AS property_description_override,
         l.id AS listing_id,
@@ -467,12 +485,10 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         SELECT p.parcel_id
         FROM parcel_app_ready_seed_preview p
         WHERE p.public_id = $1
-           OR p.parcel_id = $1
         UNION
         SELECT pa.parcel_id
         FROM property_asset pa
         WHERE pa.public_id = $1
-           OR pa.id = $1
         LIMIT 1
       )
       SELECT
@@ -499,6 +515,7 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         pa.parent_asset_id AS parent_property_internal_id,
         pa.asset_type AS property_kind,
         pa.display_code AS property_code,
+        to_jsonb(pa)->>'unit_label' AS property_unit_label,
         pa.title AS property_title,
         pa.description AS property_description_override,
         l.id AS listing_id,
@@ -533,9 +550,6 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
       FROM target_parcel tp
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = tp.parcel_id
-      LEFT JOIN listing l
-        ON l.parcel_id = p.parcel_id
-       AND l.status = 'active'
       LEFT JOIN LATERAL (
         SELECT
           pa_inner.id,
@@ -543,6 +557,7 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
           pa_inner.parent_asset_id,
           pa_inner.asset_type,
           pa_inner.display_code,
+          pa_inner.unit_label,
           pa_inner.title,
           pa_inner.description
         FROM property_asset pa_inner
@@ -550,8 +565,7 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         ORDER BY
           CASE
             WHEN pa_inner.public_id = $1 THEN 0
-            WHEN pa_inner.id = $1 THEN 0
-            WHEN l.property_asset_id IS NOT NULL AND pa_inner.id = l.property_asset_id THEN 1
+            WHEN p.public_id = $1 AND pa_inner.is_primary_for_parcel THEN 1
             WHEN pa_inner.is_primary_for_parcel THEN 2
             ELSE 3
           END,
@@ -560,6 +574,9 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         LIMIT 1
       ) pa
         ON TRUE
+      LEFT JOIN listing l
+        ON l.property_asset_id = pa.id
+       AND l.status = 'active'
       LEFT JOIN property_profile pp
         ON pp.parcel_id = p.parcel_id
       LIMIT 1

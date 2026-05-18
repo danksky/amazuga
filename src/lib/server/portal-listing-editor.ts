@@ -157,12 +157,10 @@ async function resolvePropertyTarget(propertyRouteId: string) {
         SELECT p.parcel_id
         FROM parcel_app_ready_seed_preview p
         WHERE p.public_id = $1
-           OR p.parcel_id = $1
         UNION
         SELECT pa.parcel_id
         FROM property_asset pa
         WHERE pa.public_id = $1
-           OR pa.id = $1
         LIMIT 1
       )
       SELECT
@@ -185,7 +183,6 @@ async function resolvePropertyTarget(propertyRouteId: string) {
         ORDER BY
           CASE
             WHEN pa_inner.public_id = $1 THEN 0
-            WHEN pa_inner.id = $1 THEN 0
             WHEN pa_inner.is_primary_for_parcel THEN 1
             ELSE 2
           END,

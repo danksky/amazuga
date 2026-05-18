@@ -31,7 +31,7 @@ export async function toggleSavePropertyAction(formData: FormData) {
     propertyRouteId,
   });
 
-  redirect(`${routes.public.property(propertyRouteId)}?saved=${result.didSave ? "1" : "0"}`);
+  redirect(`${propertyPath}?saved=${result.didSave ? "1" : "0"}`);
 }
 
 export async function createPropertyClaimRequestAction(formData: FormData) {
@@ -49,5 +49,5 @@ export async function createPropertyClaimRequestAction(formData: FormData) {
     parcelId,
   });
 
-  redirect(`${routes.public.property(propertyRouteId)}?claim=1`);
+  redirect(`${propertyPath}?claim=1`);
 }

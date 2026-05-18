@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { getPublicListingId } from "@/lib/listing-public-id";
 import { routes } from "@/lib/routes";
 import type {
   PortalEditableListing,
@@ -33,7 +34,7 @@ function getPropertyKindLabel(kind?: string) {
 
 function flattenAgentOptions(agencies: PortalListingAgencyOption[]) {
   return agencies.flatMap((agency) =>
-    agency.members.map((member) => ({
+    getUniqueAgencyMembers(agency).map((member) => ({
       agencyId: agency.agencyId,
       agencyName: agency.businessName,
       userId: member.userId,
@@ -41,6 +42,19 @@ function flattenAgentOptions(agencies: PortalListingAgencyOption[]) {
       membershipRole: member.membershipRole,
     })),
   );
+}
+
+function getUniqueAgencyMembers(agency: PortalListingAgencyOption) {
+  const membersByUserId = new Map<string, PortalListingAgencyOption["members"][number]>();
+
+  for (const member of agency.members) {
+    const current = membersByUserId.get(member.userId);
+    if (!current || member.membershipRole === "manager") {
+      membersByUserId.set(member.userId, member);
+    }
+  }
+
+  return Array.from(membersByUserId.values());
 }
 
 export function ListingForm({
@@ -84,6 +98,9 @@ export function ListingForm({
             ? "Create a new active listing for one of the current Preview-backed properties and attach it to the right agency and agent."
             : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
         </div>
+        {listing ? (
+          <div className={styles.submeta}>Public listing ID: {getPublicListingId(listing.id)}</div>
+        ) : null}
         {mode === "create" && propertyOptions.length === 0 ? (
           <div className={styles.notice}>
             Every currently available Preview-backed property already has an active listing. Deactivate an existing
@@ -131,7 +148,7 @@ export function ListingForm({
               >
                 {agentAgencies.map((agency) => (
                   <optgroup key={agency.agencyId} label={agency.businessName}>
-                    {agency.members.map((agent) => (
+                    {getUniqueAgencyMembers(agency).map((agent) => (
                       <option key={`${agency.agencyId}-${agent.userId}-${agent.membershipRole}`} value={agent.userId}>
                         {agent.fullName}
                       </option>

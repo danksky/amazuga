@@ -23,7 +23,15 @@ export function PropertyCard({ property, listing, latestValuation }: PropertyCar
   const mediaLabel = property.facts.propertyType ?? "Property";
 
   return (
-    <Link className={styles.card} href={routes.public.property(property.id)}>
+    <Link
+      className={styles.card}
+      href={routes.public.property(property.id, {
+        propertyTitle: property.title,
+        parcelDisplayId: property.parcelDisplayId,
+        propertyKind: property.facts.propertyKind,
+        unitLabel: property.unitLabel,
+      })}
+    >
       <div
         aria-hidden="true"
         className={`${styles.media} ${mediaVariant === "rent" ? styles.mediaRent : styles.mediaSale} ${

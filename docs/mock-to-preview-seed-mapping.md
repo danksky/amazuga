@@ -39,6 +39,16 @@ Current cohorts:
   - Current live shape: `3 land`, `2 commercial_unit`, `1 building`, `1 house`, `1 apartment_unit`, with `5 listed` and `3 unlisted`.
   - Rule: keep this cohort separate and explicitly named so it can be removed or refreshed without touching the imported mock cohort.
 
+- `preview_multi_unit_examples_v1`
+  - Purpose: add true multi-asset parcel examples so child-unit property routes can be tested against live Preview data instead of only parcel-primary assets.
+  - Backing scripts:
+    - [infra/sql/preview_multi_unit_examples_seed.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_multi_unit_examples_seed.sql)
+    - [infra/sql/preview_multi_unit_examples_cleanup.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_multi_unit_examples_cleanup.sql)
+  - Current live shape: `2` multi-asset parcels, each with `1 building` parent asset plus `2` child units:
+    - apartment parcel: `1 listed apartment_unit`, `1 unlisted apartment_unit`
+    - commercial parcel: `1 listed commercial_unit`, `1 unlisted commercial_unit`
+  - Rule: keep this cohort explicit and refreshable so unit-routing work can evolve without disturbing the baseline listing and property-page cohorts.
+
 ## Core Rule
 
 For listing cutover:

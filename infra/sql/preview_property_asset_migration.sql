@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS property_asset (
   ),
   public_id TEXT UNIQUE,
   display_code TEXT NOT NULL UNIQUE,
+  unit_label TEXT,
   title TEXT NOT NULL,
   description TEXT,
   is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
@@ -177,6 +178,9 @@ COMMENT ON TABLE property_asset IS
 
 COMMENT ON COLUMN property_asset.public_id IS
 'Public-safe property identifier for asset-level routes. This is the preferred user-facing property ID.';
+
+COMMENT ON COLUMN property_asset.unit_label IS
+'Optional sub-parcel unit label for apartment and commercial units, used to build stable canonical public slugs when a parcel has multiple marketable units.';
 
 COMMENT ON COLUMN property_asset.is_primary_for_parcel IS
 'Marks the default top-level asset for a parcel so legacy parcel-first records can be backfilled safely.';
