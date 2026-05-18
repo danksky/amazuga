@@ -59,7 +59,8 @@ VALUES
   ('user-4', 'pending.founder@amazuga.test', 'Chantal Uwase', ARRAY['user']::TEXT[], 'Pending agency founder', 'Submitted an agency registration that is still under review.', 0, 'active', 'mock_import_listing_surface_v1'),
   ('user-5', 'manager@amazuga.test', 'Alice Mukamana', ARRAY['user', 'agent', 'agency_manager']::TEXT[], 'Approved agency manager', 'Approved as both agent and manager, with an active agency.', 0, 'active', 'mock_import_listing_surface_v1'),
   ('user-6', 'pending.valuator@amazuga.test', 'Claude Mukiza', ARRAY['user']::TEXT[], 'Pending valuator', 'Submitted valuator recognition and is waiting for review.', 0, 'active', 'mock_import_listing_surface_v1'),
-  ('user-7', 'valuator@amazuga.test', 'Jeanne Mukandoli', ARRAY['user', 'valuator']::TEXT[], 'Approved valuator', 'Recognized valuator with approved valuation activity.', 0, 'active', 'mock_import_listing_surface_v1')
+  ('user-7', 'valuator@amazuga.test', 'Jeanne Mukandoli', ARRAY['user', 'valuator']::TEXT[], 'Approved valuator', 'Recognized valuator with approved valuation activity.', 0, 'active', 'mock_import_listing_surface_v1'),
+  ('user-8', 'private.lister@amazuga.test', 'Ines Nyirahabimana', ARRAY['user']::TEXT[], 'Private lister', 'Owns an off-market property and wants to sell privately without an agency.', 0, 'active', 'mock_import_listing_surface_v1')
 ON CONFLICT (id) DO UPDATE
 SET
   email = EXCLUDED.email,
@@ -127,6 +128,37 @@ ON CONFLICT (agency_id, user_id, role) DO UPDATE
 SET
   status = EXCLUDED.status,
   seed_source = EXCLUDED.seed_source;
+
+INSERT INTO property_ownership (
+  id,
+  user_id,
+  property_id,
+  property_internal_id,
+  parcel_id,
+  ownership_scope,
+  created_from_claim_request_id,
+  seed_source
+)
+VALUES (
+  'property-ownership-private-lister-5974CFE46F',
+  'user-8',
+  '5974CFE46F',
+  'ast_2fdb9b766941533ef20f',
+  '72Z7MW9A',
+  'full',
+  NULL,
+  'mock_import_listing_surface_v1'
+)
+ON CONFLICT (id) DO UPDATE
+SET
+  user_id = EXCLUDED.user_id,
+  property_id = EXCLUDED.property_id,
+  property_internal_id = EXCLUDED.property_internal_id,
+  parcel_id = EXCLUDED.parcel_id,
+  ownership_scope = EXCLUDED.ownership_scope,
+  created_from_claim_request_id = EXCLUDED.created_from_claim_request_id,
+  seed_source = EXCLUDED.seed_source,
+  updated_at = NOW();
 
 INSERT INTO agency_application (
   id,

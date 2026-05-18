@@ -35,6 +35,10 @@ The JSON files in `data/` are now reference material only for these personas and
   - Approved valuator
   - Has approved valuator recognition, seeded valuation history, and live portal submission access
 
+- `private.lister@amazuga.test`
+  - Private lister
+  - Owns an off-market property and should start from the public `/sell` entry
+
 ## Associated records
 
 - `buyer@amazuga.test`
@@ -59,6 +63,10 @@ The JSON files in `data/` are now reference material only for these personas and
   - Approved valuator application: `valuator-application-2`
   - Approved valuation submissions: `valuation-1`, `valuation-2`
   - Can create new pending valuation submissions from `/portal/valuations/new`
+
+- `private.lister@amazuga.test`
+  - Owned property: `5974CFE46F`
+  - No agency membership or pro approvals yet
 
 ## Current flow notes
 

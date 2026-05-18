@@ -92,6 +92,12 @@ WITH persona_source AS (
         'Approved valuator',
         'Recognized valuator with approved valuation activity.',
         0
+      ),
+      (
+        'user-8',
+        'Private lister',
+        'Owns an off-market property and wants to sell privately without an agency.',
+        0
       )
   ) AS t(user_id, mock_persona_label, mock_persona_description, upi_lookup_count_today)
 )
