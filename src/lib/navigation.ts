@@ -12,7 +12,7 @@ export const accountNav = [
 ] as const;
 
 export const portalNav = [
-  { label: "Applications", href: routes.app.portalApplications },
+  { label: "Professional applications", href: routes.app.portalApplications },
   { label: "Properties", href: routes.app.portalProperties },
   { label: "Listings", href: routes.app.portalListings },
   { label: "Agency", href: routes.app.portalAgency },

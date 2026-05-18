@@ -7,12 +7,12 @@ import { routes } from "@/lib/routes";
 import type { SubmissionStatus } from "@/types/domain";
 
 import {
-  listAgenciesFromDb,
-  listAgencyApplicationsFromDb,
-  listAgentApplicationsFromDb,
+  getLatestAgencyApplicationStatusForUser,
+  getLatestAgentApplicationStatusForUser,
+  getLatestValuatorApplicationStatusForUser,
+  listAgenciesForUser,
   listPropertyClaimRequestsForUser,
   listPropertyOwnershipsForUser,
-  listValuatorApplicationsFromDb,
 } from "./workflows";
 
 export interface PortalAccessState {
@@ -33,41 +33,22 @@ export interface PortalAccessState {
   shouldShowApplicationsNav: boolean;
 }
 
-function getLatestAgencyApplicationStatus(
-  items: Awaited<ReturnType<typeof listAgencyApplicationsFromDb>>,
-  userId: string,
-) {
-  return [...items].reverse().find((item) => item.createdByUserId === userId)?.status;
-}
-
-function getLatestUserApplicationStatus<
-  T extends {
-    userId: string;
-    status: SubmissionStatus;
-  },
->(items: T[], userId: string) {
-  return [...items].reverse().find((item) => item.userId === userId)?.status;
-}
-
 export const getPortalAccessState = cache(async (userId: string): Promise<PortalAccessState> => {
-  const [agencies, agencyApplications, agentApplications, valuatorApplications, propertyOwnerships, propertyClaims] = await Promise.all([
-    listAgenciesFromDb(),
-    listAgencyApplicationsFromDb(),
-    listAgentApplicationsFromDb(),
-    listValuatorApplicationsFromDb(),
-    listPropertyOwnershipsForUser(userId),
-    listPropertyClaimRequestsForUser(userId),
-  ]);
+  const [agencies, agencyApplicationStatus, agentApplicationStatus, valuatorApplicationStatus, propertyOwnerships, propertyClaims] =
+    await Promise.all([
+      listAgenciesForUser(userId),
+      getLatestAgencyApplicationStatusForUser(userId),
+      getLatestAgentApplicationStatusForUser(userId),
+      getLatestValuatorApplicationStatusForUser(userId),
+      listPropertyOwnershipsForUser(userId),
+      listPropertyClaimRequestsForUser(userId),
+    ]);
 
   const hasManagedAgencyAccess = agencies.some((agency) => agency.managerUserId === userId);
   const hasAgencyMembership = agencies.some((agency) => agency.memberUserIds.includes(userId));
   const hasPendingManagerActivation = agencies.some(
     (agency) => agency.pendingManagerUserId === userId && agency.managerUserId !== userId,
   );
-
-  const agencyApplicationStatus = getLatestAgencyApplicationStatus(agencyApplications, userId);
-  const agentApplicationStatus = getLatestUserApplicationStatus(agentApplications, userId);
-  const valuatorApplicationStatus = getLatestUserApplicationStatus(valuatorApplications, userId);
 
   const hasAgencyPortalAccess = hasManagedAgencyAccess || hasAgencyMembership;
   const hasPropertyWorkspaceAccess =
@@ -131,9 +112,7 @@ export function getPortalNavItems(access: PortalAccessState) {
     allowedHrefs.add(routes.app.portalApplications);
   }
 
-  if (access.hasPropertyWorkspaceAccess) {
-    allowedHrefs.add(routes.app.portalProperties);
-  }
+  allowedHrefs.add(routes.app.portalProperties);
 
   if (access.hasAgencyPortalAccess) {
     allowedHrefs.add(routes.app.portalListings);

@@ -8,6 +8,9 @@ export type PropertyListingState = "listed" | "not_listed";
 
 export type AgencyMembershipRole = "agent" | "manager";
 export type PropertyOwnershipScope = "full" | "unit";
+export type PropertyClaimScope = "full_parcel" | "unit_partial";
+export type PropertyTenureType = "freehold" | "emphyteutic_lease" | "unspecified";
+export type PropertyDataSource = "user_provided" | "auto_populated" | "unspecified";
 
 export type PropertyKind =
   | "house"
@@ -190,9 +193,14 @@ export interface ValuationSubmission {
 export interface PropertyClaimRequest {
   id: string;
   userId: string;
-  propertyId: string;
-  propertyInternalId: string;
+  propertyId?: string;
+  propertyInternalId?: string;
   parcelId: string;
+  upi: string;
+  claimScope: PropertyClaimScope;
+  unitLabel?: string;
+  tenureType: PropertyTenureType;
+  tenureSource: PropertyDataSource;
   status: SubmissionStatus;
   createdAt: string;
 }

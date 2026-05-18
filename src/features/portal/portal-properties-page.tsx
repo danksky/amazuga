@@ -10,14 +10,52 @@ function getScopeLabel(scope: PortalPropertiesWorkspaceData["ownedProperties"][n
   return scope === "unit" ? "Unit ownership" : "Full property ownership";
 }
 
+function getClaimScopeLabel(scope: PortalPropertiesWorkspaceData["claimRequests"][number]["claimScope"]) {
+  return scope === "unit_partial" ? "Unit or apartment" : "Whole parcel";
+}
+
+function getTenureLabel(tenureType: PortalPropertiesWorkspaceData["claimRequests"][number]["tenureType"]) {
+  if (tenureType === "freehold") {
+    return "Freehold";
+  }
+
+  if (tenureType === "emphyteutic_lease") {
+    return "Emphyteutic lease";
+  }
+
+  return "Unspecified";
+}
+
 export function PortalPropertiesPage({
   canCreateListing,
+  claimFeedback,
   data,
 }: {
   canCreateListing: boolean;
+  claimFeedback?: {
+    status: "created" | "pending" | "owned" | "no_match" | "unit_required";
+    upi?: string;
+    claimScope?: "full_parcel" | "unit_partial";
+    unitLabel?: string;
+    propertyRouteId?: string;
+  };
   data: PortalPropertiesWorkspaceData;
 }) {
   const listableCount = data.ownedProperties.filter((property) => !property.listingId).length;
+  const unitSuffix =
+    claimFeedback?.claimScope === "unit_partial" && claimFeedback.unitLabel ? ` (${claimFeedback.unitLabel})` : "";
+  const claimFeedbackMessage =
+    claimFeedback?.status === "created"
+      ? `Claim request submitted for ${claimFeedback.upi}${unitSuffix}. It now appears in Claim status below while admin review is pending.`
+      : claimFeedback?.status === "pending"
+        ? `You already have a pending claim for ${claimFeedback.upi}${unitSuffix}.`
+        : claimFeedback?.status === "owned"
+          ? `That property is already in your portfolio.`
+          : claimFeedback?.status === "unit_required"
+            ? `Enter the apartment or unit identifier before submitting a partial claim for ${claimFeedback.upi}.`
+            : claimFeedback?.status === "no_match"
+              ? `No Preview parcel matched the UPI ${claimFeedback.upi}.`
+              : null;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -25,8 +63,8 @@ export function PortalPropertiesPage({
         <div className={styles.header}>
           <h1 className={styles.title}>Properties</h1>
           <div className={styles.body}>
-            Claiming is now the first step. Once a property claim is approved, it appears here as something your account
-            owns, whether you decide to list it or keep it off-market.
+            Private sale starts here. Begin from the parcel UPI, optionally describe the apartment or unit you mean,
+            and then turn the approved claim into a listing only after the ownership record is unlocked.
           </div>
           {canCreateListing ? (
             <div className={styles.actions}>
@@ -36,6 +74,94 @@ export function PortalPropertiesPage({
             </div>
           ) : null}
         </div>
+
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Claim a property by UPI</h2>
+            <div className={styles.sectionMeta}>
+              Start from the parcel identifier. If you are claiming only one apartment or unit on that parcel, include
+              the unit identifier even though our authoritative land data is still parcel-first.
+            </div>
+          </div>
+
+          <form action={routes.app.portalPropertyClaim} className={styles.claimForm} method="get">
+            <label className={styles.field} htmlFor="portal-claim-upi">
+              <span className={styles.fieldLabel}>UPI</span>
+              <input
+                className={styles.textInput}
+                defaultValue={claimFeedback?.upi}
+                id="portal-claim-upi"
+                name="upi"
+                placeholder="Enter parcel UPI"
+                type="text"
+              />
+            </label>
+            <button className={styles.claimAction} type="submit">
+              Continue
+            </button>
+          </form>
+
+          {claimFeedbackMessage ? (
+            <div
+              className={`${styles.feedback} ${
+                claimFeedback?.status === "no_match" || claimFeedback?.status === "unit_required"
+                  ? styles.feedbackWarning
+                  : styles.feedbackSuccess
+              }`}
+            >
+              {claimFeedbackMessage}
+              {claimFeedback?.propertyRouteId ? (
+                <>
+                  {" "}
+                  <Link href={routes.public.property(claimFeedback.propertyRouteId)}>Open the resolved property page.</Link>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className={styles.examplesBlock}>
+            <div className={styles.examplesHeader}>
+              <h3 className={styles.examplesTitle}>Demo UPIs</h3>
+              <div className={styles.examplesMeta}>
+                These are ready-to-test parcel examples from Preview. They intentionally foreground UPI and location
+                instead of pre-named property titles.
+              </div>
+            </div>
+            {data.claimExamples.length > 0 ? (
+              <div className={styles.exampleGrid}>
+                {data.claimExamples.map((example) => (
+                  <div className={styles.exampleCard} key={example.upi}>
+                    <div className={styles.exampleTop}>
+                      <div>
+                        <div className={styles.exampleUpi}>{example.upi}</div>
+                        <div className={styles.exampleMetaLine}>
+                          {example.sector ? `${example.sector}, ` : ""}
+                          {example.district}
+                        </div>
+                      </div>
+                      <div className={styles.badges}>
+                        <div className={styles.badge}>
+                          {example.activeListingCount > 0 ? `${example.activeListingCount} active listing` : "Off-market parcel"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.cardMeta}>
+                      {example.assetCount === 1 ? "Single known property record on this parcel." : `${example.assetCount} known property records on this parcel.`}
+                    </div>
+                    <Link
+                      className={styles.secondaryAction}
+                      href={`${routes.app.portalPropertyClaim}?upi=${encodeURIComponent(example.upi)}`}
+                    >
+                      Claim this UPI
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.empty}>No demo UPIs are available right now.</div>
+            )}
+          </div>
+        </section>
 
         <div className={styles.stats}>
           <div className={styles.statCard}>
@@ -109,8 +235,8 @@ export function PortalPropertiesPage({
             </div>
           ) : (
             <div className={styles.empty}>
-              No owned properties yet. Start by claiming a property from its public page, then come back here after the
-              claim is approved.
+              No owned properties yet. Use the UPI claim section above to submit your first claim, then come back here
+              after admin approval.
             </div>
           )}
         </section>
@@ -118,7 +244,10 @@ export function PortalPropertiesPage({
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Claim status</h2>
-            <div className={styles.sectionMeta}>Pending and denied claim requests stay visible here.</div>
+            <div className={styles.sectionMeta}>
+              Pending and denied claim requests stay visible here, even before a parcel resolves to a titled property
+              record.
+            </div>
           </div>
           {data.claimRequests.length > 0 ? (
             <div className={styles.cardGrid}>
@@ -126,24 +255,38 @@ export function PortalPropertiesPage({
                 <article className={styles.card} key={claim.id}>
                   <div className={styles.cardTop}>
                     <div>
-                      <h3 className={styles.cardTitle}>{claim.propertyTitle}</h3>
+                      <h3 className={styles.cardTitle}>{claim.upi}</h3>
                       <div className={styles.cardMeta}>
                         {claim.sector ? `${claim.sector}, ` : ""}
                         {claim.district}
+                        {claim.unitLabel ? ` · Unit ${claim.unitLabel}` : ""}
                       </div>
                     </div>
                     <div className={styles.badges}>
                       <div className={styles.badge}>{claim.status}</div>
+                      <div className={styles.badge}>{getClaimScopeLabel(claim.claimScope)}</div>
                     </div>
                   </div>
                   <div className={styles.detailRow}>
                     <span>Submitted</span>
                     <span>{formatDate(claim.createdAt)}</span>
                   </div>
+                  <div className={styles.detailRow}>
+                    <span>Land tenure</span>
+                    <span>{getTenureLabel(claim.tenureType)}</span>
+                  </div>
+                  {claim.propertyTitle ? (
+                    <div className={styles.detailRow}>
+                      <span>Resolved property record</span>
+                      <span>{claim.propertyTitle}</span>
+                    </div>
+                  ) : null}
                   <div className={styles.actions}>
-                    <Link className={styles.primaryAction} href={routes.public.property(claim.propertyRouteId, claim.propertyTitle)}>
-                      Open property page
-                    </Link>
+                    {claim.propertyRouteId ? (
+                      <Link className={styles.primaryAction} href={routes.public.property(claim.propertyRouteId, claim.propertyTitle)}>
+                        Open property page
+                      </Link>
+                    ) : null}
                   </div>
                 </article>
               ))}

@@ -1,0 +1,78 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 480px;
+}
+
+.upiLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.upiLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.upiValue {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+  font-family: var(--font-mono, monospace);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.fieldLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary, #111827);
+}
+
+.fieldHint {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.selectInput,
+.textInput {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #111827);
+  width: 100%;
+}
+
+.selectInput:focus,
+.textInput:focus {
+  outline: none;
+  border-color: var(--color-accent, #2563eb);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+}
+
+.submitAction {
+  align-self: flex-start;
+  padding: 0.5rem 1.25rem;
+  background: var(--color-accent, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.submitAction:hover {
+  opacity: 0.9;
+}

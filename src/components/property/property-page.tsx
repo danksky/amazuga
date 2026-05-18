@@ -527,6 +527,9 @@ export function PropertyPage({
                       <input name="propertyId" type="hidden" value={property.id} />
                       <input name="propertyInternalId" type="hidden" value={property.internalId} />
                       <input name="parcelId" type="hidden" value={property.parcelId} />
+                      <input name="upi" type="hidden" value={property.upi} />
+                      <input name="propertyKind" type="hidden" value={property.facts.propertyKind || ""} />
+                      <input name="unitLabel" type="hidden" value={property.unitLabel || ""} />
                       <Button type="submit">{behavior.claimLabel}</Button>
                     </form>
                   ) : (

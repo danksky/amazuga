@@ -46,6 +46,8 @@ export const routes = {
     portal: "/sell/portal",
     portalApplications: "/sell/portal/applications",
     portalProperties: "/sell/portal/properties",
+    portalPropertyClaim: "/sell/portal/properties/claim",
+    portalPropertyClaimSubmit: "/sell/portal/properties/claim/submit",
     portalListings: "/sell/portal/listings",
     portalListingNew: "/sell/portal/listings/new",
     portalListingEdit: (listingId: string) => `/sell/portal/listings/${listingId}/edit`,

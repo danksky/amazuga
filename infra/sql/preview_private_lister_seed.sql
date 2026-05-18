@@ -44,16 +44,17 @@ INSERT INTO property_ownership (
   created_from_claim_request_id,
   seed_source
 )
-VALUES (
+SELECT
   'property-ownership-private-lister-5974CFE46F',
   'user-8',
   '5974CFE46F',
-  'ast_2fdb9b766941533ef20f',
-  '72Z7MW9A',
+  pa.id,
+  pa.parcel_id,
   'full',
   NULL,
   'manual_private_lister_seed_v1'
-)
+FROM property_asset pa
+WHERE pa.id = 'ast_2fdb9b766941533ef20f'
 ON CONFLICT (id) DO UPDATE
 SET
   user_id = EXCLUDED.user_id,

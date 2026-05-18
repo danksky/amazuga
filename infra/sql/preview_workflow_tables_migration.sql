@@ -40,9 +40,14 @@ CREATE TABLE IF NOT EXISTS valuator_application (
 CREATE TABLE IF NOT EXISTS property_claim_request (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES app_user(id),
-  property_id TEXT NOT NULL,
-  property_internal_id TEXT NOT NULL REFERENCES property_asset(id),
+  property_id TEXT,
+  property_internal_id TEXT REFERENCES property_asset(id),
   parcel_id TEXT NOT NULL,
+  upi TEXT NOT NULL,
+  claim_scope TEXT NOT NULL DEFAULT 'full_parcel' CHECK (claim_scope IN ('full_parcel', 'unit_partial')),
+  unit_label TEXT,
+  tenure_type TEXT NOT NULL DEFAULT 'unspecified' CHECK (tenure_type IN ('freehold', 'emphyteutic_lease', 'unspecified')),
+  tenure_source TEXT NOT NULL DEFAULT 'unspecified' CHECK (tenure_source IN ('user_provided', 'auto_populated', 'unspecified')),
   status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
   seed_source TEXT NOT NULL DEFAULT 'manual',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -88,6 +93,10 @@ CREATE INDEX IF NOT EXISTS property_claim_request_status_idx
 
 CREATE UNIQUE INDEX IF NOT EXISTS property_claim_request_one_pending_per_user_property_idx
   ON property_claim_request (user_id, property_internal_id)
+  WHERE status = 'pending' AND property_internal_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS property_claim_request_one_pending_per_user_parcel_scope_idx
+  ON property_claim_request (user_id, parcel_id, claim_scope, COALESCE(unit_label, ''))
   WHERE status = 'pending';
 
 CREATE UNIQUE INDEX IF NOT EXISTS property_ownership_property_internal_id_idx
