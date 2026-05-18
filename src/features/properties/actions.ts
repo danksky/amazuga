@@ -41,10 +41,21 @@ export async function createPropertyClaimRequestAction(formData: FormData) {
   const propertyId = getRequiredString(formData, "propertyId");
   const propertyInternalId = getRequiredString(formData, "propertyInternalId");
   const parcelId = getRequiredString(formData, "parcelId");
+  const upi = getRequiredString(formData, "upi");
+  const rawPropertyKind = formData.get("propertyKind");
+  const propertyKind = typeof rawPropertyKind === "string" ? rawPropertyKind : "";
+  const rawUnitLabel = formData.get("unitLabel");
+  const unitLabel = typeof rawUnitLabel === "string" ? rawUnitLabel.trim() : "";
   const currentUser = await requireCurrentUser(propertyPath);
+  const claimScope = propertyKind === "apartment_unit" || propertyKind === "commercial_unit" ? "unit_partial" : "full_parcel";
 
   const result = await createPropertyClaimRequestInDb({
     userId: currentUser.id,
+    upi,
+    claimScope,
+    unitLabel: unitLabel || undefined,
+    tenureType: "unspecified",
+    tenureSource: "unspecified",
     propertyId,
     propertyInternalId,
     parcelId,

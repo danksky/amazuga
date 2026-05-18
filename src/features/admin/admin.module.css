@@ -153,6 +153,18 @@
   line-height: 1.5;
 }
 
+.blockerNote {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #c2410c 35%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, #fff7ed 80%, var(--surface));
+  color: #9a3412;
+  line-height: 1.5;
+}
+
 .reviewNoteLabel {
   color: var(--foreground);
   font-weight: 600;
@@ -176,6 +188,12 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.primaryAction:disabled,
+.secondaryAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .primaryAction {

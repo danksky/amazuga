@@ -146,7 +146,8 @@ export async function AdminDashboard() {
                 ))
               ) : (
                 <div className={styles.empty}>No pending valuation submissions.</div>
-            )}
+              )}
+            </div>
           </div>
 
           <div className={styles.panel}>
@@ -165,7 +166,6 @@ export async function AdminDashboard() {
               )}
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

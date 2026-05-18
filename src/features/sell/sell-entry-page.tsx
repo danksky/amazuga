@@ -10,7 +10,9 @@ export function SellEntryPage({
 }: {
   isSignedIn: boolean;
 }) {
-  const privateSaleHref = isSignedIn ? routes.public.sellPrivate : `${routes.auth.signup}?next=${encodeURIComponent(routes.public.sellPrivate)}`;
+  const privateSaleHref = isSignedIn
+    ? routes.app.portalProperties
+    : `${routes.auth.signup}?next=${encodeURIComponent(routes.app.portalProperties)}`;
   const agentHref = isSignedIn
     ? routes.onboarding.agentApplicationNew
     : `${routes.auth.signup}?next=${encodeURIComponent(routes.onboarding.agentApplicationNew)}`;
@@ -45,8 +47,8 @@ export function SellEntryPage({
           <div className={styles.cardLabel}>Owner route</div>
           <h2 className={styles.cardTitle}>Private sale</h2>
           <div className={styles.cardBody}>
-            Start a private-sale path if you want to claim a property and prepare it for owner-led selling rather than
-            agency representation.
+            Start with the properties workspace, enter a parcel UPI, and submit a claim so owner-led selling can begin
+            without first browsing through public listing pages.
           </div>
           <div className={styles.cardActions}>
             <Link href={privateSaleHref}>

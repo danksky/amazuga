@@ -12,6 +12,7 @@ interface ReviewItem {
   kind: "agency" | "agent" | "valuator" | "valuation" | "property_claim";
   details: Array<{ label: string; value: string }>;
   reviewNote: string;
+  approvalBlockedReason?: string;
 }
 
 interface AdminReviewPageProps {
@@ -77,14 +78,24 @@ export function AdminReviewPage({ title, body, active, items, empty }: AdminRevi
                       <div className={styles.reviewNoteLabel}>Approval effect</div>
                       <div>{item.reviewNote}</div>
                     </div>
+                    {item.approvalBlockedReason ? (
+                      <div className={styles.blockerNote}>
+                        <div className={styles.reviewNoteLabel}>Approval blocked</div>
+                        <div>{item.approvalBlockedReason}</div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className={styles.itemActions}>
                     <form action={reviewApplicationAction}>
                       <input name="kind" type="hidden" value={item.kind} />
                       <input name="applicationId" type="hidden" value={item.id} />
                       <input name="decision" type="hidden" value="approved" />
-                      <button className={styles.primaryAction} type="submit">
-                        Approve
+                      <button
+                        className={styles.primaryAction}
+                        disabled={Boolean(item.approvalBlockedReason)}
+                        type="submit"
+                      >
+                        {item.approvalBlockedReason ? "Cannot approve" : "Approve"}
                       </button>
                     </form>
                     <form action={reviewApplicationAction}>
