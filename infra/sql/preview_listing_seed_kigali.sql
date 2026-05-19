@@ -313,7 +313,6 @@ upsert_listings AS (
     marketing_type,
     asking_price_rwf,
     currency,
-    headline,
     description,
     seed_source,
     published_at
@@ -329,7 +328,6 @@ upsert_listings AS (
     ssr.asking_price_rwf,
     'RWF',
     ssr.listing_description,
-    ssr.listing_description,
     'preview_kigali_seed_v1',
     NOW()
   FROM selected_seed_rows ssr
@@ -343,7 +341,6 @@ upsert_listings AS (
     marketing_type = EXCLUDED.marketing_type,
     asking_price_rwf = EXCLUDED.asking_price_rwf,
     currency = EXCLUDED.currency,
-    headline = EXCLUDED.headline,
     description = EXCLUDED.description,
     seed_source = EXCLUDED.seed_source,
     published_at = EXCLUDED.published_at,

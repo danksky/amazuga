@@ -72,6 +72,7 @@ export function ListingForm({
   selectedPropertyRouteId?: string;
   submitAction: (formData: FormData) => void | Promise<void>;
 }) {
+  const isPrivateListerMode = agencies.length === 0;
   const selectedAgency =
     agencies.find((agency) => agency.agencyId === listing?.agencyId) ?? agencies[0];
   const agentAgencies =
@@ -132,6 +133,7 @@ export function ListingForm({
         <form action={submitAction} className={styles.form}>
           {listing ? <input name="listingId" type="hidden" value={listing.id} /> : null}
 
+          {isPrivateListerMode ? null : (
           <div className={styles.split}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="agency-id">
@@ -184,6 +186,7 @@ export function ListingForm({
               </div>
             </div>
           </div>
+          )}
 
           {mode === "create" ? (
             <div className={styles.field}>
@@ -255,19 +258,6 @@ export function ListingForm({
                 type="number"
               />
             </div>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="headline">
-              Headline
-            </label>
-            <input
-              className={styles.input}
-              defaultValue={listing?.headline}
-              id="headline"
-              name="headline"
-              placeholder="Example: Kimihurura family home with garden frontage"
-            />
           </div>
 
           <div className={styles.field}>

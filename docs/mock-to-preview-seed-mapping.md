@@ -206,7 +206,6 @@ Target:
 | `marketingType` | `marketing_type` | copy | `sale` or `rent` |
 | `askingPrice` | `asking_price_rwf` | copy | Rename only |
 | `currency` | `currency` | copy | Currently always `RWF` |
-| `headline` | `headline` | copy | Direct |
 | `description` | `description` | copy | Direct |
 | `createdAt` | `created_at` | copy or seed fresh | Either approach is acceptable in preview |
 | `updatedAt` | `updated_at` | copy or seed fresh | Either approach is acceptable in preview |
@@ -227,7 +226,7 @@ Target:
 | `listing.id` | `listing_id` | copy with listing ID remap | One row per image |
 | `imageUrls[index]` | `image_url` | expand to rows | Preserve order |
 | `index` | `sort_order` | transform | `0`, `1`, `2`, ... |
-| none | `alt_text` | synthesize | Use headline/title-based fallback text |
+| none | `alt_text` | synthesize | Derived from parcel location context |
 
 ## `saved_property`
 

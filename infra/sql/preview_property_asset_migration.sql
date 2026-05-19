@@ -226,7 +226,6 @@ SELECT
   l.marketing_type,
   l.asking_price_rwf,
   l.currency,
-  l.headline,
   l.description AS listing_description,
   l.published_at,
   a.id AS agency_id,

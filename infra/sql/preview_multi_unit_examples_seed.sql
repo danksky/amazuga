@@ -294,7 +294,6 @@ upsert_listings AS (
     marketing_type,
     asking_price_rwf,
     currency,
-    headline,
     description,
     seed_source,
     published_at
@@ -309,7 +308,6 @@ upsert_listings AS (
     lur.marketing_type,
     lur.asking_price_rwf,
     'RWF',
-    NULL,
     lur.property_description,
     'preview_multi_unit_examples_v1',
     NOW()

@@ -20,7 +20,7 @@ export default async function SellPortalListingCreateRoute({
   const access = await getPortalAccessState(currentUser.id);
   const { property } = await searchParams;
 
-  if (!access.hasAgencyPortalAccess || !hasCapability(currentUser.roles, "create_listing")) {
+  if (!hasCapability(currentUser.roles, "create_listing")) {
     redirect(getPortalEntryHref(access));
   }
 

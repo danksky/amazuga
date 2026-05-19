@@ -147,7 +147,6 @@ Important fields:
 - `marketing_type`
 - `status`
 - `asking_price_rwf`
-- `headline`
 - `description`
 
 Rules:

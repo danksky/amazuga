@@ -13,7 +13,7 @@ export default async function SellPortalListingsRoute() {
   const currentUser = await requireCurrentUser();
   const access = await getPortalAccessState(currentUser.id);
 
-  if (!access.hasAgencyPortalAccess) {
+  if (!access.hasAgencyPortalAccess && !access.hasPropertyOwnerListingAccess) {
     redirect(getPortalEntryHref(access));
   }
 

@@ -1,4 +1,4 @@
-export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin";
+export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | "private_lister";
 
 export type ListingStatus = "active" | "inactive";
 
@@ -94,7 +94,6 @@ export interface Listing {
   marketingType: "sale" | "rent";
   askingPrice: number;
   currency: "RWF";
-  headline?: string;
   description?: string;
   imageUrls: string[];
   createdAt: string;

@@ -44,6 +44,7 @@ export function PortalListingsPage({
   const assignedToUserCount = data.listings.filter((listing) => listing.isAssignedToCurrentUser).length;
   const saleCount = data.listings.filter((listing) => listing.marketingType === "sale").length;
   const rentCount = data.listings.filter((listing) => listing.marketingType === "rent").length;
+  const privateListerListings = data.listings.filter((listing) => !listing.agencyId);
 
   return (
     <div className={`container ${styles.page}`}>
@@ -124,7 +125,6 @@ export function PortalListingsPage({
 
                           <div className={styles.listingBody}>
                             <h3 className={styles.listingTitle}>{listing.propertyTitle}</h3>
-                            {listing.headline ? <div className={styles.listingHeadline}>{listing.headline}</div> : null}
                             <div className={styles.listingFacts}>{buildListingFacts(listing)}</div>
                           </div>
 
@@ -187,19 +187,98 @@ export function PortalListingsPage({
               );
             })}
           </>
-        ) : (
+        ) : null}
+
+        {privateListerListings.length > 0 ? (
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <div className={styles.sectionTitleWrap}>
+                <h2 className={styles.sectionTitle}>Your listings</h2>
+                <div className={styles.sectionMeta}>
+                  {privateListerListings.length} listing{privateListerListings.length === 1 ? "" : "s"} created directly from your property ownership.
+                </div>
+              </div>
+            </div>
+            <div className={styles.listingGrid}>
+              {privateListerListings.map((listing) => (
+                <article className={styles.listingCard} key={listing.id}>
+                  <div className={styles.listingTop}>
+                    <div className={styles.listingPills}>
+                      <div className={`${styles.pill} ${listing.marketingType === "rent" ? styles.rentPill : styles.salePill}`}>
+                        {listing.marketingType === "rent" ? "For rent" : "For sale"}
+                      </div>
+                      <div className={`${styles.pill} ${styles.statusPill}`}>{listing.status}</div>
+                    </div>
+                    <div className={styles.listingPrice}>{formatCurrency(listing.askingPrice, listing.currency)}</div>
+                  </div>
+
+                  <div className={styles.listingBody}>
+                    <h3 className={styles.listingTitle}>{listing.propertyTitle}</h3>
+                    <div className={styles.listingFacts}>{buildListingFacts(listing)}</div>
+                  </div>
+
+                  <div className={styles.detailGrid}>
+                    <div className={styles.detailCard}>
+                      <div className={styles.detailLabel}>Location</div>
+                      <div className={styles.detailValue}>
+                        {listing.sector ? `${listing.sector}, ` : ""}
+                        {listing.district}
+                      </div>
+                    </div>
+                    <div className={styles.detailCard}>
+                      <div className={styles.detailLabel}>Public listing ID</div>
+                      <div className={styles.detailValue}>{getPublicListingId(listing.id)}</div>
+                    </div>
+                    <div className={styles.detailCard}>
+                      <div className={styles.detailLabel}>Last updated</div>
+                      <div className={styles.detailValue}>{formatDate(listing.updatedAt)}</div>
+                    </div>
+                  </div>
+
+                  <div className={styles.listingActions}>
+                    <Link
+                      className={styles.primaryAction}
+                      href={routes.public.property(listing.propertyId, listing.propertyTitle)}
+                    >
+                      Open property page
+                    </Link>
+                    {canEditListing ? (
+                      <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(listing.id)}>
+                        Edit listing
+                      </Link>
+                    ) : null}
+                    {canManageListingLifecycle ? (
+                      <form action={setListingStatusAction} className={styles.inlineForm}>
+                        <input name="listingId" type="hidden" value={listing.id} />
+                        <input
+                          name="status"
+                          type="hidden"
+                          value={listing.status === "active" ? "inactive" : "active"}
+                        />
+                        <ListingStatusButton
+                          className={styles.secondaryAction}
+                          nextStatus={listing.status === "active" ? "inactive" : "active"}
+                        />
+                      </form>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : data.agencies.length === 0 ? (
           <div className={styles.empty}>
-            You do not have active agency membership yet, so there are no internal listings to manage here. Start from{" "}
-            <Link className={styles.secondaryAction} href={routes.onboarding.advertise}>
-              Sell
-            </Link>{" "}
-            or return to the{" "}
-            <Link className={styles.secondaryAction} href={routes.app.portal}>
-              portal overview
-            </Link>
-            .
+            You do not have any active listings yet.{" "}
+            {canCreateListing ? (
+              <>
+                <Link className={styles.secondaryAction} href={routes.app.portalListingNew}>
+                  Create your first listing
+                </Link>{" "}
+                from one of your owned properties.
+              </>
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

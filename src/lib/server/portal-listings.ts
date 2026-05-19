@@ -11,11 +11,10 @@ interface PortalListingRow {
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string;
   currency: Listing["currency"];
-  headline: string | null;
   listing_created_at: string;
   listing_updated_at: string;
   listing_published_at: string | null;
-  agency_id: string;
+  agency_id: string | null;
   agent_user_id: string;
   agent_full_name: string;
   public_id: string;
@@ -60,11 +59,10 @@ export interface PortalListingSummary {
   marketingType: Listing["marketingType"];
   askingPrice: number;
   currency: Listing["currency"];
-  headline?: string;
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
-  agencyId: string;
+  agencyId?: string;
   agentUserId: string;
   agentFullName: string;
   isAssignedToCurrentUser: boolean;
@@ -103,13 +101,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
       (agency.managerUserId === userId || agency.memberUserIds.includes(userId)),
   );
 
-  if (agencies.length === 0) {
-    return {
-      agencies: [],
-      listings: [],
-    };
-  }
-
   const agencyIds = agencies.map((agency) => agency.id);
   const result = await getPgPool().query<PortalListingRow>(
     `
@@ -119,7 +110,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
-        l.headline,
         l.created_at::TEXT AS listing_created_at,
         l.updated_at::TEXT AS listing_updated_at,
         l.published_at::TEXT AS listing_published_at,
@@ -160,9 +150,18 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         ON pa.id = l.property_asset_id
       LEFT JOIN property_profile pp
         ON pp.parcel_id = l.parcel_id
-      WHERE l.agency_id = ANY($1::TEXT[])
+      WHERE
+        (array_length($1::TEXT[], 1) > 0 AND l.agency_id = ANY($1::TEXT[]))
+        OR (
+          l.agency_id IS NULL
+          AND EXISTS (
+            SELECT 1 FROM property_ownership po
+            WHERE po.user_id = $2
+              AND po.property_internal_id = l.property_asset_id
+          )
+        )
       ORDER BY
-        l.agency_id ASC,
+        l.agency_id ASC NULLS LAST,
         (l.agent_user_id = $2) DESC,
         l.published_at DESC NULLS LAST,
         l.created_at DESC,
@@ -188,11 +187,10 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf) ?? 0,
     currency: row.currency,
-    headline: row.headline || undefined,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,
     publishedAt: row.listing_published_at || undefined,
-    agencyId: row.agency_id,
+    agencyId: row.agency_id ?? undefined,
     agentUserId: row.agent_user_id,
     agentFullName: row.agent_full_name,
     isAssignedToCurrentUser: row.agent_user_id === userId,

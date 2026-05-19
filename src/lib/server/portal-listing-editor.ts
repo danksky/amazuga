@@ -25,12 +25,11 @@ interface EditableListingRow {
   property_kind: string | null;
   district: string | null;
   sector: string | null;
-  agency_id: string;
+  agency_id: string | null;
   agent_user_id: string;
   status: Listing["status"];
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string;
-  headline: string | null;
   description: string | null;
 }
 
@@ -69,12 +68,11 @@ export interface PortalEditableListing {
   propertyKind?: string;
   district: string;
   sector?: string;
-  agencyId: string;
+  agencyId?: string;
   agentUserId: string;
   status: Listing["status"];
   marketingType: Listing["marketingType"];
   askingPrice: number;
-  headline?: string;
   description?: string;
 }
 
@@ -207,10 +205,6 @@ async function getEditableListingRow(userId: string, listingId: string) {
   const agencies = await getAccessibleListingAgencies(userId);
   const agencyIds = agencies.map((agency) => agency.agencyId);
 
-  if (agencyIds.length === 0) {
-    return null;
-  }
-
   const result = await getPgPool().query<EditableListingRow>(
     `
       SELECT
@@ -226,7 +220,6 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.status,
         l.marketing_type,
         l.asking_price_rwf,
-        l.headline,
         l.description
       FROM listing l
       JOIN parcel_app_ready_seed_preview p
@@ -236,10 +229,17 @@ async function getEditableListingRow(userId: string, listingId: string) {
       LEFT JOIN property_profile pp
         ON pp.parcel_id = l.parcel_id
       WHERE l.id = $1
-        AND l.agency_id = ANY($2::TEXT[])
+        AND (
+          (array_length($2::TEXT[], 1) > 0 AND l.agency_id = ANY($2::TEXT[]))
+          OR EXISTS (
+            SELECT 1 FROM property_ownership po
+            WHERE po.user_id = $3
+              AND po.property_internal_id = l.property_asset_id
+          )
+        )
       LIMIT 1
     `,
-    [listingId, agencyIds],
+    [listingId, agencyIds, userId],
   );
 
   return result.rows[0] || null;
@@ -333,12 +333,11 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     propertyKind: row.property_kind || undefined,
     district: row.district || "Unknown district",
     sector: row.sector || undefined,
-    agencyId: row.agency_id,
+    agencyId: row.agency_id ?? undefined,
     agentUserId: row.agent_user_id,
     status: row.status,
     marketingType: row.marketing_type,
     askingPrice: toNumber(row.asking_price_rwf) ?? 0,
-    headline: row.headline || undefined,
     description: row.description || undefined,
   };
 
@@ -350,20 +349,21 @@ export async function getEditablePortalListingData(userId: string, listingId: st
 
 export async function createPortalListingInDb(input: {
   userId: string;
-  agencyId: string;
+  agencyId?: string;
   propertyRouteId: string;
   agentUserId: string;
   marketingType: Listing["marketingType"];
   askingPrice: number;
-  headline?: string;
   description?: string;
 }) {
-  const agencies = await getAccessibleListingAgencies(input.userId);
-  await ensureAgentBelongsToAgency({
-    agencies,
-    agencyId: input.agencyId,
-    agentUserId: input.agentUserId,
-  });
+  if (input.agencyId) {
+    const agencies = await getAccessibleListingAgencies(input.userId);
+    await ensureAgentBelongsToAgency({
+      agencies,
+      agencyId: input.agencyId,
+      agentUserId: input.agentUserId,
+    });
+  }
 
   const propertyTarget = await resolvePropertyTarget(input.propertyRouteId);
 
@@ -387,12 +387,11 @@ export async function createPortalListingInDb(input: {
         marketing_type,
         asking_price_rwf,
         currency,
-        headline,
         description,
         seed_source,
         published_at
       )
-      VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, 'RWF', $8, $9, 'manual_workflow_v1', NOW())
+      VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, 'RWF', $8, 'manual_workflow_v1', NOW())
     `,
     [
       id,
@@ -402,7 +401,6 @@ export async function createPortalListingInDb(input: {
       input.agentUserId,
       input.marketingType,
       Math.round(input.askingPrice),
-      input.headline || null,
       input.description || null,
     ],
   );
@@ -420,21 +418,22 @@ export async function updatePortalListingInDb(input: {
   agentUserId: string;
   marketingType: Listing["marketingType"];
   askingPrice: number;
-  headline?: string;
   description?: string;
 }) {
-  const agencies = await getAccessibleListingAgencies(input.userId);
   const listing = await getEditableListingRow(input.userId, input.listingId);
 
   if (!listing) {
     throw new Error("Listing not found or inaccessible");
   }
 
-  await ensureAgentBelongsToAgency({
-    agencies,
-    agencyId: listing.agency_id,
-    agentUserId: input.agentUserId,
-  });
+  if (listing.agency_id) {
+    const agencies = await getAccessibleListingAgencies(input.userId);
+    await ensureAgentBelongsToAgency({
+      agencies,
+      agencyId: listing.agency_id,
+      agentUserId: input.agentUserId,
+    });
+  }
 
   const result = await getPgPool().query<{
     property_route_id: string;
@@ -446,8 +445,7 @@ export async function updatePortalListingInDb(input: {
         agent_user_id = $2,
         marketing_type = $3,
         asking_price_rwf = $4,
-        headline = $5,
-        description = $6,
+        description = $5,
         updated_at = NOW()
       WHERE id = $1
       RETURNING
@@ -466,7 +464,6 @@ export async function updatePortalListingInDb(input: {
       input.agentUserId,
       input.marketingType,
       Math.round(input.askingPrice),
-      input.headline || null,
       input.description || null,
     ],
   );

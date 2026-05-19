@@ -333,7 +333,7 @@ export function PropertyPage({
           <div className={`${styles.panel} ${styles.mediaPanel}`}>
             <div className={styles.gallery}>
               <div className={styles.galleryPrimary}>
-                <img alt={listing?.headline ?? property.title} className={styles.galleryImage} src={primaryImage} />
+                <img alt={property.title} className={styles.galleryImage} src={primaryImage} />
               </div>
               <div className={styles.galleryStack}>
                 <div className={styles.gallerySecondary}>
@@ -460,7 +460,6 @@ export function PropertyPage({
             {listing ? (
               <div className={styles.listingCard}>
                 <div className={styles.listingPrice}>{formatCurrency(listing.askingPrice, listing.currency)}</div>
-                <div className={styles.listingHeadline}>{listing.headline}</div>
                 <div className={styles.listingMeta}>
                   {listing.marketingType === "rent" ? "For rent" : "For sale"}
                   {agency ? ` · ${agency.businessName}` : ""}

@@ -46,7 +46,6 @@ interface ListingParcelRow {
   marketing_type: Listing["marketingType"] | null;
   asking_price_rwf: number | string | null;
   currency: Listing["currency"] | null;
-  headline: string | null;
   listing_description: string | null;
   listing_created_at: string | null;
   listing_updated_at: string | null;
@@ -268,7 +267,6 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf) ?? 0,
     currency: row.currency,
-    headline: row.headline || undefined,
     description: row.listing_description || undefined,
     imageUrls,
     createdAt: row.listing_created_at,
@@ -428,7 +426,6 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
-        l.headline,
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
@@ -525,7 +522,6 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
-        l.headline,
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,

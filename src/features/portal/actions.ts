@@ -107,12 +107,11 @@ export async function submitListingCreateAction(formData: FormData) {
 
   const listing = await createPortalListingInDb({
     userId: currentUser.id,
-    agencyId: getRequiredString(formData, "agencyId"),
+    agencyId: getOptionalString(formData, "agencyId"),
     propertyRouteId: getRequiredString(formData, "propertyRouteId"),
-    agentUserId: getRequiredString(formData, "agentUserId"),
+    agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
     askingPrice: getRequiredNumber(formData, "askingPrice"),
-    headline: getOptionalString(formData, "headline"),
     description: getOptionalString(formData, "description"),
   });
 
@@ -136,7 +135,6 @@ export async function submitListingUpdateAction(formData: FormData) {
     agentUserId: getRequiredString(formData, "agentUserId"),
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
     askingPrice: getRequiredNumber(formData, "askingPrice"),
-    headline: getOptionalString(formData, "headline"),
     description: getOptionalString(formData, "description"),
   });
 
