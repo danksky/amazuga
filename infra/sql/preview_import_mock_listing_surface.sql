@@ -161,6 +161,14 @@ SET
   seed_source = EXCLUDED.seed_source,
   updated_at = NOW();
 
+UPDATE property_ownership po
+SET parcel_id = pa.parcel_id,
+    updated_at = NOW()
+FROM property_asset pa
+WHERE po.id = 'property-ownership-private-lister-5974CFE46F'
+  AND pa.id = po.property_internal_id
+  AND po.parcel_id <> pa.parcel_id;
+
 INSERT INTO agency_application (
   id,
   created_by_user_id,

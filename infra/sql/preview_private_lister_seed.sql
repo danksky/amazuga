@@ -66,4 +66,13 @@ SET
   seed_source = EXCLUDED.seed_source,
   updated_at = NOW();
 
+-- Self-heal parcel_id in case the INSERT fired before the asset existed.
+UPDATE property_ownership po
+SET parcel_id = pa.parcel_id,
+    updated_at = NOW()
+FROM property_asset pa
+WHERE po.id = 'property-ownership-private-lister-5974CFE46F'
+  AND pa.id = po.property_internal_id
+  AND po.parcel_id <> pa.parcel_id;
+
 COMMIT;
