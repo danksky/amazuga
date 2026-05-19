@@ -37,8 +37,6 @@ interface PropertyPageBehavior {
   kind: PropertyKind;
   kindLabel: string;
   mediaMode: "gallery" | "map";
-  focusTitle: string;
-  focusBody: string;
   mapTitle: string;
   detailsTitle: string;
   listingTitle: string;
@@ -203,8 +201,6 @@ function buildPropertyPageBehavior(
         kind: propertyKind,
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
-        focusTitle: "Parcel-first overview",
-        focusBody: "Parcel size, zoning, and map context lead this page so land decisions can start with feasibility instead of interior imagery.",
         mapTitle: "Parcel map and land context",
         detailsTitle: "Parcel details",
         listingTitle: listing ? "Parcel listing" : "Parcel actions",
@@ -221,8 +217,6 @@ function buildPropertyPageBehavior(
         kind: propertyKind,
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
-        focusTitle: "Unit-first overview",
-        focusBody: "Apartment pages lead with unit livability and layout, while parcel context stays available as supporting information.",
         mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Building and parcel context",
         detailsTitle: "Unit details",
         listingTitle: listing ? "Unit listing" : "Unit actions",
@@ -239,8 +233,6 @@ function buildPropertyPageBehavior(
         kind: propertyKind,
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
-        focusTitle: "Building-level overview",
-        focusBody: "This page leads with the building as the marketable object, which gives us room to add child units later without changing the core page model.",
         mapTitle: mediaMode === "map" ? "Parcel reference" : "Building footprint and parcel context",
         detailsTitle: "Building details",
         listingTitle: listing ? "Building listing" : "Building actions",
@@ -257,8 +249,6 @@ function buildPropertyPageBehavior(
         kind: propertyKind,
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
-        focusTitle: "Business-use overview",
-        focusBody: "Commercial pages lead with floor area, zoning, and location utility so business suitability is clearer before a deeper site visit.",
         mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Business location context",
         detailsTitle: "Commercial details",
         listingTitle: listing ? "Commercial listing" : "Commercial actions",
@@ -278,8 +268,6 @@ function buildPropertyPageBehavior(
         kind: propertyKind,
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
-        focusTitle: "Home-focused overview",
-        focusBody: "House pages lead with day-to-day livability, while parcel context and valuation history support the core housing decision.",
         mapTitle: "Parcel context",
         detailsTitle: "Property details",
         listingTitle: listing ? "Active listing" : "Property actions",
@@ -388,10 +376,6 @@ export function PropertyPage({
             ) : (
               <div className={styles.inlineMeta}>No active listing is attached to this property right now.</div>
             )}
-          </div>
-          <div className={styles.focusCard}>
-            <div className={styles.focusLabel}>{behavior.focusTitle}</div>
-            <div className={styles.focusBody}>{behavior.focusBody}</div>
           </div>
           {!listing && latestValuation ? (
             <div className={styles.estimateCard}>

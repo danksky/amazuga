@@ -94,7 +94,6 @@ upsert_profiles AS (
   INSERT INTO property_profile (
     parcel_id,
     created_by_user_id,
-    title,
     description,
     property_type,
     bedrooms,
@@ -106,16 +105,7 @@ upsert_profiles AS (
   SELECT
     sb.parcel_id,
     'user-5',
-    CASE
-      WHEN sb.example_kind = 'apartment_building' THEN CONCAT(sb.sector, ' Court Apartments')
-      ELSE CONCAT(sb.sector, ' Market Arcade')
-    END,
-    CASE
-      WHEN sb.example_kind = 'apartment_building' THEN
-        'Preview multi-unit apartment building seeded to validate child-unit property pages, canonical unit routes, and parcel-first building context.'
-      ELSE
-        'Preview multi-unit commercial building seeded to validate child-unit property pages and shared parcel context for business-facing units.'
-    END,
+    NULL,
     'Building',
     NULL,
     NULL,
@@ -138,7 +128,6 @@ upsert_primary_assets AS (
     public_id,
     display_code,
     unit_label,
-    title,
     description,
     is_primary_for_parcel,
     seed_source
@@ -150,16 +139,7 @@ upsert_primary_assets AS (
     UPPER(SUBSTR(MD5('preview_multi_unit_examples_v1:building-public:' || sb.parcel_id), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('preview_multi_unit_examples_v1:building-display:' || sb.parcel_id), 1, 10)),
     NULL,
-    CASE
-      WHEN sb.example_kind = 'apartment_building' THEN CONCAT(sb.sector, ' Court Apartments')
-      ELSE CONCAT(sb.sector, ' Market Arcade')
-    END,
-    CASE
-      WHEN sb.example_kind = 'apartment_building' THEN
-        'Primary building asset for a parcel that also contains seeded apartment child units.'
-      ELSE
-        'Primary building asset for a parcel that also contains seeded commercial child units.'
-    END,
+    NULL,
     TRUE,
     'preview_multi_unit_examples_v1'
   FROM selected_buildings sb
@@ -173,7 +153,7 @@ unit_templates AS (
         1::INTEGER,
         'apartment_unit'::TEXT,
         'A-201'::TEXT,
-        'Upper-floor apartment unit with balcony frontage used to validate canonical unit routing on a shared parcel.'::TEXT,
+        NULL::TEXT,
         'active'::TEXT,
         'rent'::TEXT,
         1750000::BIGINT,
@@ -187,7 +167,7 @@ unit_templates AS (
         2::INTEGER,
         'apartment_unit'::TEXT,
         'A-302'::TEXT,
-        'Unlisted apartment unit on the same parcel, intended to validate unit-level identity without an active listing.'::TEXT,
+        NULL::TEXT,
         'not_listed'::TEXT,
         NULL::TEXT,
         NULL::BIGINT,
@@ -201,7 +181,7 @@ unit_templates AS (
         1::INTEGER,
         'commercial_unit'::TEXT,
         'G-04'::TEXT,
-        'Ground-floor commercial unit with active frontage listing, seeded as a true child unit of a larger parcel-level building.'::TEXT,
+        NULL::TEXT,
         'active'::TEXT,
         'rent'::TEXT,
         2950000::BIGINT,
@@ -215,7 +195,7 @@ unit_templates AS (
         2::INTEGER,
         'commercial_unit'::TEXT,
         'G-08'::TEXT,
-        'Unlisted commercial child unit on the same parcel, intended to validate parcel-first identity plus unit-level routing.'::TEXT,
+        NULL::TEXT,
         'not_listed'::TEXT,
         NULL::TEXT,
         NULL::BIGINT,
@@ -277,7 +257,6 @@ upsert_unit_assets AS (
     public_id,
     display_code,
     unit_label,
-    title,
     description,
     is_primary_for_parcel,
     seed_source
@@ -290,7 +269,6 @@ upsert_unit_assets AS (
     UPPER(SUBSTR(MD5('preview_multi_unit_examples_v1:unit-public:' || ur.parcel_id || ':' || ur.unit_label), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('preview_multi_unit_examples_v1:unit-display:' || ur.parcel_id || ':' || ur.unit_label), 1, 10)),
     ur.unit_label,
-    CONCAT(ur.display_id, ' Unit ', ur.unit_label),
     ur.property_description,
     FALSE,
     'preview_multi_unit_examples_v1'
@@ -331,7 +309,7 @@ upsert_listings AS (
     lur.marketing_type,
     lur.asking_price_rwf,
     'RWF',
-    CONCAT(lur.display_id, ' Unit ', lur.unit_label),
+    NULL,
     lur.property_description,
     'preview_multi_unit_examples_v1',
     NOW()
