@@ -1653,5 +1653,7 @@ export async function updatePropertyClaimRequestStatusInDb(
     ],
   );
 
+  await addRoleToUser(claimRequest.userId, "private_lister");
+
   return claimRequest;
 }
