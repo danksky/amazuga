@@ -229,11 +229,6 @@ export function PortalPropertiesPage({
                         Create listing
                       </Link>
                     ) : null}
-                    {property.listingId ? (
-                      <Link className={styles.secondaryAction} href={routes.app.portalListings}>
-                        Open listings workspace
-                      </Link>
-                    ) : null}
                   </div>
                 </article>
               ))}
