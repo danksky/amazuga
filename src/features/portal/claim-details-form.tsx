@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { PropertyKind } from "@/types/domain";
@@ -102,6 +103,9 @@ export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; exis
             <button className={styles.submitAction} type="submit">
               Submit claim
             </button>
+            <Link className={styles.cancelAction} href={routes.app.portalProperties}>
+              Cancel
+            </Link>
           </div>
         </form>
       </div>
