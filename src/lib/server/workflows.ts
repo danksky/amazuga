@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "crypto";
+
 import type {
   Agency,
   AgencyApplication,
@@ -75,6 +77,7 @@ interface PropertyClaimRequestRow {
   unit_label: string | null;
   tenure_type: PropertyTenureType;
   tenure_source: PropertyDataSource;
+  declared_asset_type: PropertyKind | null;
   status: SubmissionStatus;
   created_at: string;
 }
@@ -232,6 +235,7 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
     unitLabel: row.unit_label || undefined,
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
+    declaredAssetType: row.declared_asset_type || undefined,
     status: row.status,
     createdAt: row.created_at,
   };
@@ -257,7 +261,9 @@ function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPr
   const approvalBlockedReason = !row.property_internal_id
     ? row.claim_scope === "unit_partial"
       ? "This claim still needs to be matched to a specific unit in Preview before it can be approved."
-      : "This parcel-first claim still needs to be resolved to a specific property record before it can be approved."
+      : !row.declared_asset_type
+        ? "This parcel-first claim still needs to be resolved to a specific property record before it can be approved."
+        : undefined
     : row.conflicting_ownership_id
       ? row.conflicting_ownership_scope === "full"
         ? `${conflictingOwnerName} already has full ownership on this parcel via ${conflictingPropertyTitle}. Deny this claim or resolve the ownership conflict first.`
@@ -278,6 +284,7 @@ function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPr
     unitLabel: row.unit_label || undefined,
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
+    declaredAssetType: row.declared_asset_type || undefined,
     propertyRouteId: row.property_route_id || undefined,
     propertyTitle: row.property_title || row.property_route_id || row.property_id || row.upi || "Preview property",
     propertyKind,
@@ -634,6 +641,7 @@ export async function listPropertyClaimRequestsFromDb() {
         pcr.unit_label,
         pcr.tenure_type,
         pcr.tenure_source,
+        pcr.declared_asset_type,
         pcr.status,
         pcr.created_at::TEXT,
         COALESCE(pa.public_id, parcel.public_id) AS property_route_id,
@@ -739,6 +747,7 @@ export async function listPropertyClaimRequestsForUser(userId: string) {
         unit_label,
         tenure_type,
         tenure_source,
+        declared_asset_type,
         status,
         created_at::TEXT
       FROM property_claim_request
@@ -783,6 +792,7 @@ export async function getUserPropertyRelationship(userId: string, propertyIntern
           unit_label,
           tenure_type,
           tenure_source,
+          declared_asset_type,
           status,
           created_at::TEXT
         FROM property_claim_request
@@ -1306,6 +1316,7 @@ export async function createPropertyClaimRequestInDb(input: {
   unitLabel?: string;
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
+  declaredAssetType?: PropertyKind;
   propertyId?: string;
   propertyInternalId?: string;
 }) {
@@ -1361,6 +1372,7 @@ export async function createPropertyClaimRequestInDb(input: {
         unit_label,
         tenure_type,
         tenure_source,
+        declared_asset_type,
         status,
         created_at::TEXT
       FROM property_claim_request
@@ -1395,10 +1407,11 @@ export async function createPropertyClaimRequestInDb(input: {
         unit_label,
         tenure_type,
         tenure_source,
+        declared_asset_type,
         status,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', 'manual_workflow_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', 'manual_workflow_v1')
       RETURNING
         id,
         user_id,
@@ -1410,6 +1423,7 @@ export async function createPropertyClaimRequestInDb(input: {
         unit_label,
         tenure_type,
         tenure_source,
+        declared_asset_type,
         status,
         created_at::TEXT
     `,
@@ -1424,6 +1438,7 @@ export async function createPropertyClaimRequestInDb(input: {
       normalizedUnitLabel,
       input.tenureType,
       input.tenureSource,
+      input.declaredAssetType || null,
     ],
   );
 
@@ -1450,6 +1465,7 @@ export async function updatePropertyClaimRequestStatusInDb(
         unit_label,
         tenure_type,
         tenure_source,
+        declared_asset_type,
         status,
         created_at::TEXT
       FROM property_claim_request
@@ -1467,7 +1483,53 @@ export async function updatePropertyClaimRequestStatusInDb(
 
   if (status === "approved") {
     if (!existingClaimRequest.propertyInternalId || !existingClaimRequest.propertyId) {
-      throw new Error("This claim still needs to be resolved to a specific property or unit before approval.");
+      if (existingClaimRequest.claimScope !== "full_parcel" || !existingClaimRequest.declaredAssetType) {
+        throw new Error("This claim still needs to be resolved to a specific property or unit before approval.");
+      }
+
+      const parcelRow = await getPgPool().query<{ public_id: string | null }>(
+        `SELECT public_id FROM parcel_app_ready_seed_preview WHERE parcel_id = $1 LIMIT 1`,
+        [existingClaimRequest.parcelId],
+      );
+      const parcelPublicId = parcelRow.rows[0]?.public_id || existingClaimRequest.parcelId;
+
+      // If a primary asset already exists (e.g. from mock seed data), update its type rather than inserting.
+      const existingPrimaryRow = await getPgPool().query<{ id: string; public_id: string }>(
+        `SELECT id, COALESCE(public_id, $2) AS public_id FROM property_asset WHERE parcel_id = $1 AND is_primary_for_parcel = TRUE LIMIT 1`,
+        [existingClaimRequest.parcelId, parcelPublicId],
+      );
+
+      let assetId: string;
+      let resolvedPublicId: string;
+
+      if (existingPrimaryRow.rows[0]) {
+        assetId = existingPrimaryRow.rows[0].id;
+        resolvedPublicId = existingPrimaryRow.rows[0].public_id;
+        await getPgPool().query(
+          `UPDATE property_asset SET asset_type = $2, seed_source = 'claim_approval_v1', updated_at = NOW() WHERE id = $1`,
+          [assetId, existingClaimRequest.declaredAssetType],
+        );
+      } else {
+        assetId = "ast_" + createHash("md5").update("claim-primary:" + existingClaimRequest.parcelId).digest("hex").slice(0, 20);
+        const displayCode = "AST-" + createHash("md5").update("claim-display:" + existingClaimRequest.parcelId).digest("hex").slice(0, 10).toUpperCase();
+        resolvedPublicId = parcelPublicId;
+        await getPgPool().query(
+          `
+            INSERT INTO property_asset (id, parcel_id, asset_type, public_id, display_code, is_primary_for_parcel, seed_source)
+            VALUES ($1, $2, $3, $4, $5, TRUE, 'claim_approval_v1')
+            ON CONFLICT (id) DO UPDATE SET asset_type = EXCLUDED.asset_type, updated_at = NOW()
+          `,
+          [assetId, existingClaimRequest.parcelId, existingClaimRequest.declaredAssetType, resolvedPublicId, displayCode],
+        );
+      }
+
+      await getPgPool().query(
+        `UPDATE property_claim_request SET property_internal_id = $2, property_id = $3, updated_at = NOW() WHERE id = $1`,
+        [claimRequestId, assetId, resolvedPublicId],
+      );
+
+      existingClaimRequest.propertyInternalId = assetId;
+      existingClaimRequest.propertyId = resolvedPublicId;
     }
 
     const targetResult = await getPgPool().query<{
@@ -1525,6 +1587,7 @@ export async function updatePropertyClaimRequestStatusInDb(
         unit_label,
         tenure_type,
         tenure_source,
+        declared_asset_type,
         status,
         created_at::TEXT
     `,

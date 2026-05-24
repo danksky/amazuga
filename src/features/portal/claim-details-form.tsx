@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import type { PropertyKind } from "@/types/domain";
 import { routes } from "@/lib/routes";
 
 import styles from "./claim-details-form.module.css";
@@ -14,8 +15,20 @@ function deriveClaimScope(propertyType: PropertyType): "full_parcel" | "unit_par
   return UNIT_TYPES.includes(propertyType) ? "unit_partial" : "full_parcel";
 }
 
-export function ClaimDetailsForm({ upi }: { upi: string }) {
-  const [propertyType, setPropertyType] = useState<PropertyType>("house");
+function kindToPropertyType(kind: PropertyKind | undefined): PropertyType {
+  if (!kind) return "house";
+  const map: Partial<Record<PropertyKind, PropertyType>> = {
+    house: "house",
+    land: "land",
+    building: "apartment_building",
+    apartment_unit: "apartment_unit",
+    commercial_unit: "commercial_unit",
+  };
+  return map[kind] ?? "house";
+}
+
+export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; existingAssetKind?: PropertyKind }) {
+  const [propertyType, setPropertyType] = useState<PropertyType>(() => kindToPropertyType(existingAssetKind));
   const claimScope = deriveClaimScope(propertyType);
 
   return (

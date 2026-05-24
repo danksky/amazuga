@@ -269,6 +269,28 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
   };
 }
 
+export async function findPrimaryAssetKindByUpi(upi: string): Promise<PropertyKind | null> {
+  const result = await getPgPool().query<{ asset_type: PropertyKind | null }>(
+    `
+      SELECT pa.asset_type
+      FROM parcel_app_ready_seed_preview p
+      JOIN property_asset pa
+        ON pa.parcel_id = p.parcel_id
+       AND pa.is_primary_for_parcel = TRUE
+      WHERE UPPER(REPLACE(p.upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
+        AND pa.seed_source NOT IN (
+          'mock_import_listing_surface_v1',
+          'preview_property_page_variants_v1',
+          'preview_multi_unit_examples_v1',
+          'preview_kigali_seed_v1'
+        )
+      LIMIT 1
+    `,
+    [upi],
+  );
+  return result.rows[0]?.asset_type ?? null;
+}
+
 export async function findPortalPropertyClaimTargetByUpi(input: {
   upi: string;
   claimScope: PropertyClaimScope;
@@ -319,6 +341,12 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
           SELECT COUNT(*)
           FROM property_asset pa_count
           WHERE pa_count.parcel_id = p.parcel_id
+            AND pa_count.seed_source NOT IN (
+              'mock_import_listing_surface_v1',
+              'preview_property_page_variants_v1',
+              'preview_multi_unit_examples_v1',
+              'preview_kigali_seed_v1'
+            )
         ) AS asset_count_for_parcel
       FROM parcel_app_ready_seed_preview p
       WHERE UPPER(REPLACE(p.upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
@@ -353,6 +381,12 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
       LEFT JOIN property_profile pp
         ON pp.parcel_id = pa.parcel_id
       WHERE pa.parcel_id = $1
+        AND pa.seed_source NOT IN (
+          'mock_import_listing_surface_v1',
+          'preview_property_page_variants_v1',
+          'preview_multi_unit_examples_v1',
+          'preview_kigali_seed_v1'
+        )
         AND (
           ($2 = 'unit_partial' AND $3::TEXT IS NOT NULL AND UPPER(COALESCE(pa.unit_label, '')) = $3)
           OR ($2 = 'full_parcel')

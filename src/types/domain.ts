@@ -200,6 +200,7 @@ export interface PropertyClaimRequest {
   unitLabel?: string;
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
+  declaredAssetType?: PropertyKind;
   status: SubmissionStatus;
   createdAt: string;
 }

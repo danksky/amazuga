@@ -19,6 +19,7 @@ export default async function AdminPropertiesPage() {
         { label: "Claim request ID", value: claim.id },
         { label: "UPI", value: claim.upi },
         { label: "Resolved property route", value: claim.propertyRouteId ?? "Not resolved yet" },
+        { label: "Declared asset type", value: claim.declaredAssetType ?? "Not provided" },
         { label: "Scope", value: claim.claimScope === "unit_partial" ? "Unit or apartment" : "Whole parcel" },
         { label: "Unit label", value: claim.unitLabel ?? "Not provided" },
         {
@@ -34,7 +35,9 @@ export default async function AdminPropertiesPage() {
       ],
       approvalBlockedReason: claim.approvalBlockedReason,
       reviewNote:
-        "Approving this claim creates an active ownership record for the user, makes the property appear in their portal properties workspace, and unlocks listing creation only after the claim has been resolved to the correct property record.",
+        claim.declaredAssetType && !claim.propertyInternalId
+          ? `Approving this claim will create a new ${claim.declaredAssetType} asset on this parcel, then create an active ownership record for the user.`
+          : "Approving this claim creates an active ownership record for the user and makes the property appear in their portal properties workspace.",
     }));
 
   return (

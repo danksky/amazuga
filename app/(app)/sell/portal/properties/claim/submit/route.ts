@@ -4,7 +4,16 @@ import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { findPortalPropertyClaimTargetByUpi } from "@/lib/server/portal-properties";
 import { createPropertyClaimRequestInDb } from "@/lib/server/workflows";
-import type { PropertyClaimScope, PropertyTenureType } from "@/types/domain";
+import type { PropertyClaimScope, PropertyKind, PropertyTenureType } from "@/types/domain";
+
+const FORM_TYPE_TO_PROPERTY_KIND: Record<string, PropertyKind> = {
+  house: "house",
+  apartment_building: "building",
+  land: "land",
+  apartment_unit: "apartment_unit",
+  commercial_building: "building",
+  commercial_unit: "commercial_unit",
+};
 
 function buildPortalPropertiesStatusHref(input: {
   status: "created" | "pending" | "owned" | "no_match" | "unit_required";
@@ -52,6 +61,9 @@ export async function POST(request: Request) {
   const rawTenureType = formData.get("tenureType");
   const tenureType: PropertyTenureType =
     rawTenureType === "freehold" || rawTenureType === "emphyteutic_lease" ? rawTenureType : "unspecified";
+  const rawPropertyType = formData.get("propertyType");
+  const declaredAssetType: PropertyKind | undefined =
+    typeof rawPropertyType === "string" ? FORM_TYPE_TO_PROPERTY_KIND[rawPropertyType] : undefined;
 
   if (!upi) {
     const nextUrl = new URL(buildPortalPropertiesStatusHref({ status: "no_match", upi: "", claimScope, unitLabel }), request.url);
@@ -85,6 +97,7 @@ export async function POST(request: Request) {
     unitLabel: unitLabel || undefined,
     tenureType,
     tenureSource: tenureType === "unspecified" ? "unspecified" : "user_provided",
+    declaredAssetType,
     propertyId: target.status === "resolved" ? target.propertyRouteId : undefined,
     propertyInternalId: target.status === "resolved" ? target.propertyInternalId : undefined,
   });

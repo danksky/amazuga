@@ -161,6 +161,9 @@ CREATE TABLE IF NOT EXISTS property_claim_request (
   property_id TEXT NOT NULL,
   property_internal_id TEXT NOT NULL REFERENCES property_asset(id),
   parcel_id TEXT NOT NULL,
+  declared_asset_type TEXT CHECK (declared_asset_type IN (
+    'house', 'land', 'building', 'apartment_unit', 'commercial_unit', 'mixed_use', 'other'
+  )),
   status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
   seed_source TEXT NOT NULL DEFAULT 'manual',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
