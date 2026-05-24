@@ -28,11 +28,14 @@ export default async function SellPortalPropertiesRoute({
     claimScope?: string;
     claimUnit?: string;
     claimProperty?: string;
+    claims?: string;
   }>;
 }) {
   const currentUser = await requireCurrentUser(routes.app.portalProperties);
   const access = await getPortalAccessState(currentUser.id);
   const [data, query] = await Promise.all([getPortalPropertiesWorkspaceData(currentUser.id), searchParams]);
+  const claimStatusFilter =
+    query.claims === "pending" ? "pending" : query.claims === "denied" ? "denied" : "all";
   const claimFeedback = isClaimStatus(query.claimStatus)
     ? {
         status: query.claimStatus,
@@ -48,6 +51,7 @@ export default async function SellPortalPropertiesRoute({
       <PortalPropertiesPage
         canCreateListing={hasCapability(currentUser.roles, "create_listing")}
         claimFeedback={claimFeedback}
+        claimStatusFilter={claimStatusFilter}
         data={data}
       />
     </PortalShell>

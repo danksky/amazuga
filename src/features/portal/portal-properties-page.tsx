@@ -29,6 +29,7 @@ function getTenureLabel(tenureType: PortalPropertiesWorkspaceData["claimRequests
 export function PortalPropertiesPage({
   canCreateListing,
   claimFeedback,
+  claimStatusFilter = "all",
   data,
 }: {
   canCreateListing: boolean;
@@ -39,9 +40,16 @@ export function PortalPropertiesPage({
     unitLabel?: string;
     propertyRouteId?: string;
   };
+  claimStatusFilter?: "all" | "pending" | "denied";
   data: PortalPropertiesWorkspaceData;
 }) {
   const listableCount = data.ownedProperties.filter((property) => !property.listingId).length;
+  const pendingCount = data.claimRequests.filter((c) => c.status === "pending").length;
+  const deniedCount = data.claimRequests.filter((c) => c.status === "denied").length;
+  const filteredClaims =
+    claimStatusFilter === "all"
+      ? data.claimRequests
+      : data.claimRequests.filter((c) => c.status === claimStatusFilter);
   const unitSuffix =
     claimFeedback?.claimScope === "unit_partial" && claimFeedback.unitLabel ? ` (${claimFeedback.unitLabel})` : "";
   const claimFeedbackMessage =
@@ -243,15 +251,42 @@ export function PortalPropertiesPage({
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Claim status</h2>
-            <div className={styles.sectionMeta}>
-              Pending and denied claim requests stay visible here, even before a parcel resolves to a titled property
-              record.
+            <div className={styles.sectionHeaderRow}>
+              <div>
+                <h2 className={styles.sectionTitle}>Claim status</h2>
+                <div className={styles.sectionMeta}>
+                  {pendingCount} pending · {deniedCount} denied
+                </div>
+              </div>
+              <div className={styles.filterTabs}>
+                <Link
+                  className={`${styles.filterTab} ${claimStatusFilter === "all" ? styles.filterTabActive : ""}`}
+                  href={routes.app.portalProperties}
+                >
+                  All
+                </Link>
+                <Link
+                  className={`${styles.filterTab} ${claimStatusFilter === "pending" ? styles.filterTabActive : ""}`}
+                  href={`${routes.app.portalProperties}?claims=pending`}
+                >
+                  Pending
+                </Link>
+                <Link
+                  className={`${styles.filterTab} ${claimStatusFilter === "denied" ? styles.filterTabActive : ""}`}
+                  href={`${routes.app.portalProperties}?claims=denied`}
+                >
+                  Denied
+                </Link>
+              </div>
             </div>
           </div>
           {data.claimRequests.length > 0 ? (
+            <>
+              {filteredClaims.length === 0 ? (
+                <div className={styles.empty}>No {claimStatusFilter} claims.</div>
+              ) : null}
             <div className={styles.cardGrid}>
-              {data.claimRequests.map((claim) => (
+              {filteredClaims.map((claim) => (
                 <article className={styles.card} key={claim.id}>
                   <div className={styles.cardTop}>
                     <div>
@@ -291,6 +326,7 @@ export function PortalPropertiesPage({
                 </article>
               ))}
             </div>
+            </>
           ) : (
             <div className={styles.empty}>No open claim requests right now.</div>
           )}
