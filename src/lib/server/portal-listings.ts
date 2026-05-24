@@ -27,6 +27,7 @@ interface PortalListingRow {
   property_description_override: string | null;
   profile_title: string | null;
   profile_description: string | null;
+  parcel_display_id: string | null;
   property_type: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
@@ -87,7 +88,7 @@ function normalizePropertyType(row: PortalListingRow) {
 }
 
 function normalizePropertyTitle(row: PortalListingRow) {
-  return row.property_title || row.profile_title || row.public_id || "Untitled property";
+  return row.property_title || row.profile_title || row.parcel_display_id || row.public_id || "Untitled property";
 }
 
 function normalizePropertyDescription(row: PortalListingRow) {
@@ -117,6 +118,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         l.agent_user_id,
         agent.full_name AS agent_full_name,
         p.public_id,
+        p.display_id AS parcel_display_id,
         p.district,
         p.sector,
         pa.id AS property_internal_id,

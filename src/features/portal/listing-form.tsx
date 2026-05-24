@@ -100,7 +100,9 @@ export function ListingForm({
         <h1 className={styles.title}>{mode === "create" ? "Create a listing" : "Edit listing"}</h1>
         <div className={styles.body}>
           {mode === "create"
-            ? "Create a new active listing for one of the properties your account already owns, then attach it to the right agency and agent."
+            ? isPrivateListerMode
+              ? "Create a new listing for one of the properties you own."
+              : "Create a new active listing for one of the properties your account already owns, then attach it to the right agency and agent."
             : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
         </div>
         {listing ? (
