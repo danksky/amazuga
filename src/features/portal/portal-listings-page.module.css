@@ -101,6 +101,35 @@
   line-height: 1.5;
 }
 
+.filterTabs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.filterTab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--foreground-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.filterTab:hover {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.filterTabActive {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}
+
 .roleBadge {
   padding: 8px 12px;
   border-radius: 999px;

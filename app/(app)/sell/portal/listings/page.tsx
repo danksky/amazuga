@@ -9,8 +9,12 @@ import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
 
-export default async function SellPortalListingsRoute() {
-  const currentUser = await requireCurrentUser();
+export default async function SellPortalListingsRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const [currentUser, { status }] = await Promise.all([requireCurrentUser(), searchParams]);
   const access = await getPortalAccessState(currentUser.id);
 
   if (!access.hasAgencyPortalAccess && !access.hasPropertyOwnerListingAccess) {
@@ -18,6 +22,7 @@ export default async function SellPortalListingsRoute() {
   }
 
   const data = await getPortalListingsWorkspaceData(currentUser.id);
+  const listingStatusFilter = status === "inactive" ? "inactive" : "active";
 
   return (
     <PortalShell access={access}>
@@ -27,6 +32,7 @@ export default async function SellPortalListingsRoute() {
         canManageListingLifecycle={hasCapability(currentUser.roles, "deactivate_listing")}
         currentUserFirstName={currentUser.fullName.split(" ")[0] ?? currentUser.fullName}
         data={data}
+        listingStatusFilter={listingStatusFilter}
       />
     </PortalShell>
   );

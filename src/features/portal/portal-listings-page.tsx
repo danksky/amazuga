@@ -33,18 +33,23 @@ export function PortalListingsPage({
   canManageListingLifecycle,
   currentUserFirstName,
   data,
+  listingStatusFilter = "active",
 }: {
   canCreateListing: boolean;
   canEditListing: boolean;
   canManageListingLifecycle: boolean;
   currentUserFirstName: string;
   data: PortalListingsWorkspaceData;
+  listingStatusFilter?: "active" | "inactive";
 }) {
   const totalListings = data.listings.length;
   const assignedToUserCount = data.listings.filter((listing) => listing.isAssignedToCurrentUser).length;
   const saleCount = data.listings.filter((listing) => listing.marketingType === "sale").length;
   const rentCount = data.listings.filter((listing) => listing.marketingType === "rent").length;
-  const privateListerListings = data.listings.filter((listing) => !listing.agencyId);
+  const allPrivateListerListings = data.listings.filter((listing) => !listing.agencyId);
+  const privateListerListings = allPrivateListerListings.filter((l) => l.status === listingStatusFilter);
+  const activeCount = allPrivateListerListings.filter((l) => l.status === "active").length;
+  const inactiveCount = allPrivateListerListings.filter((l) => l.status === "inactive").length;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -189,16 +194,33 @@ export function PortalListingsPage({
           </>
         ) : null}
 
-        {privateListerListings.length > 0 ? (
+        {allPrivateListerListings.length > 0 ? (
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div className={styles.sectionTitleWrap}>
                 <h2 className={styles.sectionTitle}>Your listings</h2>
                 <div className={styles.sectionMeta}>
-                  {privateListerListings.length} listing{privateListerListings.length === 1 ? "" : "s"} created directly from your property ownership.
+                  {activeCount} active · {inactiveCount} inactive
                 </div>
               </div>
+              <div className={styles.filterTabs}>
+                <Link
+                  className={`${styles.filterTab} ${listingStatusFilter === "active" ? styles.filterTabActive : ""}`}
+                  href={routes.app.portalListings}
+                >
+                  Active
+                </Link>
+                <Link
+                  className={`${styles.filterTab} ${listingStatusFilter === "inactive" ? styles.filterTabActive : ""}`}
+                  href={`${routes.app.portalListings}?status=inactive`}
+                >
+                  Inactive
+                </Link>
+              </div>
             </div>
+            {privateListerListings.length === 0 ? (
+              <div className={styles.empty}>No {listingStatusFilter} listings.</div>
+            ) : null}
             <div className={styles.listingGrid}>
               {privateListerListings.map((listing) => (
                 <article className={styles.listingCard} key={listing.id}>
