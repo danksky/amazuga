@@ -3,7 +3,6 @@ import Link from "next/link";
 import { setListingStatusAction } from "@/features/portal/actions";
 import { ListingStatusButton } from "@/features/portal/listing-status-button";
 import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
-import { getPublicListingId } from "@/lib/listing-public-id";
 import type { PortalListingsWorkspaceData } from "@/lib/server/portal-listings";
 import { routes } from "@/lib/routes";
 
@@ -146,8 +145,8 @@ export function PortalListingsPage({
                               <div className={styles.detailValue}>{listing.agentFullName}</div>
                             </div>
                             <div className={styles.detailCard}>
-                              <div className={styles.detailLabel}>Public listing ID</div>
-                              <div className={styles.detailValue}>{getPublicListingId(listing.id)}</div>
+                              <div className={styles.detailLabel}>Property ID</div>
+                              <div className={styles.detailValue}>{listing.propertyId}</div>
                             </div>
                             <div className={styles.detailCard}>
                               <div className={styles.detailLabel}>Last updated</div>

@@ -211,6 +211,10 @@ export function PortalPropertiesPage({
                     </div>
                   </div>
                   <div className={styles.detailRow}>
+                    <span>Property ID</span>
+                    <span>{property.propertyRouteId}</span>
+                  </div>
+                  <div className={styles.detailRow}>
                     <span>Claim activated</span>
                     <span>{formatDate(property.createdAt)}</span>
                   </div>
