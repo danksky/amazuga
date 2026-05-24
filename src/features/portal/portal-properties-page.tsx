@@ -314,10 +314,10 @@ export function PortalPropertiesPage({
                     <span>Land tenure</span>
                     <span>{getTenureLabel(claim.tenureType)}</span>
                   </div>
-                  {claim.propertyTitle ? (
+                  {claim.propertyRouteId ? (
                     <div className={styles.detailRow}>
-                      <span>Resolved property record</span>
-                      <span>{claim.propertyTitle}</span>
+                      <span>Property ID</span>
+                      <span>{claim.propertyRouteId}</span>
                     </div>
                   ) : null}
                   <div className={styles.actions}>
