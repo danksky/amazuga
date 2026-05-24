@@ -247,8 +247,8 @@ export function PortalListingsPage({
                       </div>
                     </div>
                     <div className={styles.detailCard}>
-                      <div className={styles.detailLabel}>Public listing ID</div>
-                      <div className={styles.detailValue}>{getPublicListingId(listing.id)}</div>
+                      <div className={styles.detailLabel}>Property ID</div>
+                      <div className={styles.detailValue}>{listing.propertyId}</div>
                     </div>
                     <div className={styles.detailCard}>
                       <div className={styles.detailLabel}>Last updated</div>
