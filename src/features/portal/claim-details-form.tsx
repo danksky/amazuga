@@ -32,60 +32,79 @@ export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; exis
   const claimScope = deriveClaimScope(propertyType);
 
   return (
-    <form action={routes.app.portalPropertyClaimSubmit} className={styles.form} method="post">
-      <input name="upi" type="hidden" value={upi} />
-      <input name="claimScope" type="hidden" value={claimScope} />
+    <div className={`container ${styles.page}`}>
+      <div className={styles.card}>
+        <div className={styles.eyebrow}>Portal</div>
+        <h1 className={styles.title}>Claim a property</h1>
+        <div className={styles.body}>
+          Confirm the property type and land tenure for the parcel below. For apartment or commercial units, include
+          your unit identifier so the claim is attached to the right record.
+        </div>
 
-      <div className={styles.upiLine}>
-        <span className={styles.upiLabel}>UPI</span>
-        <span className={styles.upiValue}>{upi}</span>
+        <div className={styles.upiDisplay}>
+          <span className={styles.upiLabel}>UPI</span>
+          <span className={styles.upiValue}>{upi}</span>
+        </div>
+
+        <form action={routes.app.portalPropertyClaimSubmit} className={styles.form} method="post">
+          <input name="upi" type="hidden" value={upi} />
+          <input name="claimScope" type="hidden" value={claimScope} />
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="claim-type">
+              What kind of property is here?
+            </label>
+            <select
+              className={styles.select}
+              id="claim-type"
+              name="propertyType"
+              value={propertyType}
+              onChange={(e) => setPropertyType(e.target.value as PropertyType)}
+            >
+              <option value="house">House</option>
+              <option value="apartment_building">Apartment building</option>
+              <option value="land">Land</option>
+              <option value="apartment_unit">Apartment unit</option>
+              <option value="commercial_building">Commercial building</option>
+              <option value="commercial_unit">Commercial unit</option>
+            </select>
+          </div>
+
+          {claimScope === "unit_partial" && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="claim-unit">
+                Unit / apartment identifier
+              </label>
+              <input
+                autoFocus
+                className={styles.input}
+                id="claim-unit"
+                name="unitLabel"
+                placeholder="e.g. A-201, Flat 3B, Suite G-08"
+                type="text"
+              />
+            </div>
+          )}
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="claim-tenure">
+              Land tenure
+            </label>
+            <select className={styles.select} defaultValue="unspecified" id="claim-tenure" name="tenureType">
+              <option value="unspecified">Not sure</option>
+              <option value="freehold">Freehold</option>
+              <option value="emphyteutic_lease">Emphyteutic lease</option>
+            </select>
+            <span className={styles.hint}>Optional — your answer stays separate from any future dataset enrichment.</span>
+          </div>
+
+          <div className={styles.actions}>
+            <button className={styles.submitAction} type="submit">
+              Submit claim
+            </button>
+          </div>
+        </form>
       </div>
-
-      <label className={styles.field} htmlFor="claim-type">
-        <span className={styles.fieldLabel}>What kind of property is here?</span>
-        <select
-          className={styles.selectInput}
-          id="claim-type"
-          name="propertyType"
-          value={propertyType}
-          onChange={(e) => setPropertyType(e.target.value as PropertyType)}
-        >
-          <option value="house">House</option>
-          <option value="apartment_building">Apartment building</option>
-          <option value="land">Land</option>
-          <option value="apartment_unit">Apartment unit</option>
-          <option value="commercial_building">Commercial building</option>
-          <option value="commercial_unit">Commercial unit</option>
-        </select>
-      </label>
-
-      {claimScope === "unit_partial" && (
-        <label className={styles.field} htmlFor="claim-unit">
-          <span className={styles.fieldLabel}>Unit / apartment identifier</span>
-          <input
-            autoFocus
-            className={styles.textInput}
-            id="claim-unit"
-            name="unitLabel"
-            placeholder="e.g. A-201, Flat 3B, Suite G-08"
-            type="text"
-          />
-        </label>
-      )}
-
-      <label className={styles.field} htmlFor="claim-tenure">
-        <span className={styles.fieldLabel}>Land tenure</span>
-        <select className={styles.selectInput} defaultValue="unspecified" id="claim-tenure" name="tenureType">
-          <option value="unspecified">Not sure</option>
-          <option value="freehold">Freehold</option>
-          <option value="emphyteutic_lease">Emphyteutic lease</option>
-        </select>
-        <span className={styles.fieldHint}>Optional — your answer stays separate from any future dataset enrichment.</span>
-      </label>
-
-      <button className={styles.submitAction} type="submit">
-        Submit claim
-      </button>
-    </form>
+    </div>
   );
 }

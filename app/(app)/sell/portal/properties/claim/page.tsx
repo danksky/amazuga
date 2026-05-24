@@ -31,17 +31,7 @@ export default async function SellPortalPropertyClaimPage({
 
   return (
     <PortalShell access={access}>
-      <div className="container" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
-        <div style={{ maxWidth: 600 }}>
-          <div style={{ marginBottom: "2rem" }}>
-            <div style={{ fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-secondary, #6b7280)", marginBottom: "0.375rem" }}>
-              Claim a property
-            </div>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>Property details</h1>
-          </div>
-          <ClaimDetailsForm upi={trimmedUpi} existingAssetKind={existingAssetKind ?? undefined} />
-        </div>
-      </div>
+      <ClaimDetailsForm upi={trimmedUpi} existingAssetKind={existingAssetKind ?? undefined} />
     </PortalShell>
   );
 }
