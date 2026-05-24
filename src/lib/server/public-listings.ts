@@ -187,7 +187,10 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
   const listingState = row.listing_id ? "listed" : "not_listed";
   const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
   const title = normalizePropertyTitle(row);
-  const description = row.property_description_override || row.profile_description;
+  // Only use profile_description when there is no dedicated property asset — once an
+  // asset exists, profile data (often mock-seeded) is stale and should be ignored.
+  const description = row.property_description_override
+    || (row.property_internal_id ? undefined : row.profile_description);
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
   const maxLng = toNullableNumber(row.bbox_max_lon);
