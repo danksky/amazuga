@@ -206,17 +206,10 @@ export function PortalPropertiesPage({
                       </div>
                     </div>
                     <div className={styles.badges}>
+                      <div className={styles.badge}>{property.propertyRouteId}</div>
                       <div className={styles.badge}>{getScopeLabel(property.ownershipScope)}</div>
                       <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
                     </div>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span>Property ID</span>
-                    <span>{property.propertyRouteId}</span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span>Claim activated</span>
-                    <span>{formatDate(property.createdAt)}</span>
                   </div>
                   {property.listingAgencyName ? (
                     <div className={styles.detailRow}>
