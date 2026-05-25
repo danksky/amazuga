@@ -2,6 +2,7 @@ export function formatCurrency(amount: number, currency: string = "RWF") {
   return new Intl.NumberFormat("en-RW", {
     style: "currency",
     currency,
+    currencyDisplay: "code",
     maximumFractionDigits: 0,
   }).format(amount);
 }
