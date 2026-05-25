@@ -39,6 +39,32 @@
   line-height: 1.6;
 }
 
+.pageNav {
+  display: flex;
+  gap: 8px;
+}
+
+.pageNavItem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  transition: background 160ms ease;
+}
+
+.pageNavItem:hover,
+.pageNavItem:focus-visible {
+  background: var(--surface-muted);
+}
+
 .claimForm {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

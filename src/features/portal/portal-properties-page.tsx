@@ -32,7 +32,7 @@ export function PortalPropertiesPage({
   canCreateListing,
   canManageListingLifecycle,
   claimFeedback,
-  claimStatusFilter = "all",
+  claimStatusFilter = "pending",
   data,
 }: {
   canCreateListing: boolean;
@@ -78,6 +78,11 @@ export function PortalPropertiesPage({
             Private sale starts here. Begin from the parcel UPI, optionally describe the apartment or unit you mean,
             and then turn the approved claim into a listing only after the ownership record is unlocked.
           </div>
+        </div>
+
+        <div className={styles.pageNav}>
+          <a className={styles.pageNavItem} href="#portfolio">Portfolio</a>
+          <a className={styles.pageNavItem} href="#claims">Claims</a>
         </div>
 
         <section className={styles.section}>
@@ -183,7 +188,7 @@ export function PortalPropertiesPage({
           </div>
         </div>
 
-        <section className={styles.section}>
+        <section className={styles.section} id="portfolio">
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Portfolio</h2>
             <div className={styles.sectionMeta}>
@@ -286,7 +291,7 @@ export function PortalPropertiesPage({
           )}
         </section>
 
-        <section className={styles.section}>
+        <section className={styles.section} id="claims">
           <div className={styles.sectionHeader}>
             <div className={styles.sectionHeaderRow}>
               <div>
@@ -298,7 +303,7 @@ export function PortalPropertiesPage({
               <div className={styles.filterTabs}>
                 <Link
                   className={`${styles.filterTab} ${claimStatusFilter === "all" ? styles.filterTabActive : ""}`}
-                  href={routes.app.portalProperties}
+                  href={`${routes.app.portalProperties}?claims=all`}
                 >
                   All
                 </Link>

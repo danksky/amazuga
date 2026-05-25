@@ -35,7 +35,7 @@ export default async function SellPortalPropertiesRoute({
   const access = await getPortalAccessState(currentUser.id);
   const [data, query] = await Promise.all([getPortalPropertiesWorkspaceData(currentUser.id), searchParams]);
   const claimStatusFilter =
-    query.claims === "pending" ? "pending" : query.claims === "denied" ? "denied" : "all";
+    query.claims === "all" ? "all" : query.claims === "denied" ? "denied" : "pending";
   const claimFeedback = isClaimStatus(query.claimStatus)
     ? {
         status: query.claimStatus,
