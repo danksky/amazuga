@@ -100,6 +100,18 @@ function groupPriceHistoryByCampaign(priceHistory: PortalEditableListing["priceH
   }));
 }
 
+function getListingDetailsTitle(mode: "create" | "edit", status?: PortalEditableListing["status"]) {
+  if (mode === "create") {
+    return "Draft setup";
+  }
+
+  if (status === "draft") {
+    return "Listing details";
+  }
+
+  return "Listing details";
+}
+
 export function ListingForm({
   agencies,
   listing,
@@ -154,8 +166,8 @@ export function ListingForm({
         <div className={styles.body}>
           {mode === "create"
             ? isPrivateListerMode
-              ? "Start a draft listing for one of the properties you own, then add the market-facing details before publishing."
-              : "Start a draft listing for one of the properties your account already owns, attach it to the right agency and agent, and then finish the publish details in the editor."
+              ? "Start a draft listing for one of your owned, listing-ready properties, then add the market-facing details before publishing."
+              : "Start a draft listing for one of your owned, listing-ready properties, attach it to the right agency and agent, and then finish the publish details in the editor."
             : listing?.status === "draft"
               ? "This listing is still a draft. Add details and photos here, then publish it when you're ready."
               : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
@@ -168,13 +180,12 @@ export function ListingForm({
         {showCreateEmptyState ? (
           <div className={styles.emptyState}>
             <div className={styles.notice}>
-              You do not have any owned properties that are currently off-market, so there is nothing new to list right
-              now.
+              You do not have any owned properties that are currently listing-ready and available for a new draft.
             </div>
             <div className={styles.emptyBody}>
-              All of your currently owned properties already have an open listing or draft. To create another one,
-              first claim a different property or archive/deactivate the existing listing so that property becomes
-              listable again.
+              Your owned properties either already have an open listing or draft, or they are still missing upstream
+              property details that make them listing-ready. To create another draft, first claim a different property,
+              free up an existing listing slot, or complete the property record backfill for the asset.
             </div>
             <div className={styles.actions}>
               <Link href={routes.app.portalProperties}>
@@ -194,179 +205,203 @@ export function ListingForm({
         <form action={submitAction} className={styles.form}>
           {listing ? <input name="listingId" type="hidden" value={listing.id} /> : null}
 
-          {isPrivateListerMode ? null : (
-          <div className={styles.split}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="agency-id">
-                Agency
-              </label>
-              <select
-                className={styles.select}
-                defaultValue={listing?.agencyId || selectedAgency?.agencyId}
-                disabled={mode === "edit"}
-                id="agency-id"
-                name="agencyId"
-              >
-                {agencies.map((agency) => (
-                  <option key={agency.agencyId} value={agency.agencyId}>
-                    {agency.businessName}
-                  </option>
-                ))}
-              </select>
-              {mode === "edit" ? (
-                <div className={styles.hint}>Agency changes are not part of this first edit flow.</div>
-              ) : (
-                <div className={styles.hint}>Choose the agency that should own this listing in the portal.</div>
-              )}
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="agent-user-id">
-                Assigned agent
-              </label>
-              <select
-                className={styles.select}
-                defaultValue={listing?.agentUserId || flattenedAgents[0]?.userId}
-                id="agent-user-id"
-                name="agentUserId"
-              >
-                {agentAgencies.map((agency) => (
-                  <optgroup key={agency.agencyId} label={agency.businessName}>
-                    {getUniqueAgencyMembers(agency).map((agent) => (
-                      <option key={`${agency.agencyId}-${agent.userId}-${agent.membershipRole}`} value={agent.userId}>
-                        {agent.fullName}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <div className={styles.hint}>
+          <section className={styles.formSection}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>{getListingDetailsTitle(mode, listing?.status)}</h2>
+              <div className={styles.sectionBody}>
                 {mode === "create"
-                  ? "Choose an active member of the same agency you selected above."
-                  : "Only active members of this listing's agency can be assigned here."}
+                  ? "Choose the property and representation details that will anchor this draft."
+                  : "Manage the market-facing details that belong to this listing."
+                }
               </div>
             </div>
-          </div>
-          )}
 
-          {mode === "create" ? (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="property-route-id">
-                Property to list
-              </label>
-              <select
-                className={styles.select}
-                defaultValue={selectedProperty?.propertyRouteId}
-                id="property-route-id"
-                name="propertyRouteId"
-                disabled={propertyOptions.length === 0}
-              >
-                {propertyOptions.map((property) => (
-                  <option key={property.propertyRouteId} value={property.propertyRouteId}>
-                    {property.propertyTitle} - {property.propertyRouteId}
-                  </option>
-                ))}
-              </select>
-              <div className={styles.hint}>
-                This flow only offers properties you own and that do not currently have another open listing or draft.
+            {isPrivateListerMode ? null : (
+            <div className={styles.split}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="agency-id">
+                  Agency
+                </label>
+                <select
+                  className={styles.select}
+                  defaultValue={listing?.agencyId || selectedAgency?.agencyId}
+                  disabled={mode === "edit"}
+                  id="agency-id"
+                  name="agencyId"
+                >
+                  {agencies.map((agency) => (
+                    <option key={agency.agencyId} value={agency.agencyId}>
+                      {agency.businessName}
+                    </option>
+                  ))}
+                </select>
+                {mode === "edit" ? (
+                  <div className={styles.hint}>Agency changes are not part of this first edit flow.</div>
+                ) : (
+                  <div className={styles.hint}>Choose the agency that should own this listing in the portal.</div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="agent-user-id">
+                  Assigned agent
+                </label>
+                <select
+                  className={styles.select}
+                  defaultValue={listing?.agentUserId || flattenedAgents[0]?.userId}
+                  id="agent-user-id"
+                  name="agentUserId"
+                >
+                  {agentAgencies.map((agency) => (
+                    <optgroup key={agency.agencyId} label={agency.businessName}>
+                      {getUniqueAgencyMembers(agency).map((agent) => (
+                        <option key={`${agency.agencyId}-${agent.userId}-${agent.membershipRole}`} value={agent.userId}>
+                          {agent.fullName}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <div className={styles.hint}>
+                  {mode === "create"
+                    ? "Choose an active member of the same agency you selected above."
+                    : "Only active members of this listing's agency can be assigned here."}
+                </div>
               </div>
             </div>
-          ) : null}
+            )}
 
-          {selectedProperty ? (
-            <div className={styles.propertyMeta}>
-              <h2 className={styles.propertyMetaTitle}>{getPropertyDetailsTitle(selectedProperty.propertyKind)}</h2>
-              <div className={styles.propertyMetaBody}>
-                These details come from the property record and are used in this listing.
+            {mode === "create" ? (
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="property-route-id">
+                  Property to list
+                </label>
+                <select
+                  className={styles.select}
+                  defaultValue={selectedProperty?.propertyRouteId}
+                  id="property-route-id"
+                  name="propertyRouteId"
+                  disabled={propertyOptions.length === 0}
+                >
+                  {propertyOptions.map((property) => (
+                    <option key={property.propertyRouteId} value={property.propertyRouteId}>
+                      {property.propertyTitle} - {property.propertyRouteId}
+                    </option>
+                  ))}
+                </select>
+                <div className={styles.hint}>
+                  This flow only offers owned properties that are listing-ready and do not currently have another open listing or draft.
+                </div>
               </div>
-              <h3 className={styles.propertyMetaTitle}>{selectedProperty.propertyTitle}</h3>
-              <div className={styles.propertyMetaBody}>
-                {selectedProperty.sector ? `${selectedProperty.sector}, ` : ""}
-                {selectedProperty.district}. Public route: {selectedProperty.propertyRouteId}
-              </div>
-              <div className={styles.propertyMetaFacts}>
-                <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind)}</div>
-                <div className={styles.pill}>{selectedProperty.propertyRouteId}</div>
-              </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          <div className={styles.split}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="marketing-type">
-                Listing type
-              </label>
-              <select
-                className={styles.select}
-                defaultValue={listing?.marketingType || "sale"}
-                id="marketing-type"
-                name="marketingType"
-              >
-                <option value="sale">For sale</option>
-                <option value="rent">For rent</option>
-              </select>
-            </div>
+            <div className={styles.split}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="marketing-type">
+                  Listing type
+                </label>
+                <select
+                  className={styles.select}
+                  defaultValue={listing?.marketingType || "sale"}
+                  id="marketing-type"
+                  name="marketingType"
+                >
+                  <option value="sale">For sale</option>
+                  <option value="rent">For rent</option>
+                </select>
+              </div>
 
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="visibility">
-                Visibility
-              </label>
-              <select
-                className={styles.select}
-                defaultValue={listing?.visibility || "public"}
-                id="visibility"
-                name="visibility"
-              >
-                <option value="public">Public — appears in search results</option>
-                <option value="unlisted">Unlisted — viewable by direct link only</option>
-                <option value="private">Private — visible to invited users only</option>
-              </select>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="visibility">
+                  Visibility
+                </label>
+                <select
+                  className={styles.select}
+                  defaultValue={listing?.visibility || "public"}
+                  id="visibility"
+                  name="visibility"
+                >
+                  <option value="public">Public — appears in search results</option>
+                  <option value="unlisted">Unlisted — viewable by direct link only</option>
+                  <option value="private">Private — visible to invited users only</option>
+                </select>
+              </div>
+
+              {mode === "edit" ? (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="asking-price">
+                    Asking price (RWF)
+                  </label>
+                  <input
+                    className={`${styles.input}${publishAttempted && !askingPriceHasValue ? ` ${styles.inputError}` : ""}`}
+                    defaultValue={listing?.askingPrice}
+                    id="asking-price"
+                    inputMode="numeric"
+                    name="askingPrice"
+                    onChange={(e) => setAskingPriceHasValue(Boolean(e.target.value))}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    placeholder="Example: 185000000"
+                    step="1"
+                    type="number"
+                  />
+                </div>
+              ) : null}
             </div>
 
             {mode === "edit" ? (
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="asking-price">
-                  Asking price (RWF)
+                <label className={styles.label} htmlFor="description">
+                  Description
                 </label>
-                <input
-                  className={`${styles.input}${publishAttempted && !askingPriceHasValue ? ` ${styles.inputError}` : ""}`}
-                  defaultValue={listing?.askingPrice}
-                  id="asking-price"
-                  inputMode="numeric"
-                  name="askingPrice"
-                  onChange={(e) => setAskingPriceHasValue(Boolean(e.target.value))}
-                  onWheel={(e) => e.currentTarget.blur()}
-                  placeholder="Example: 185000000"
-                  step="1"
-                  type="number"
+                <textarea
+                  className={styles.textarea}
+                  defaultValue={listing?.description}
+                  id="description"
+                  name="description"
+                  placeholder="Add listing copy, context, and useful details for the public property page."
                 />
               </div>
             ) : null}
-          </div>
+          </section>
 
-          {mode === "edit" ? (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="description">
-                Description
-              </label>
-              <textarea
-                className={styles.textarea}
-                defaultValue={listing?.description}
-                id="description"
-                name="description"
-                placeholder="Add listing copy, context, and useful details for the public property page."
-              />
-            </div>
+          {selectedProperty ? (
+            <section className={styles.formSection}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>{getPropertyDetailsTitle(selectedProperty.propertyKind)}</h2>
+                <div className={styles.sectionBody}>
+                  These details come from the property record and are used in this listing.
+                </div>
+              </div>
+              <div className={styles.propertyMeta}>
+                <h3 className={styles.propertyMetaTitle}>{selectedProperty.propertyTitle}</h3>
+                <div className={styles.propertyMetaBody}>
+                  {selectedProperty.sector ? `${selectedProperty.sector}, ` : ""}
+                  {selectedProperty.district}. Public route: {selectedProperty.propertyRouteId}
+                </div>
+                <div className={styles.propertyMetaFacts}>
+                  <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind)}</div>
+                  <div className={styles.pill}>{selectedProperty.propertyRouteId}</div>
+                </div>
+              </div>
+            </section>
           ) : null}
 
           {mode === "edit" && listing ? (
-            <ListingPhotoManager
-              hasError={publishAttempted && photoCount === 0}
-              initialImages={listing.images}
-              listingId={listing.id}
-              onCountChange={setPhotoCount}
-              uploadEnabled={uploadEnabled}
-            />
+            <section className={styles.formSection}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Photos</h2>
+                <div className={styles.sectionBody}>
+                  Add the gallery images that support the listing and unlock publishing.
+                </div>
+              </div>
+              <ListingPhotoManager
+                hasError={publishAttempted && photoCount === 0}
+                initialImages={listing.images}
+                listingId={listing.id}
+                onCountChange={setPhotoCount}
+                uploadEnabled={uploadEnabled}
+              />
+            </section>
           ) : mode === "create" ? (
             <div className={styles.notice}>
               Photos come next. This first step creates a draft listing, then sends you to the full editor to add and
@@ -375,27 +410,34 @@ export function ListingForm({
           ) : null}
 
           {mode === "edit" && listing && listing.priceHistory.length > 0 ? (
-            <div className={styles.historySection}>
-              <h2 className={styles.historySectionTitle}>Price history</h2>
-              <div className={styles.historyGroups}>
-                {priceHistoryGroups.map((group, groupIndex) => (
-                  <div key={group.campaignIndex} className={styles.historyCampaign}>
-                    <div className={styles.historyCampaignHeader}>
-                      <div className={styles.historyCampaignTitle}>Campaign {group.campaignIndex}</div>
-                      {groupIndex === 0 ? <span className={styles.historyBadge}>Current</span> : null}
-                    </div>
-                    <ol className={styles.historyList}>
-                      {group.entries.map((entry) => (
-                        <li key={entry.id} className={styles.historyItem}>
-                          <span className={styles.historyPrice}>{formatCurrency(entry.priceRwf)}</span>
-                          <span className={styles.historyDate}>{formatDate(entry.changedAt)}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                ))}
+            <section className={styles.formSection}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Price history</h2>
+                <div className={styles.sectionBody}>
+                  Previous asking prices stay grouped by listing campaign.
+                </div>
               </div>
-            </div>
+              <div className={styles.historySection}>
+                <div className={styles.historyGroups}>
+                  {priceHistoryGroups.map((group, groupIndex) => (
+                    <div key={group.campaignIndex} className={styles.historyCampaign}>
+                      <div className={styles.historyCampaignHeader}>
+                        <div className={styles.historyCampaignTitle}>Campaign {group.campaignIndex}</div>
+                        {groupIndex === 0 ? <span className={styles.historyBadge}>Current</span> : null}
+                      </div>
+                      <ol className={styles.historyList}>
+                        {group.entries.map((entry) => (
+                          <li key={entry.id} className={styles.historyItem}>
+                            <span className={styles.historyPrice}>{formatCurrency(entry.priceRwf)}</span>
+                            <span className={styles.historyDate}>{formatDate(entry.changedAt)}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
           ) : null}
 
           <div className={styles.actions}>
@@ -450,9 +492,16 @@ export function ListingForm({
         </form>
 
           {mode === "edit" && listing && listing.visibility === "private" ? (
+            <section className={styles.formSection}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Private access</h2>
+                <div className={styles.sectionBody}>
+                  Control who can view this private listing beyond the assigned representative.
+                </div>
+              </div>
             <div className={styles.grantsSection}>
               <div className={styles.grantsHeader}>
-                <h2 className={styles.grantsSectionTitle}>Private access</h2>
+                <h3 className={styles.grantsSectionTitle}>Viewer access</h3>
                 <div className={styles.grantsBody}>
                   This listing is private. Only the assigned agent and the people listed below can view it.
                 </div>
@@ -490,6 +539,7 @@ export function ListingForm({
                 </div>
               </form>
             </div>
+            </section>
           ) : null}
         </>
         )}
