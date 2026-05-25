@@ -21,6 +21,12 @@ interface PortalOwnedPropertyRow {
   property_route_id: string;
   property_title: string | null;
   property_kind: PropertyKind | null;
+  property_unit_label: string | null;
+  bedrooms: number | string | null;
+  bathrooms: number | string | null;
+  interior_area_sqm: number | string | null;
+  representative_size: number | string | null;
+  zoning: string | null;
   district: string | null;
   sector: string | null;
   listing_id: string | null;
@@ -77,6 +83,7 @@ export interface PortalOwnedPropertySummary {
   propertyKind?: PropertyKind;
   district: string;
   sector?: string;
+  isListingReady: boolean;
   listingId?: string;
   listingStatus?: "draft" | "active" | "inactive";
   listingVisibility?: ListingVisibility;
@@ -131,6 +138,52 @@ function normalizePropertyTitle(title: string | null | undefined, routeId: strin
   return title?.trim() || routeId;
 }
 
+function toNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function isListingReadyForAsset(input: {
+  propertyKind?: PropertyKind | null;
+  propertyTitle?: string | null;
+  propertyUnitLabel?: string | null;
+  bedrooms?: number | string | null;
+  bathrooms?: number | string | null;
+  interiorAreaSqm?: number | string | null;
+  representativeSize?: number | string | null;
+  zoning?: string | null;
+}) {
+  const hasTitle = Boolean(input.propertyTitle?.trim());
+  const hasUnitLabel = Boolean(input.propertyUnitLabel?.trim()) || hasTitle;
+  const hasBedrooms = toNumber(input.bedrooms) != null;
+  const hasBathrooms = toNumber(input.bathrooms) != null;
+  const hasInteriorArea = toNumber(input.interiorAreaSqm) != null;
+  const hasRepresentativeSize = toNumber(input.representativeSize) != null;
+  const hasZoning = Boolean(input.zoning?.trim());
+
+  switch (input.propertyKind) {
+    case "house":
+      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasBedrooms && hasBathrooms;
+    case "apartment_unit":
+      return hasUnitLabel && hasInteriorArea && hasBedrooms && hasBathrooms;
+    case "building":
+      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+    case "commercial_unit":
+      return hasUnitLabel && hasInteriorArea && hasZoning;
+    case "land":
+      return hasTitle && hasRepresentativeSize && hasZoning;
+    case "mixed_use":
+      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+    case "other":
+    default:
+      return hasTitle;
+  }
+}
+
 export async function getPortalPropertiesWorkspaceData(userId: string): Promise<PortalPropertiesWorkspaceData> {
   const [ownershipResult, claimResult, claimExamplesResult] = await Promise.all([
     getPgPool().query<PortalOwnedPropertyRow>(
@@ -143,6 +196,12 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
           COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
           pa.asset_type AS property_kind,
+          pa.unit_label AS property_unit_label,
+          pp.bedrooms,
+          pp.bathrooms,
+          pp.interior_area_sqm,
+          p.representative_size,
+          p.zoning,
           p.district,
           p.sector,
           l.id AS listing_id,
@@ -283,6 +342,16 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       propertyKind: row.property_kind || undefined,
       district: row.district || "Unknown district",
       sector: row.sector || undefined,
+      isListingReady: isListingReadyForAsset({
+        propertyKind: row.property_kind,
+        propertyTitle: row.property_title,
+        propertyUnitLabel: row.property_unit_label,
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        interiorAreaSqm: row.interior_area_sqm,
+        representativeSize: row.representative_size,
+        zoning: row.zoning,
+      }),
       listingId: row.listing_id || undefined,
       listingStatus: row.listing_status || undefined,
       listingVisibility: row.listing_visibility || undefined,

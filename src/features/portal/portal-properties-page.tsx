@@ -69,7 +69,7 @@ export function PortalPropertiesPage({
     buyerEmail?: string;
   };
 }) {
-  const listableCount = data.ownedProperties.filter((property) => !property.listingId).length;
+  const listableCount = data.ownedProperties.filter((property) => !property.listingId && property.isListingReady).length;
   const pendingCount = data.claimRequests.filter((c) => c.status === "pending").length;
   const deniedCount = data.claimRequests.filter((c) => c.status === "denied").length;
   const filteredClaims =
@@ -297,6 +297,11 @@ export function PortalPropertiesPage({
                         <span>{property.listingAgencyName}</span>
                       </div>
                     ) : null}
+                    {!property.listingId && !property.isListingReady ? (
+                      <div className={styles.readinessNote}>
+                        This property record is not listing-ready yet, so a draft cannot be started from it yet.
+                      </div>
+                    ) : null}
                     <div className={styles.actions}>
                       <Link className={styles.primaryAction} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
                         Open property page
@@ -305,7 +310,7 @@ export function PortalPropertiesPage({
                         <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(property.listingId)}>
                           {property.listingStatus === "draft" ? "Continue draft" : "Edit listing"}
                         </Link>
-                      ) : canCreateListing ? (
+                      ) : canCreateListing && property.isListingReady ? (
                         <Link className={styles.secondaryAction} href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}>
                           Create draft
                         </Link>

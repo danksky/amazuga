@@ -390,6 +390,11 @@
   color: var(--foreground-muted);
 }
 
+.readinessNote {
+  color: var(--foreground-muted);
+  line-height: 1.5;
+}
+
 .askingPrice {
   font-size: 1.45rem;
   font-weight: 700;

@@ -12,6 +12,12 @@ interface PropertyOptionRow {
   property_route_id: string;
   property_title: string | null;
   property_kind: string | null;
+  property_unit_label: string | null;
+  bedrooms: number | string | null;
+  bathrooms: number | string | null;
+  interior_area_sqm: number | string | null;
+  representative_size: number | string | null;
+  zoning: string | null;
   district: string | null;
   sector: string | null;
   open_listing_id: string | null;
@@ -138,6 +144,43 @@ function normalizePropertyTitle(input: { propertyTitle?: string | null; property
   return input.propertyTitle?.trim() || input.propertyRouteId;
 }
 
+function isListingReadyForAsset(input: {
+  propertyKind?: string | null;
+  propertyTitle?: string | null;
+  propertyUnitLabel?: string | null;
+  bedrooms?: number | string | null;
+  bathrooms?: number | string | null;
+  interiorAreaSqm?: number | string | null;
+  representativeSize?: number | string | null;
+  zoning?: string | null;
+}) {
+  const hasTitle = Boolean(input.propertyTitle?.trim());
+  const hasUnitLabel = Boolean(input.propertyUnitLabel?.trim()) || hasTitle;
+  const hasBedrooms = toNumber(input.bedrooms) != null;
+  const hasBathrooms = toNumber(input.bathrooms) != null;
+  const hasInteriorArea = toNumber(input.interiorAreaSqm) != null;
+  const hasRepresentativeSize = toNumber(input.representativeSize) != null;
+  const hasZoning = Boolean(input.zoning?.trim());
+
+  switch (input.propertyKind) {
+    case "house":
+      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasBedrooms && hasBathrooms;
+    case "apartment_unit":
+      return hasUnitLabel && hasInteriorArea && hasBedrooms && hasBathrooms;
+    case "building":
+      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+    case "commercial_unit":
+      return hasUnitLabel && hasInteriorArea && hasZoning;
+    case "land":
+      return hasTitle && hasRepresentativeSize && hasZoning;
+    case "mixed_use":
+      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+    case "other":
+    default:
+      return hasTitle;
+  }
+}
+
 async function getAccessibleListingAgencies(userId: string): Promise<PortalListingAgencyOption[]> {
   const workspace = await getPortalAgencyWorkspaceData(userId);
 
@@ -161,6 +204,12 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         pa.public_id AS property_route_id,
         COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
         pa.asset_type AS property_kind,
+        pa.unit_label AS property_unit_label,
+        pp.bedrooms,
+        pp.bathrooms,
+        pp.interior_area_sqm,
+        p.representative_size,
+        p.zoning,
         p.district,
         p.sector,
         open_listing.id AS open_listing_id
@@ -183,17 +232,30 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
     [userId],
   );
 
-  return result.rows.map((row) => ({
-    propertyAssetId: row.property_asset_id,
-    propertyRouteId: row.property_route_id,
-    propertyTitle: normalizePropertyTitle({
-      propertyTitle: row.property_title,
+  return result.rows
+    .filter((row) =>
+      isListingReadyForAsset({
+        propertyKind: row.property_kind,
+        propertyTitle: row.property_title,
+        propertyUnitLabel: row.property_unit_label,
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        interiorAreaSqm: row.interior_area_sqm,
+        representativeSize: row.representative_size,
+        zoning: row.zoning,
+      }),
+    )
+    .map((row) => ({
+      propertyAssetId: row.property_asset_id,
       propertyRouteId: row.property_route_id,
-    }),
-    propertyKind: row.property_kind || undefined,
-    district: row.district || "Unknown district",
-    sector: row.sector || undefined,
-  }));
+      propertyTitle: normalizePropertyTitle({
+        propertyTitle: row.property_title,
+        propertyRouteId: row.property_route_id,
+      }),
+      propertyKind: row.property_kind || undefined,
+      district: row.district || "Unknown district",
+      sector: row.sector || undefined,
+    }));
 }
 
 async function resolvePropertyTarget(propertyRouteId: string) {
