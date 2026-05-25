@@ -28,12 +28,14 @@ export default async function SellPortalListingEditRoute({
   const data = await getEditablePortalListingData(currentUser.id, listingId);
 
   if (!data) {
-    redirect(routes.app.portalListings);
+    redirect(getPortalEntryHref(access));
   }
+
+  const cancelHref = access.hasAgencyPortalAccess ? routes.app.portalListings : routes.app.portalProperties;
 
   return (
     <PortalShell access={access}>
-      <ListingForm agencies={data.agencies} listing={data.listing} mode="edit" submitAction={submitListingEditAction} uploadEnabled={isListingImageUploadConfigured()} />
+      <ListingForm agencies={data.agencies} cancelHref={cancelHref} listing={data.listing} mode="edit" submitAction={submitListingEditAction} uploadEnabled={isListingImageUploadConfigured()} />
     </PortalShell>
   );
 }

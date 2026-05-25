@@ -213,6 +213,7 @@ export function PortalListingsPage({
                                     <ListingStatusButton
                                       className={styles.secondaryAction}
                                       currentStatus={listing.status}
+                                      disabled={listing.status === "inactive" && !listing.firstImageUrl}
                                       nextStatus={listing.status === "active" ? "inactive" : "active"}
                                     />
                                   </form>
@@ -358,6 +359,7 @@ export function PortalListingsPage({
                             <ListingStatusButton
                               className={styles.secondaryAction}
                               currentStatus={listing.status}
+                              disabled={listing.status === "inactive" && !listing.firstImageUrl}
                               nextStatus={listing.status === "active" ? "inactive" : "active"}
                             />
                           </form>

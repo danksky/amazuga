@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
+import { getPortalAccessState } from "@/lib/server/portal-access";
 import {
   createPortalListingInDb,
   setPortalListingStatusInDb,
@@ -12,6 +13,10 @@ import {
 } from "@/lib/server/portal-listing-editor";
 import { createValuationSubmissionInDb } from "@/lib/server/workflows";
 import { hasCapability } from "@/types/permissions";
+
+function getListingRedirectHref(hasAgencyPortalAccess: boolean) {
+  return hasAgencyPortalAccess ? routes.app.portalListings : routes.app.portalProperties;
+}
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -135,25 +140,30 @@ export async function submitListingUpdateAction(formData: FormData) {
     throw new Error("Current user cannot edit listings");
   }
 
-  const listing = await updatePortalListingInDb({
-    userId: currentUser.id,
-    listingId: getRequiredString(formData, "listingId"),
-    agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
-    marketingType: getRequiredListingMarketingType(formData, "marketingType"),
-    askingPrice: getOptionalNumber(formData, "askingPrice"),
-    description: getOptionalString(formData, "description"),
-  });
+  const [listing, access] = await Promise.all([
+    updatePortalListingInDb({
+      userId: currentUser.id,
+      listingId: getRequiredString(formData, "listingId"),
+      agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
+      marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+      askingPrice: getOptionalNumber(formData, "askingPrice"),
+      description: getOptionalString(formData, "description"),
+    }),
+    getPortalAccessState(currentUser.id),
+  ]);
 
   revalidateListingSurfaces({
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
-  redirect(routes.app.portalListings);
+  redirect(getListingRedirectHref(access.hasAgencyPortalAccess));
 }
 
 export async function submitListingEditAction(formData: FormData) {
   const currentUser = await requireCurrentUser(routes.app.portalListings);
   const intent = formData.get("intent");
+  const access = await getPortalAccessState(currentUser.id);
+  const redirectHref = getListingRedirectHref(access.hasAgencyPortalAccess);
 
   if (intent === "publish" || intent === "discard") {
     if (!hasCapability(currentUser.roles, "deactivate_listing")) {
@@ -172,7 +182,7 @@ export async function submitListingEditAction(formData: FormData) {
       propertyRouteId: listing.propertyRouteId,
       marketingType: listing.marketingType,
     });
-    redirect(routes.app.portalListings);
+    redirect(redirectHref);
   }
 
   if (!hasCapability(currentUser.roles, "edit_listing")) {
@@ -192,7 +202,7 @@ export async function submitListingEditAction(formData: FormData) {
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
-  redirect(routes.app.portalListings);
+  redirect(redirectHref);
 }
 
 export async function setListingStatusAction(formData: FormData) {
@@ -202,16 +212,19 @@ export async function setListingStatusAction(formData: FormData) {
     throw new Error("Current user cannot change listing status");
   }
 
-  const listing = await setPortalListingStatusInDb({
-    userId: currentUser.id,
-    listingId: getRequiredString(formData, "listingId"),
-    status: getRequiredListingStatus(formData, "status"),
-  });
+  const [listing, access] = await Promise.all([
+    setPortalListingStatusInDb({
+      userId: currentUser.id,
+      listingId: getRequiredString(formData, "listingId"),
+      status: getRequiredListingStatus(formData, "status"),
+    }),
+    getPortalAccessState(currentUser.id),
+  ]);
 
   revalidatePath(routes.app.portalProperties);
   revalidateListingSurfaces({
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
-  redirect(routes.app.portalListings);
+  redirect(getListingRedirectHref(access.hasAgencyPortalAccess));
 }

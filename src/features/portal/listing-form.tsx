@@ -65,6 +65,7 @@ function getUniqueAgencyMembers(agency: PortalListingAgencyOption) {
 export function ListingForm({
   agencies,
   listing,
+  cancelHref = routes.app.portalListings,
   mode,
   propertyOptions = [],
   selectedPropertyRouteId,
@@ -72,6 +73,7 @@ export function ListingForm({
   uploadEnabled = false,
 }: {
   agencies: PortalListingAgencyOption[];
+  cancelHref?: string;
   listing?: PortalEditableListing;
   mode: "create" | "edit";
   propertyOptions?: PortalListingPropertyOption[];
@@ -139,9 +141,9 @@ export function ListingForm({
               <Link href={routes.app.portalProperties}>
                 <Button type="button">View owned properties</Button>
               </Link>
-              <Link href={routes.app.portalListings}>
+              <Link href={cancelHref}>
                 <Button type="button" variant="secondary">
-                  Back to listings
+                  Cancel
                 </Button>
               </Link>
             </div>
@@ -334,9 +336,9 @@ export function ListingForm({
                 <Button name="intent" type="submit" value="discard" variant="secondary">Discard draft</Button>
               </>
             ) : null}
-            <Link href={routes.app.portalListings}>
+            <Link href={cancelHref}>
               <Button type="button" variant="secondary">
-                Back to listings
+                Cancel
               </Button>
             </Link>
           </div>
