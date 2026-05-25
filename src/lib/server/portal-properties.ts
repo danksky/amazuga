@@ -196,7 +196,11 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           po.created_at::TEXT AS ownership_created_at,
           pa.id AS property_internal_id,
           COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
-          COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+          CASE
+            WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+          END AS property_title,
           pa.asset_type AS property_kind,
           pa.unit_label AS property_unit_label,
           pp.bedrooms,
@@ -265,7 +269,11 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           pcr.created_at::TEXT AS claim_created_at,
           pa.id AS property_internal_id,
           COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
-          COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+          CASE
+            WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+          END AS property_title,
           pa.asset_type AS property_kind,
           pcr.upi,
           pcr.claim_scope,
@@ -506,13 +514,15 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
       SELECT
         pa.id AS property_internal_id,
         COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
-        COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+        END AS property_title,
         pa.asset_type AS property_kind
       FROM property_asset pa
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = pa.parcel_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = pa.parcel_id
       WHERE pa.parcel_id = $1
         AND pa.seed_source NOT IN (
           'mock_import_listing_surface_v1',

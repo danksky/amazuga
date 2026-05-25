@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS property_asset (
   public_id TEXT UNIQUE,
   display_code TEXT NOT NULL UNIQUE,
   unit_label TEXT,
-  title TEXT,
   description TEXT,
   is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
   seed_source TEXT NOT NULL DEFAULT 'manual',
@@ -57,7 +56,6 @@ WITH parcel_asset_source AS (
   SELECT DISTINCT
     source.parcel_id,
     p.public_id,
-    pp.title AS title,
     pp.description,
     CASE
       WHEN LOWER(COALESCE(pp.property_type, '')) = 'house' THEN 'house'
@@ -99,7 +97,6 @@ INSERT INTO property_asset (
   asset_type,
   public_id,
   display_code,
-  title,
   description,
   is_primary_for_parcel,
   seed_source,
@@ -112,7 +109,6 @@ SELECT
   asset_type,
   UPPER(SUBSTR(MD5('public:' || parcel_id), 1, 10)) AS public_id,
   'AST-' || UPPER(SUBSTR(MD5('display:' || parcel_id), 1, 10)) AS display_code,
-  title,
   description,
   TRUE,
   seed_source,
@@ -123,7 +119,6 @@ ON CONFLICT (id) DO UPDATE
 SET
   asset_type = EXCLUDED.asset_type,
   public_id = EXCLUDED.public_id,
-  title = EXCLUDED.title,
   description = EXCLUDED.description,
   is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
   seed_source = EXCLUDED.seed_source,
@@ -205,7 +200,11 @@ SELECT
   p.centroid_lat,
   p.centroid_lon,
   p.representative_size AS land_area_sqm,
-  COALESCE(pa.title, pp.title) AS title,
+  CASE
+    WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+      THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+    ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+  END AS title,
   COALESCE(pa.description, pp.description) AS property_description,
   COALESCE(
     CASE pa.asset_type

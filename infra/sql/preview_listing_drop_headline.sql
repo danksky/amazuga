@@ -17,7 +17,11 @@ SELECT
   p.centroid_lat,
   p.centroid_lon,
   p.representative_size AS land_area_sqm,
-  COALESCE(pa.title, pp.title) AS title,
+  CASE
+    WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+      THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+    ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+  END AS title,
   COALESCE(pa.description, pp.description) AS property_description,
   COALESCE(
     CASE pa.asset_type

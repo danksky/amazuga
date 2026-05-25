@@ -101,6 +101,17 @@ interface PropertyOwnershipRow {
   created_at: string;
 }
 
+interface PropertyRecordBackfillRow {
+  asset_type: PropertyKind | null;
+  unit_label: string | null;
+  parcel_id: string;
+  display_id: string | null;
+  parcel_public_id: string | null;
+  district: string | null;
+  sector: string | null;
+  representative_size: number | string | null;
+}
+
 interface AdminPropertyClaimRequestRow extends PropertyClaimRequestRow {
   property_route_id: string | null;
   property_title: string | null;
@@ -379,6 +390,107 @@ function getOwnershipScopeForPropertyKind(propertyKind?: PropertyKind | null): P
   return propertyKind === "apartment_unit" || propertyKind === "commercial_unit" ? "unit" : "full";
 }
 
+function toFiniteNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function inferClaimRecordBackfill(input: {
+  assetType?: PropertyKind | null;
+  parcelId: string;
+  unitLabel?: string | null;
+  displayId?: string | null;
+  parcelPublicId?: string | null;
+  district?: string | null;
+  sector?: string | null;
+  representativeSize?: number | string | null;
+}) {
+  const normalizedUnitLabel = normalizeClaimUnitLabel(input.unitLabel);
+  const representativeSize = toFiniteNumber(input.representativeSize);
+  const fallbackArea = (multiplier: number, min: number, max: number, defaultValue: number) => {
+    if (representativeSize === null) {
+      return defaultValue;
+    }
+
+    return Math.round(clampNumber(representativeSize * multiplier, min, max) * 100) / 100;
+  };
+
+  switch (input.assetType) {
+    case "house":
+      return {
+        assetUnitLabel: null,
+        propertyType: "House",
+        propertyDescription: "Preview house record auto-backfilled from parcel context after claim approval.",
+        bedrooms: representativeSize !== null && representativeSize >= 650 ? 5 : representativeSize !== null && representativeSize >= 420 ? 4 : representativeSize !== null && representativeSize >= 250 ? 3 : 2,
+        bathrooms: representativeSize !== null && representativeSize >= 650 ? 4 : representativeSize !== null && representativeSize >= 420 ? 3 : 2,
+        interiorAreaSqm: fallbackArea(0.42, 90, 420, 180),
+      };
+    case "apartment_unit":
+      return {
+        assetUnitLabel: normalizedUnitLabel,
+        propertyType: "Apartment",
+        propertyDescription: "Preview apartment-unit record auto-backfilled from parcel context after claim approval.",
+        bedrooms: representativeSize !== null && representativeSize >= 900 ? 3 : representativeSize !== null && representativeSize >= 450 ? 2 : 1,
+        bathrooms: representativeSize !== null && representativeSize < 300 ? 1 : 2,
+        interiorAreaSqm: fallbackArea(0.18, 55, 160, 96),
+      };
+    case "building":
+      return {
+        assetUnitLabel: null,
+        propertyType: "Building",
+        propertyDescription: "Preview building record auto-backfilled from parcel context after claim approval.",
+        bedrooms: null,
+        bathrooms: null,
+        interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
+      };
+    case "commercial_unit":
+      return {
+        assetUnitLabel: normalizedUnitLabel,
+        propertyType: "Commercial",
+        propertyDescription: "Preview commercial-unit record auto-backfilled from parcel context after claim approval.",
+        bedrooms: null,
+        bathrooms: null,
+        interiorAreaSqm: fallbackArea(0.35, 80, 420, 148),
+      };
+    case "land":
+      return {
+        assetUnitLabel: null,
+        propertyType: "Parcel",
+        propertyDescription: "Preview land record auto-backfilled from parcel context after claim approval.",
+        bedrooms: null,
+        bathrooms: null,
+        interiorAreaSqm: null,
+      };
+    case "mixed_use":
+      return {
+        assetUnitLabel: null,
+        propertyType: "Mixed use",
+        propertyDescription: "Preview mixed-use record auto-backfilled from parcel context after claim approval.",
+        bedrooms: null,
+        bathrooms: null,
+        interiorAreaSqm: fallbackArea(0.58, 140, 980, 260),
+      };
+    case "other":
+    default:
+      return {
+        assetUnitLabel: normalizedUnitLabel,
+        propertyType: "Property",
+        propertyDescription: "Preview property record auto-backfilled from parcel context after claim approval.",
+        bedrooms: null,
+        bathrooms: null,
+        interiorAreaSqm: null,
+      };
+  }
+}
+
 function normalizeClaimUnitLabel(value: string | null | undefined) {
   const normalized = value?.trim();
   return normalized ? normalized.toUpperCase() : null;
@@ -386,6 +498,96 @@ function normalizeClaimUnitLabel(value: string | null | undefined) {
 
 function getOwnershipScopeForClaimScope(claimScope: PropertyClaimScope): PropertyOwnershipScope {
   return claimScope === "unit_partial" ? "unit" : "full";
+}
+
+async function backfillPropertyRecordForAsset(input: {
+  propertyAssetId: string;
+  userId: string;
+  claimUnitLabel?: string;
+}) {
+  const contextResult = await getPgPool().query<PropertyRecordBackfillRow>(
+    `
+      SELECT
+        pa.asset_type,
+        pa.unit_label,
+        pa.parcel_id,
+        parcel.display_id,
+        parcel.public_id AS parcel_public_id,
+        parcel.district,
+        parcel.sector,
+        parcel.representative_size
+      FROM property_asset pa
+      JOIN parcel_app_ready_seed_preview parcel
+        ON parcel.parcel_id = pa.parcel_id
+      WHERE pa.id = $1
+      LIMIT 1
+    `,
+    [input.propertyAssetId],
+  );
+
+  const row = contextResult.rows[0];
+  if (!row) {
+    return;
+  }
+
+  // These values are preview-only defaults that make approved claims listing-ready without overwriting real edits.
+  const inferred = inferClaimRecordBackfill({
+    assetType: row.asset_type,
+    parcelId: row.parcel_id,
+    unitLabel: row.unit_label || input.claimUnitLabel || null,
+    displayId: row.display_id,
+    parcelPublicId: row.parcel_public_id,
+    district: row.district,
+    sector: row.sector,
+    representativeSize: row.representative_size,
+  });
+
+  await getPgPool().query(
+    `
+      UPDATE property_asset
+      SET
+        unit_label = COALESCE(NULLIF(BTRIM(unit_label), ''), $2),
+        updated_at = NOW()
+      WHERE id = $1
+    `,
+    [input.propertyAssetId, inferred.assetUnitLabel],
+  );
+
+  await getPgPool().query(
+    `
+      INSERT INTO property_profile (
+        parcel_id,
+        created_by_user_id,
+        description,
+        property_type,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'claim_record_backfill_v1')
+      ON CONFLICT (parcel_id) DO UPDATE
+      SET
+        created_by_user_id = COALESCE(property_profile.created_by_user_id, EXCLUDED.created_by_user_id),
+        description = CASE
+          WHEN COALESCE(NULLIF(BTRIM(property_profile.description), ''), NULL) IS NULL THEN EXCLUDED.description
+          ELSE property_profile.description
+        END,
+        bedrooms = COALESCE(property_profile.bedrooms, EXCLUDED.bedrooms),
+        bathrooms = COALESCE(property_profile.bathrooms, EXCLUDED.bathrooms),
+        interior_area_sqm = COALESCE(property_profile.interior_area_sqm, EXCLUDED.interior_area_sqm),
+        updated_at = NOW()
+    `,
+    [
+      row.parcel_id,
+      input.userId,
+      inferred.propertyDescription,
+      inferred.propertyType,
+      inferred.bedrooms,
+      inferred.bathrooms,
+      inferred.interiorAreaSqm,
+    ],
+  );
 }
 
 async function addRoleToUser(userId: string, role: Role) {
@@ -698,7 +900,11 @@ export async function listPropertyClaimRequestsFromDb() {
         pcr.status,
         pcr.created_at::TEXT,
         COALESCE(pa.public_id, parcel.public_id) AS property_route_id,
-        COALESCE(pa.title, pp.title, parcel.display_id, pa.public_id, parcel.public_id, parcel.parcel_id) AS property_title,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id)
+        END AS property_title,
         pa.asset_type AS property_kind,
         parcel.district,
         parcel.sector,
@@ -725,8 +931,6 @@ export async function listPropertyClaimRequestsFromDb() {
         ON parcel.parcel_id = pcr.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = pcr.property_internal_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = pcr.parcel_id
       LEFT JOIN LATERAL (
         SELECT
           po.user_id,
@@ -744,14 +948,11 @@ export async function listPropertyClaimRequestsFromDb() {
           po.id,
           owner.full_name AS owner_full_name,
           po.ownership_scope,
-          COALESCE(
-            pa_conflict.title,
-            pp_conflict.title,
-            parcel_conflict.display_id,
-            pa_conflict.public_id,
-            parcel_conflict.public_id,
-            parcel_conflict.parcel_id
-          ) AS property_title
+          CASE
+            WHEN COALESCE(NULLIF(BTRIM(pa_conflict.unit_label), ''), NULL) IS NOT NULL
+              THEN CONCAT(COALESCE(parcel_conflict.display_id, parcel_conflict.public_id, parcel_conflict.parcel_id), ' · ', pa_conflict.unit_label)
+            ELSE COALESCE(parcel_conflict.display_id, parcel_conflict.public_id, parcel_conflict.parcel_id)
+          END AS property_title
         FROM property_ownership po
         JOIN app_user owner
           ON owner.id = po.user_id
@@ -759,8 +960,6 @@ export async function listPropertyClaimRequestsFromDb() {
           ON pa_conflict.id = po.property_internal_id
         LEFT JOIN parcel_app_ready_seed_preview parcel_conflict
           ON parcel_conflict.parcel_id = po.parcel_id
-        LEFT JOIN property_profile pp_conflict
-          ON pp_conflict.parcel_id = po.parcel_id
         WHERE po.user_id <> pcr.user_id
           AND (pcr.request_kind <> 'transfer' OR po.user_id <> pcr.transfer_from_user_id)
           AND (
@@ -1114,15 +1313,13 @@ export async function listValuationSubmissionsFromDb() {
         vs.created_at::TEXT,
         vs.updated_at::TEXT,
         COALESCE(pa_target.public_id, pa_fallback.public_id, parcel.public_id, vs.property_id) AS property_route_id,
-        COALESCE(
-          pa_target.title,
-          pa_fallback.title,
-          pp.title,
-          parcel.display_id,
-          parcel.public_id,
-          parcel.parcel_id,
-          vs.property_id
-        ) AS property_title,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa_target.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id, vs.property_id), ' · ', pa_target.unit_label)
+          WHEN COALESCE(NULLIF(BTRIM(pa_fallback.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id, vs.property_id), ' · ', pa_fallback.unit_label)
+          ELSE COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id, vs.property_id)
+        END AS property_title,
         parcel.district,
         parcel.sector
       FROM valuation_submission vs
@@ -1133,8 +1330,6 @@ export async function listValuationSubmissionsFromDb() {
        AND pa_target.id IS NULL
       LEFT JOIN parcel_app_ready_seed_preview parcel
         ON parcel.parcel_id = COALESCE(pa_target.parcel_id, pa_fallback.parcel_id)
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = parcel.parcel_id
       ORDER BY vs.created_at ASC, vs.id ASC
     `,
   );
@@ -1984,6 +2179,12 @@ export async function updatePropertyClaimRequestStatusInDb(
   if (!claimRequest.propertyInternalId || !claimRequest.propertyId) {
     throw new Error("This claim still needs to be resolved to a specific property or unit before approval.");
   }
+
+  await backfillPropertyRecordForAsset({
+    propertyAssetId: claimRequest.propertyInternalId,
+    userId: claimRequest.userId,
+    claimUnitLabel: claimRequest.unitLabel,
+  });
 
   const ownershipScope =
     claimRequest.claimScope === "unit_partial" ? "unit" : getOwnershipScopeForPropertyKind(targetResult.rows[0]?.property_kind);

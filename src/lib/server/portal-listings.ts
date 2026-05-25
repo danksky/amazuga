@@ -27,7 +27,6 @@ interface PortalListingRow {
   property_kind: string | null;
   property_title: string | null;
   property_description_override: string | null;
-  profile_title: string | null;
   profile_description: string | null;
   parcel_display_id: string | null;
   property_type: string | null;
@@ -94,7 +93,7 @@ function normalizePropertyType(row: PortalListingRow) {
 }
 
 function normalizePropertyTitle(row: PortalListingRow) {
-  return row.property_title || row.profile_title || row.parcel_display_id || row.public_id || "Untitled property";
+  return row.property_title || row.parcel_display_id || row.public_id || "Untitled property";
 }
 
 function normalizePropertyDescription(row: PortalListingRow) {
@@ -132,9 +131,12 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         pa.id AS property_internal_id,
         pa.public_id AS property_public_id,
         pa.asset_type AS property_kind,
-        pa.title AS property_title,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+        END AS property_title,
         pa.description AS property_description_override,
-        pp.title AS profile_title,
         pp.description AS profile_description,
         COALESCE(
           CASE pa.asset_type

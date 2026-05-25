@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS agency_membership (
 CREATE TABLE IF NOT EXISTS property_profile (
   parcel_id TEXT PRIMARY KEY,
   created_by_user_id TEXT REFERENCES app_user(id),
-  title TEXT,
   description TEXT,
   property_type TEXT NOT NULL,
   bedrooms INTEGER,
@@ -74,7 +73,6 @@ CREATE TABLE IF NOT EXISTS property_asset (
   public_id TEXT NOT NULL UNIQUE,
   display_code TEXT NOT NULL UNIQUE,
   unit_label TEXT,
-  title TEXT,
   description TEXT,
   is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
   seed_source TEXT NOT NULL DEFAULT 'manual',
@@ -342,7 +340,11 @@ SELECT
   p.centroid_lat,
   p.centroid_lon,
   p.representative_size AS land_area_sqm,
-  COALESCE(pa.title, pp.title) AS title,
+  CASE
+    WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+      THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+    ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+  END AS title,
   COALESCE(pa.description, pp.description) AS property_description,
   COALESCE(
     CASE pa.asset_type

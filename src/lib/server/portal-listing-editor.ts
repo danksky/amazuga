@@ -207,7 +207,11 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
       SELECT
         pa.id AS property_asset_id,
         pa.public_id AS property_route_id,
-        COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+        END AS property_title,
         pa.asset_type AS property_kind,
         pa.unit_label AS property_unit_label,
         pp.bedrooms,
@@ -223,15 +227,13 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         ON pa.id = po.property_internal_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = pa.parcel_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = pa.parcel_id
       LEFT JOIN listing open_listing
         ON open_listing.property_asset_id = pa.id
        AND open_listing.status IN ('draft', 'active', 'inactive')
       WHERE po.user_id = $1
         AND open_listing.id IS NULL
       ORDER BY
-        COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) ASC,
+        COALESCE(p.display_id, p.public_id, p.parcel_id) ASC,
         pa.public_id ASC
     `,
     [userId],
@@ -280,14 +282,16 @@ async function resolvePropertyTarget(propertyRouteId: string) {
         pa.id AS property_asset_id,
         p.parcel_id,
         pa.public_id AS property_route_id,
-        COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+        END AS property_title
       FROM target_parcel tp
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = tp.parcel_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = p.parcel_id
       LEFT JOIN LATERAL (
-        SELECT pa_inner.id, pa_inner.public_id, pa_inner.title
+        SELECT pa_inner.id, pa_inner.public_id, pa_inner.unit_label
         FROM property_asset pa_inner
         LEFT JOIN listing active_listing
           ON active_listing.property_asset_id = pa_inner.id
@@ -322,7 +326,11 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.id AS listing_id,
         l.property_asset_id,
         COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
-        COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+        END AS property_title,
         pa.asset_type AS property_kind,
         p.district,
         p.sector,
@@ -339,8 +347,6 @@ async function getEditableListingRow(userId: string, listingId: string) {
         ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = l.parcel_id
       WHERE l.id = $1
         AND (
           (array_length($2::TEXT[], 1) > 0 AND l.agency_id = ANY($2::TEXT[]))

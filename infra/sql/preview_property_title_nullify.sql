@@ -1,17 +1,84 @@
--- Removes seeded property titles from property_asset and property_profile.
--- Titles are derived dynamically from parcel identifiers; storing them in
--- the DB was a leftover from earlier mock data conventions.
+-- Removes the legacy property title columns from Preview.
+-- Property labels should come from parcel display_id plus unit_label when needed,
+-- not from stored title text on property_asset or property_profile.
 
-ALTER TABLE property_asset ALTER COLUMN title DROP NOT NULL;
-ALTER TABLE property_profile ALTER COLUMN title DROP NOT NULL;
+BEGIN;
 
-UPDATE property_asset
-SET title = NULL
-WHERE seed_source IN ('mock_import_listing_surface_v1', 'preview_kigali_seed_v1', 'preview_property_page_variants_v1', 'preview_multi_unit_examples_v1')
-  AND title IS NOT NULL;
+DROP VIEW IF EXISTS preview_active_listing_surface_v1;
 
-UPDATE property_profile
-SET title = NULL
-WHERE seed_source IN ('mock_import_listing_surface_v1', 'preview_kigali_seed_v1', 'preview_property_page_variants_v1', 'preview_multi_unit_examples_v1')
-  AND title IS NOT NULL;
+ALTER TABLE property_asset
+  DROP COLUMN IF EXISTS title;
 
+ALTER TABLE property_profile
+  DROP COLUMN IF EXISTS title;
+
+CREATE VIEW preview_active_listing_surface_v1 AS
+SELECT
+  l.id AS listing_id,
+  l.parcel_id,
+  l.property_asset_id,
+  pa.public_id AS property_asset_public_id,
+  p.public_id,
+  p.upi,
+  p.district,
+  p.sector,
+  p.cell,
+  p.village,
+  p.centroid_lat,
+  p.centroid_lon,
+  p.representative_size AS land_area_sqm,
+  CASE
+    WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+      THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+    ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+  END AS title,
+  COALESCE(pa.description, pp.description) AS property_description,
+  COALESCE(
+    CASE pa.asset_type
+      WHEN 'house' THEN 'House'
+      WHEN 'land' THEN 'Parcel'
+      WHEN 'building' THEN 'Building'
+      WHEN 'apartment_unit' THEN 'Apartment'
+      WHEN 'commercial_unit' THEN 'Commercial'
+      WHEN 'mixed_use' THEN 'Mixed Use'
+      ELSE 'Property'
+    END,
+    pp.property_type
+  ) AS property_type,
+  pp.bedrooms,
+  pp.bathrooms,
+  pp.interior_area_sqm,
+  pp.year_built,
+  l.marketing_type,
+  l.asking_price_rwf,
+  l.currency,
+  l.description AS listing_description,
+  l.published_at,
+  a.id AS agency_id,
+  a.slug AS agency_slug,
+  a.business_name AS agency_name,
+  a.whatsapp_phone,
+  a.website_url,
+  u.id AS agent_user_id,
+  u.full_name AS agent_full_name,
+  li.image_url AS primary_image_url
+FROM listing l
+JOIN parcel_app_ready_seed_preview p
+  ON p.parcel_id = l.parcel_id
+LEFT JOIN property_asset pa
+  ON pa.id = l.property_asset_id
+LEFT JOIN property_profile pp
+  ON pp.parcel_id = l.parcel_id
+LEFT JOIN agency a
+  ON a.id = l.agency_id
+JOIN app_user u
+  ON u.id = l.agent_user_id
+LEFT JOIN listing_image li
+  ON li.listing_id = l.id
+ AND li.sort_order = 0
+WHERE l.status = 'active';
+
+COMMENT ON VIEW preview_active_listing_surface_v1 IS
+'Preview join surface for future browse and property queries once mock data is removed.';
+
+COMMIT;

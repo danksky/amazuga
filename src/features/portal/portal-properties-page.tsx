@@ -70,6 +70,7 @@ export function PortalPropertiesPage({
   };
 }) {
   const listableCount = data.ownedProperties.filter((property) => !property.listingId && property.isListingReady).length;
+  const blockedCount = data.ownedProperties.filter((property) => !property.listingId && !property.isListingReady).length;
   const pendingCount = data.claimRequests.filter((c) => c.status === "pending").length;
   const deniedCount = data.claimRequests.filter((c) => c.status === "denied").length;
   const filteredClaims =
@@ -238,12 +239,16 @@ export function PortalPropertiesPage({
             <div className={styles.statValue}>{data.ownedProperties.length}</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Listable now</div>
+            <div className={styles.statLabel}>Ready to draft</div>
             <div className={styles.statValue}>{listableCount}</div>
           </div>
           <div className={styles.statCard}>
+            <div className={styles.statLabel}>Waiting on record completion</div>
+            <div className={styles.statValue}>{blockedCount}</div>
+          </div>
+          <div className={styles.statCard}>
             <div className={styles.statLabel}>Pending claims</div>
-            <div className={styles.statValue}>{data.claimRequests.filter((claim) => claim.status === "pending").length}</div>
+            <div className={styles.statValue}>{pendingCount}</div>
           </div>
         </div>
 
@@ -251,7 +256,8 @@ export function PortalPropertiesPage({
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Portfolio</h2>
             <div className={styles.sectionMeta}>
-              These are the properties your account can treat as owned in Amazuga right now.
+              These are the properties your account can treat as owned in Amazuga right now. {listableCount} can start a
+              draft immediately{blockedCount > 0 ? `, while ${blockedCount} still need required property-record details first.` : "."}
             </div>
           </div>
           {data.ownedProperties.length > 0 ? (
@@ -281,7 +287,21 @@ export function PortalPropertiesPage({
                         {property.listingId ? (
                           <div className={styles.badge}>{property.listingMarketingType === "rent" ? "For rent" : "For sale"}</div>
                         ) : null}
-                        <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
+                        <div
+                          className={`${styles.badge} ${
+                            !property.listingId && property.isListingReady
+                              ? styles.badgeReady
+                              : !property.listingId
+                                ? styles.badgeBlocked
+                                : ""
+                          }`}
+                        >
+                          {property.listingId
+                            ? `Listing ${property.listingStatus}`
+                            : property.isListingReady
+                              ? "Listing-ready"
+                              : "Needs record backfill"}
+                        </div>
                         {property.listingId ? (
                           <div className={styles.badge}>{getVisibilityLabel(property.listingVisibility)}</div>
                         ) : null}
@@ -300,7 +320,8 @@ export function PortalPropertiesPage({
                     ) : null}
                     {!property.listingId && !property.isListingReady ? (
                       <div className={styles.readinessNote}>
-                        This property record is not listing-ready yet, so a draft cannot be started from it yet.
+                        This owned property still needs required property-record details before you can start a draft
+                        listing from it.
                       </div>
                     ) : null}
                     <div className={styles.actions}>

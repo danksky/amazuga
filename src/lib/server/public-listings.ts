@@ -37,7 +37,6 @@ interface ListingParcelRow {
   property_kind: PropertyKind | null;
   property_code: string | null;
   property_unit_label: string | null;
-  property_title: string | null;
   property_description_override: string | null;
   listing_id: string | null;
   agency_id: string | null;
@@ -50,7 +49,6 @@ interface ListingParcelRow {
   listing_description: string | null;
   listing_created_at: string | null;
   listing_updated_at: string | null;
-  profile_title: string | null;
   profile_description: string | null;
   property_type: string | null;
   bedrooms: number | string | null;
@@ -169,14 +167,15 @@ function buildPlaceholderGeometry(row: ListingParcelRow): Property["geometry"] {
 }
 
 function normalizePropertyTitle(row: ListingParcelRow) {
-  const preferredTitle = row.property_title || row.profile_title;
-
-  if (preferredTitle?.trim() && preferredTitle.trim().toLowerCase() !== "unlisted property") {
-    return preferredTitle.trim();
+  if (row.display_id?.trim()) {
+    const baseLabel = row.display_id.trim();
+    const unitLabel = row.property_unit_label?.trim();
+    return unitLabel ? `${baseLabel} · ${unitLabel}` : baseLabel;
   }
 
-  if (row.display_id?.trim()) {
-    return row.display_id.trim();
+  if (row.property_public_id?.trim()) {
+    const unitLabel = row.property_unit_label?.trim();
+    return unitLabel ? `${row.property_public_id.trim()} · ${unitLabel}` : row.property_public_id.trim();
   }
 
   return `Parcel ${row.property_public_id || row.public_id}`;
@@ -422,7 +421,6 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         pa.asset_type AS property_kind,
         pa.display_code AS property_code,
         to_jsonb(pa)->>'unit_label' AS property_unit_label,
-        pa.title AS property_title,
         pa.description AS property_description_override,
         l.id AS listing_id,
         l.agency_id,
@@ -435,7 +433,6 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        pp.title AS profile_title,
         pp.description AS profile_description,
         COALESCE(
           CASE pa.asset_type
@@ -520,7 +517,6 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         pa.asset_type AS property_kind,
         pa.display_code AS property_code,
         to_jsonb(pa)->>'unit_label' AS property_unit_label,
-        pa.title AS property_title,
         pa.description AS property_description_override,
         l.id AS listing_id,
         l.agency_id,
@@ -533,7 +529,6 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        pp.title AS profile_title,
         pp.description AS profile_description,
         COALESCE(
           CASE pa.asset_type
@@ -562,7 +557,6 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
           pa_inner.asset_type,
           pa_inner.display_code,
           pa_inner.unit_label,
-          pa_inner.title,
           pa_inner.description
         FROM property_asset pa_inner
         WHERE pa_inner.parcel_id = p.parcel_id

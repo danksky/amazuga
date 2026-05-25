@@ -240,7 +240,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
 }
 
@@ -383,6 +383,14 @@
   letter-spacing: 0.06em;
 }
 
+.badgeReady {
+  background: color-mix(in srgb, var(--surface) 80%, #dcefd5);
+}
+
+.badgeBlocked {
+  background: color-mix(in srgb, var(--surface) 78%, #f5e6d1);
+}
+
 .detailRow {
   display: flex;
   justify-content: space-between;
@@ -391,6 +399,10 @@
 }
 
 .readinessNote {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 82%, #f5e6d1);
   color: var(--foreground-muted);
   line-height: 1.5;
 }
