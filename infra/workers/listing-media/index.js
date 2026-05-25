@@ -53,7 +53,7 @@ function buildCorsHeaders(request, env) {
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "3600",
   };
@@ -130,16 +130,54 @@ const listingMediaWorker = {
       });
     }
 
-    if (request.method !== "POST") {
+    if (request.method !== "POST" && request.method !== "DELETE") {
       return json({ error: "Method not allowed." }, { status: 405, headers: corsHeaders });
-    }
-
-    if (!getAllowedOrigin(request, env)) {
-      return json({ error: "Origin not allowed." }, { status: 403, headers: corsHeaders });
     }
 
     if (!env.LISTING_MEDIA_BUCKET || !env.PUBLIC_BASE_URL || !env.UPLOAD_SHARED_SECRET) {
       return json({ error: "Worker is not configured." }, { status: 500, headers: corsHeaders });
+    }
+
+    if (request.method === "DELETE") {
+      const payloadJson = await request.json().catch(() => null);
+      const payload = await verifyToken(typeof payloadJson?.token === "string" ? payloadJson.token : "", env);
+
+      if (!payload) {
+        return json({ error: "Delete token is invalid or expired." }, { status: 401, headers: corsHeaders });
+      }
+
+      if (payload.op !== "delete" || typeof payload.storageKey !== "string" || !payload.storageKey) {
+        return json({ error: "Delete token payload is invalid." }, { status: 400, headers: corsHeaders });
+      }
+
+      await env.LISTING_MEDIA_BUCKET.delete(payload.storageKey);
+
+      if (env.CLOUDFLARE_ZONE_ID && env.CLOUDFLARE_API_TOKEN) {
+        const publicUrl = buildPublicUrl(env, payload.storageKey);
+        await fetch(
+          `https://api.cloudflare.com/client/v4/zones/${env.CLOUDFLARE_ZONE_ID}/purge_cache`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ files: [publicUrl] }),
+          },
+        ).catch(() => undefined);
+      }
+
+      return json(
+        {
+          deleted: true,
+          storageKey: payload.storageKey,
+        },
+        { status: 200, headers: corsHeaders },
+      );
+    }
+
+    if (!getAllowedOrigin(request, env)) {
+      return json({ error: "Origin not allowed." }, { status: 403, headers: corsHeaders });
     }
 
     const formData = await request.formData().catch(() => null);
@@ -170,7 +208,7 @@ const listingMediaWorker = {
     await env.LISTING_MEDIA_BUCKET.put(storageKey, file.stream(), {
       httpMetadata: {
         contentType: "image/jpeg",
-        cacheControl: "public, max-age=31536000, immutable",
+        cacheControl: "public, max-age=86400",
       },
       customMetadata: {
         listingId: String(payload.listingId),

@@ -214,6 +214,11 @@ resource "random_password" "listing_media_upload_secret" {
   special = false
 }
 
+resource "random_password" "vercel_cron_secret" {
+  length  = 48
+  special = false
+}
+
 resource "cloudflare_workers_script" "listing_media" {
   account_id         = var.cloudflare_account_id
   script_name        = var.cloudflare_listing_media_worker_name
@@ -242,6 +247,16 @@ resource "cloudflare_workers_script" "listing_media" {
       name = "UPLOAD_SHARED_SECRET"
       type = "plain_text"
       text = random_password.listing_media_upload_secret.result
+    },
+    {
+      name = "CLOUDFLARE_ZONE_ID"
+      type = "plain_text"
+      text = data.cloudflare_zone.amazuga.id
+    },
+    {
+      name = "CLOUDFLARE_API_TOKEN"
+      type = "secret_text"
+      text = coalesce(var.cloudflare_cache_purge_token, var.cloudflare_api_token)
     },
   ]
 
@@ -328,6 +343,36 @@ resource "vercel_project_environment_variable" "listing_image_upload_secret" {
   sensitive  = true
   target     = ["production", "preview"]
   comment    = "Shared secret used to sign listing image upload intents."
+}
+
+resource "vercel_project_environment_variable" "cron_secret" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "CRON_SECRET"
+  value      = random_password.vercel_cron_secret.result
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Shared secret automatically sent by Vercel Cron to internal maintenance routes."
+}
+
+resource "vercel_project_environment_variable" "database_url" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "DATABASE_URL"
+  value      = local.preview_database_url
+  sensitive  = true
+  target     = ["production"]
+  comment    = "Current runtime database URL. Production still points at the preview DB until the production schema is brought up to parity."
+}
+
+resource "vercel_project_environment_variable" "database_url_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "DATABASE_URL_PREVIEW"
+  value      = local.preview_database_url
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview Neon database URL for preview deployments."
 }
 
 resource "neon_project" "amazuga" {

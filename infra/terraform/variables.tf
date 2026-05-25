@@ -4,6 +4,13 @@ variable "cloudflare_api_token" {
   sensitive   = true
 }
 
+variable "cloudflare_cache_purge_token" {
+  description = "Cloudflare API token scoped to Cache Purge only, injected into the listing-media worker to invalidate CDN on image deletion."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 variable "cloudflare_account_id" {
   description = "Cloudflare account ID that owns the R2 bucket."
   type        = string

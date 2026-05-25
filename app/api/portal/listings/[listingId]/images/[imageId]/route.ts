@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
-import { getEditablePortalListingSummary, removeListingImageFromDb } from "@/lib/server/portal-listing-editor";
+import { attemptListingImageCleanupNow } from "@/lib/server/listing-image-cleanup";
+import { getEditablePortalListingSummary, queueListingImageDeletion } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +30,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Listing not found or inaccessible." }, { status: 404 });
   }
 
-  let deleted;
+  let removal;
   try {
-    deleted = await removeListingImageFromDb({
+    removal = await queueListingImageDeletion({
       userId: currentUser.id,
       listingId,
       imageId,
@@ -43,8 +44,23 @@ export async function DELETE(
     );
   }
 
-  if (!deleted) {
+  if (!removal) {
     return NextResponse.json({ error: "Listing image not found." }, { status: 404 });
+  }
+
+  let cleanup = "not_needed";
+
+  if (removal.queuedCleanupJobId) {
+    cleanup = "queued";
+
+    try {
+      const attempt = await attemptListingImageCleanupNow(removal.queuedCleanupJobId);
+      if (attempt.completed) {
+        cleanup = "completed";
+      }
+    } catch {
+      cleanup = "queued";
+    }
   }
 
   if (listing.propertyRouteId) {
@@ -53,5 +69,5 @@ export async function DELETE(
   revalidatePath(routes.app.portalListings);
   revalidatePath(routes.app.portalListingEdit(listingId));
 
-  return NextResponse.json({ deleted: true });
+  return NextResponse.json({ deleted: true, cleanup });
 }

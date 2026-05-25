@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/listing-image-cleanup",
+      "schedule": "17 6 * * *"
+    }
+  ]
+}
