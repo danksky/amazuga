@@ -263,6 +263,22 @@ export function ListingForm({
               </select>
             </div>
 
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="visibility">
+                Visibility
+              </label>
+              <select
+                className={styles.select}
+                defaultValue={listing?.visibility || "public"}
+                id="visibility"
+                name="visibility"
+              >
+                <option value="public">Public — appears in search results</option>
+                <option value="unlisted">Unlisted — viewable by direct link only</option>
+                <option value="private">Private — not visible to anyone yet</option>
+              </select>
+            </div>
+
             {mode === "edit" ? (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="asking-price">

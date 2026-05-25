@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AgencyMembershipRole, Listing } from "@/types/domain";
+import type { AgencyMembershipRole, Listing, ListingVisibility } from "@/types/domain";
 
 import { listAgenciesFromDb } from "./workflows";
 import { getPgPool } from "./postgres";
@@ -8,6 +8,7 @@ import { getPgPool } from "./postgres";
 interface PortalListingRow {
   listing_id: string;
   listing_status: Listing["status"];
+  listing_visibility: ListingVisibility;
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string | null;
   currency: Listing["currency"];
@@ -58,6 +59,7 @@ export interface PortalListingSummary {
   bathrooms?: number;
   areaSqm?: number;
   status: Listing["status"];
+  visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
   currency: Listing["currency"];
@@ -110,6 +112,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
       SELECT
         l.id AS listing_id,
         l.status AS listing_status,
+        l.visibility AS listing_visibility,
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
@@ -199,6 +202,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     bathrooms: toNullableNumber(row.bathrooms),
     areaSqm: toNullableNumber(row.interior_area_sqm),
     status: row.listing_status,
+    visibility: row.listing_visibility,
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf),
     currency: row.currency,

@@ -69,6 +69,16 @@ function getRequiredListingMarketingType(formData: FormData, key: string) {
   return value;
 }
 
+function getRequiredListingVisibility(formData: FormData, key: string) {
+  const value = getRequiredString(formData, key);
+
+  if (value !== "public" && value !== "unlisted" && value !== "private") {
+    throw new Error(`Invalid listing visibility: ${key}`);
+  }
+
+  return value;
+}
+
 function getRequiredListingStatus(formData: FormData, key: string) {
   const value = getRequiredString(formData, key);
 
@@ -123,6 +133,7 @@ export async function submitListingCreateAction(formData: FormData) {
     propertyRouteId: getRequiredString(formData, "propertyRouteId"),
     agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+    visibility: getRequiredListingVisibility(formData, "visibility"),
   });
 
   revalidatePath(routes.app.portalProperties);
@@ -146,6 +157,7 @@ export async function submitListingUpdateAction(formData: FormData) {
       listingId: getRequiredString(formData, "listingId"),
       agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
       marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+      visibility: getRequiredListingVisibility(formData, "visibility"),
       askingPrice: getOptionalNumber(formData, "askingPrice"),
       description: getOptionalString(formData, "description"),
     }),
@@ -194,6 +206,7 @@ export async function submitListingEditAction(formData: FormData) {
     listingId: getRequiredString(formData, "listingId"),
     agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+    visibility: getRequiredListingVisibility(formData, "visibility"),
     askingPrice: getOptionalNumber(formData, "askingPrice"),
     description: getOptionalString(formData, "description"),
   });

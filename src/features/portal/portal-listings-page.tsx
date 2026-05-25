@@ -125,6 +125,7 @@ export function PortalListingsPage({
                                 {listing.marketingType === "rent" ? "For rent" : "For sale"}
                               </div>
                               <div className={`${styles.pill} ${styles.statusPill}`}>{listing.status}</div>
+                              <div className={`${styles.pill} ${styles.visibilityPill}`}>{listing.visibility}</div>
                             </div>
                             <div className={styles.listingPrice}>{listing.askingPrice ? formatCurrency(listing.askingPrice, listing.currency) : "—"}</div>
                           </div>
@@ -275,6 +276,7 @@ export function PortalListingsPage({
                         {listing.marketingType === "rent" ? "For rent" : "For sale"}
                       </div>
                     <div className={`${styles.pill} ${styles.statusPill}`}>{listing.status}</div>
+                    <div className={`${styles.pill} ${styles.visibilityPill}`}>{listing.visibility}</div>
                     </div>
                     <div className={styles.listingPrice}>{listing.askingPrice ? formatCurrency(listing.askingPrice, listing.currency) : "—"}</div>
                   </div>

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  ListingVisibility,
   PropertyClaimScope,
   PropertyDataSource,
   PropertyKind,
@@ -22,6 +23,7 @@ interface PortalOwnedPropertyRow {
   sector: string | null;
   listing_id: string | null;
   listing_status: "draft" | "active" | "inactive" | null;
+  listing_visibility: ListingVisibility | null;
   listing_asking_price: number | string | null;
   listing_marketing_type: "sale" | "rent" | null;
   agency_id: string | null;
@@ -68,6 +70,7 @@ export interface PortalOwnedPropertySummary {
   sector?: string;
   listingId?: string;
   listingStatus?: "draft" | "active" | "inactive";
+  listingVisibility?: ListingVisibility;
   listingAskingPrice?: number;
   listingMarketingType?: "sale" | "rent";
   listingAgencyId?: string;
@@ -128,6 +131,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           p.sector,
           l.id AS listing_id,
           l.status AS listing_status,
+          l.visibility AS listing_visibility,
           l.asking_price_rwf AS listing_asking_price,
           l.marketing_type AS listing_marketing_type,
           l.agency_id,
@@ -255,6 +259,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       sector: row.sector || undefined,
       listingId: row.listing_id || undefined,
       listingStatus: row.listing_status || undefined,
+      listingVisibility: row.listing_visibility || undefined,
       listingAskingPrice: row.listing_asking_price ? Number(row.listing_asking_price) : undefined,
       listingMarketingType: row.listing_marketing_type || undefined,
       listingAgencyId: row.agency_id || undefined,

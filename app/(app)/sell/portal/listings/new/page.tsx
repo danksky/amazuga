@@ -26,10 +26,13 @@ export default async function SellPortalListingCreateRoute({
 
   const data = await getPortalListingEditorData(currentUser.id);
 
+  const cancelHref = access.hasAgencyPortalAccess ? routes.app.portalListings : routes.app.portalProperties;
+
   return (
     <PortalShell access={access}>
       <ListingForm
         agencies={data.agencies}
+        cancelHref={cancelHref}
         mode="create"
         propertyOptions={data.propertyOptions}
         selectedPropertyRouteId={typeof property === "string" ? property : undefined}

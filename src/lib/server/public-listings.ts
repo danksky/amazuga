@@ -458,6 +458,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
       LEFT JOIN property_profile pp
         ON pp.parcel_id = l.parcel_id
       WHERE l.status = 'active'
+        AND l.visibility = 'public'
         AND l.marketing_type = $1
       ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
     `,
@@ -576,6 +577,7 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
       LEFT JOIN listing l
         ON l.property_asset_id = pa.id
        AND l.status = 'active'
+       AND l.visibility IN ('public', 'unlisted')
       LEFT JOIN property_profile pp
         ON pp.parcel_id = p.parcel_id
       LIMIT 1

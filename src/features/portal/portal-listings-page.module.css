@@ -189,7 +189,8 @@
 
 .salePill,
 .rentPill,
-.statusPill {
+.statusPill,
+.visibilityPill {
   color: var(--foreground-muted);
 }
 

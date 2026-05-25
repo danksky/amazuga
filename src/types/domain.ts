@@ -1,6 +1,7 @@
 export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | "private_lister";
 
 export type ListingStatus = "draft" | "active" | "inactive" | "archived";
+export type ListingVisibility = "public" | "unlisted" | "private";
 
 export type SubmissionStatus = "pending" | "approved" | "denied";
 
@@ -91,6 +92,7 @@ export interface Listing {
   agencyId?: string;
   agentUserId: string;
   status: ListingStatus;
+  visibility: ListingVisibility;
   marketingType: "sale" | "rent";
   askingPrice: number;
   currency: "RWF";

@@ -22,6 +22,12 @@ function getKindLabel(kind: PortalPropertiesWorkspaceData["ownedProperties"][num
   return labels[kind];
 }
 
+function getVisibilityLabel(visibility: PortalPropertiesWorkspaceData["ownedProperties"][number]["listingVisibility"]) {
+  if (visibility === "unlisted") return "Unlisted";
+  if (visibility === "private") return "Private";
+  return "Public";
+}
+
 function getClaimScopeLabel(scope: PortalPropertiesWorkspaceData["claimRequests"][number]["claimScope"]) {
   return scope === "unit_partial" ? "Unit or apartment" : "Whole parcel";
 }
@@ -233,6 +239,9 @@ export function PortalPropertiesPage({
                           <div className={styles.badge}>{property.listingMarketingType === "rent" ? "For rent" : "For sale"}</div>
                         ) : null}
                         <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
+                        {property.listingId ? (
+                          <div className={styles.badge}>{getVisibilityLabel(property.listingVisibility)}</div>
+                        ) : null}
                       </div>
                     </div>
                     {property.listingId ? (

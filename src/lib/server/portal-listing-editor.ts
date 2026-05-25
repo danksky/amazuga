@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import type { Listing } from "@/types/domain";
+import type { Listing, ListingVisibility } from "@/types/domain";
 
 import { getPortalAgencyWorkspaceData } from "./portal-agency";
 import { getPgPool } from "./postgres";
@@ -28,6 +28,7 @@ interface EditableListingRow {
   agency_id: string | null;
   agent_user_id: string;
   status: Listing["status"];
+  visibility: ListingVisibility;
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string | null;
   description: string | null;
@@ -84,6 +85,7 @@ export interface PortalEditableListing {
   agencyId?: string;
   agentUserId: string;
   status: Listing["status"];
+  visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
   description?: string;
@@ -242,6 +244,7 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.agency_id,
         l.agent_user_id,
         l.status,
+        l.visibility,
         l.marketing_type,
         l.asking_price_rwf,
         l.description
@@ -413,6 +416,7 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     agencyId: row.agency_id ?? undefined,
     agentUserId: row.agent_user_id,
     status: row.status,
+    visibility: row.visibility,
     marketingType: row.marketing_type,
     askingPrice: toNumber(row.asking_price_rwf),
     description: row.description || undefined,
@@ -668,6 +672,7 @@ export async function createPortalListingInDb(input: {
   propertyRouteId: string;
   agentUserId: string;
   marketingType: Listing["marketingType"];
+  visibility: ListingVisibility;
 }) {
   if (input.agencyId) {
     const agencies = await getAccessibleListingAgencies(input.userId);
@@ -697,6 +702,7 @@ export async function createPortalListingInDb(input: {
         agency_id,
         agent_user_id,
         status,
+        visibility,
         marketing_type,
         asking_price_rwf,
         currency,
@@ -704,7 +710,7 @@ export async function createPortalListingInDb(input: {
         seed_source,
         published_at
       )
-      VALUES ($1, $2, $3, $4, $5, 'draft', $6, NULL, 'RWF', NULL, 'manual_workflow_v1', NULL)
+      VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, NULL, 'RWF', NULL, 'manual_workflow_v1', NULL)
     `,
     [
       id,
@@ -712,6 +718,7 @@ export async function createPortalListingInDb(input: {
       propertyTarget.property_asset_id,
       input.agencyId,
       input.agentUserId,
+      input.visibility,
       input.marketingType,
     ],
   );
@@ -728,6 +735,7 @@ export async function updatePortalListingInDb(input: {
   listingId: string;
   agentUserId: string;
   marketingType: Listing["marketingType"];
+  visibility: ListingVisibility;
   askingPrice?: number;
   description?: string;
 }) {
@@ -755,8 +763,9 @@ export async function updatePortalListingInDb(input: {
       SET
         agent_user_id = $2,
         marketing_type = $3,
-        asking_price_rwf = COALESCE($4, asking_price_rwf),
-        description = $5,
+        visibility = $4,
+        asking_price_rwf = COALESCE($5, asking_price_rwf),
+        description = $6,
         updated_at = NOW()
       WHERE id = $1
       RETURNING
@@ -774,6 +783,7 @@ export async function updatePortalListingInDb(input: {
       input.listingId,
       input.agentUserId,
       input.marketingType,
+      input.visibility,
       input.askingPrice != null ? Math.round(input.askingPrice) : null,
       input.description || null,
     ],
