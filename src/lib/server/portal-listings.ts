@@ -15,6 +15,7 @@ interface PortalListingRow {
   listing_created_at: string;
   listing_updated_at: string;
   listing_published_at: string | null;
+  listing_description: string | null;
   agency_id: string | null;
   agent_user_id: string;
   agent_full_name: string;
@@ -62,6 +63,7 @@ export interface PortalListingSummary {
   visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
+  description?: string;
   currency: Listing["currency"];
   createdAt: string;
   updatedAt: string;
@@ -115,6 +117,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         l.visibility AS listing_visibility,
         l.marketing_type,
         l.asking_price_rwf,
+        l.description AS listing_description,
         l.currency,
         l.created_at::TEXT AS listing_created_at,
         l.updated_at::TEXT AS listing_updated_at,
@@ -205,6 +208,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     visibility: row.listing_visibility,
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf),
+    description: row.listing_description || undefined,
     currency: row.currency,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,

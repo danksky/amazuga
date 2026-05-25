@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+import type { PoolClient } from "pg";
 
 import type { Listing, ListingVisibility } from "@/types/domain";
 
@@ -142,6 +143,10 @@ function toNumber(value: number | string | null | undefined) {
 
 function normalizePropertyTitle(input: { propertyTitle?: string | null; propertyRouteId: string }) {
   return input.propertyTitle?.trim() || input.propertyRouteId;
+}
+
+function hasNonEmptyText(value: string | null | undefined) {
+  return Boolean(value?.trim());
 }
 
 function isListingReadyForAsset(input: {
@@ -385,6 +390,20 @@ async function getEditableListingImages(listingId: string) {
     status: row.status,
     sortOrder: toNumber(row.sort_order) ?? 0,
   }));
+}
+
+async function countReadyListingImages(client: PoolClient, listingId: string) {
+  const result = await client.query<{ count: string }>(
+    `
+      SELECT COUNT(*)::TEXT AS count
+      FROM listing_image
+      WHERE listing_id = $1
+        AND COALESCE(to_jsonb(listing_image)->>'status', 'ready') = 'ready'
+    `,
+    [listingId],
+  );
+
+  return Number(result.rows[0]?.count ?? 0);
 }
 
 async function ensureAgentBelongsToAgency(input: {
@@ -1053,6 +1072,15 @@ export async function setPortalListingStatusInDb(input: {
 
       if (lockedListing.asking_price_rwf == null) {
         throw new Error("An asking price is required before publishing a listing");
+      }
+
+      if (!hasNonEmptyText(listing.description)) {
+        throw new Error("A description is required before publishing a listing");
+      }
+
+      const readyImageCount = await countReadyListingImages(client, input.listingId);
+      if (readyImageCount === 0) {
+        throw new Error("At least one photo is required before publishing a listing");
       }
     }
 

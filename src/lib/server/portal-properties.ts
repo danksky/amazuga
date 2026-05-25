@@ -33,6 +33,7 @@ interface PortalOwnedPropertyRow {
   listing_status: "draft" | "active" | "inactive" | null;
   listing_visibility: ListingVisibility | null;
   listing_asking_price: number | string | null;
+  listing_description: string | null;
   listing_marketing_type: "sale" | "rent" | null;
   agency_id: string | null;
   agency_name: string | null;
@@ -88,6 +89,7 @@ export interface PortalOwnedPropertySummary {
   listingStatus?: "draft" | "active" | "inactive";
   listingVisibility?: ListingVisibility;
   listingAskingPrice?: number;
+  listingDescription?: string;
   listingMarketingType?: "sale" | "rent";
   listingAgencyId?: string;
   listingAgencyName?: string;
@@ -208,6 +210,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           l.status AS listing_status,
           l.visibility AS listing_visibility,
           l.asking_price_rwf AS listing_asking_price,
+          l.description AS listing_description,
           l.marketing_type AS listing_marketing_type,
           l.agency_id,
           agency.business_name AS agency_name,
@@ -356,6 +359,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       listingStatus: row.listing_status || undefined,
       listingVisibility: row.listing_visibility || undefined,
       listingAskingPrice: row.listing_asking_price ? Number(row.listing_asking_price) : undefined,
+      listingDescription: row.listing_description || undefined,
       listingMarketingType: row.listing_marketing_type || undefined,
       listingAgencyId: row.agency_id || undefined,
       listingAgencyName: row.agency_name || undefined,
