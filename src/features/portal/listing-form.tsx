@@ -153,6 +153,7 @@ export function ListingForm({
         ) : null}
 
         {showCreateEmptyState ? null : (
+        <>
         <form action={submitAction} className={styles.form}>
           {listing ? <input name="listingId" type="hidden" value={listing.id} /> : null}
 
@@ -277,7 +278,7 @@ export function ListingForm({
               >
                 <option value="public">Public — appears in search results</option>
                 <option value="unlisted">Unlisted — viewable by direct link only</option>
-                <option value="private">Private — not visible to anyone yet</option>
+                <option value="private">Private — visible to invited users only</option>
               </select>
             </div>
 
@@ -291,7 +292,6 @@ export function ListingForm({
                   defaultValue={listing?.askingPrice}
                   id="asking-price"
                   inputMode="numeric"
-                  min="1"
                   name="askingPrice"
                   onChange={(e) => setAskingPriceHasValue(Boolean(e.target.value))}
                   placeholder="Example: 185000000"
@@ -347,6 +347,36 @@ export function ListingForm({
             </div>
           ) : null}
 
+          <div className={styles.actions}>
+            <Button name="intent" type="submit" value="save">
+              {mode === "create" ? "Create draft" : listing?.status === "draft" ? "Save draft" : "Save changes"}
+            </Button>
+            {mode === "edit" && listing?.status === "draft" ? (
+              <>
+                <Button
+                  name="intent"
+                  onClick={(e) => {
+                    if (!canPublish) {
+                      e.preventDefault();
+                      setPublishAttempted(true);
+                    }
+                  }}
+                  type="submit"
+                  value="publish"
+                >
+                  Publish listing
+                </Button>
+                <Button name="intent" type="submit" value="discard" variant="secondary">Discard draft</Button>
+              </>
+            ) : null}
+            <Link href={cancelHref}>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </Link>
+          </div>
+        </form>
+
           {mode === "edit" && listing && listing.visibility === "private" ? (
             <div className={styles.grantsSection}>
               <div className={styles.grantsHeader}>
@@ -389,36 +419,7 @@ export function ListingForm({
               </form>
             </div>
           ) : null}
-
-          <div className={styles.actions}>
-            <Button name="intent" type="submit" value="save">
-              {mode === "create" ? "Create draft" : listing?.status === "draft" ? "Save draft" : "Save changes"}
-            </Button>
-            {mode === "edit" && listing?.status === "draft" ? (
-              <>
-                <Button
-                  name="intent"
-                  onClick={(e) => {
-                    if (!canPublish) {
-                      e.preventDefault();
-                      setPublishAttempted(true);
-                    }
-                  }}
-                  type="submit"
-                  value="publish"
-                >
-                  Publish listing
-                </Button>
-                <Button name="intent" type="submit" value="discard" variant="secondary">Discard draft</Button>
-              </>
-            ) : null}
-            <Link href={cancelHref}>
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </Link>
-          </div>
-        </form>
+        </>
         )}
       </div>
     </div>

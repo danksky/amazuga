@@ -184,10 +184,29 @@ export async function submitListingEditAction(formData: FormData) {
       throw new Error("Current user cannot change listing status");
     }
 
+    const listingId = getRequiredString(formData, "listingId");
+
+    if (intent === "publish") {
+      // Save any form changes first so a freshly-typed asking price is persisted
+      // before setPortalListingStatusInDb reads the price from the DB.
+      if (!hasCapability(currentUser.roles, "edit_listing")) {
+        throw new Error("Current user cannot edit listings");
+      }
+      await updatePortalListingInDb({
+        userId: currentUser.id,
+        listingId,
+        agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
+        marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+        visibility: getRequiredListingVisibility(formData, "visibility"),
+        askingPrice: getOptionalNumber(formData, "askingPrice"),
+        description: getOptionalString(formData, "description"),
+      });
+    }
+
     const status = intent === "publish" ? "active" : "archived";
     const listing = await setPortalListingStatusInDb({
       userId: currentUser.id,
-      listingId: getRequiredString(formData, "listingId"),
+      listingId,
       status,
     });
 
