@@ -7,12 +7,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getPublicListingId } from "@/lib/listing-public-id";
 import { routes } from "@/lib/routes";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type {
   PortalEditableListing,
   PortalListingAgencyOption,
   PortalListingPropertyOption,
 } from "@/lib/server/portal-listing-editor";
 
+import { addListingAccessGrantAction, removeListingAccessGrantAction } from "./actions";
 import { ListingPhotoManager } from "./listing-photo-manager";
 import styles from "./listing-form.module.css";
 
@@ -327,6 +329,64 @@ export function ListingForm({
             <div className={styles.notice}>
               Photos come next. This first step creates a draft listing, then sends you to the full editor to add and
               manage gallery images before publishing.
+            </div>
+          ) : null}
+
+          {mode === "edit" && listing && listing.priceHistory.length > 0 ? (
+            <div className={styles.historySection}>
+              <h2 className={styles.historySectionTitle}>Price history</h2>
+              <ol className={styles.historyList}>
+                {listing.priceHistory.map((entry, index) => (
+                  <li key={entry.id} className={styles.historyItem}>
+                    <span className={styles.historyPrice}>{formatCurrency(entry.priceRwf)}</span>
+                    <span className={styles.historyDate}>{formatDate(entry.changedAt)}</span>
+                    {index === 0 ? <span className={styles.historyBadge}>Current</span> : null}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+
+          {mode === "edit" && listing && listing.visibility === "private" ? (
+            <div className={styles.grantsSection}>
+              <div className={styles.grantsHeader}>
+                <h2 className={styles.grantsSectionTitle}>Private access</h2>
+                <div className={styles.grantsBody}>
+                  This listing is private. Only the assigned agent and the people listed below can view it.
+                </div>
+              </div>
+              {listing.accessGrants.length > 0 ? (
+                <ul className={styles.grantsList}>
+                  {listing.accessGrants.map((grant) => (
+                    <li key={grant.id} className={styles.grantsItem}>
+                      <div className={styles.grantsItemInfo}>
+                        <span className={styles.grantsItemName}>{grant.userName}</span>
+                        <span className={styles.grantsItemEmail}>{grant.userEmail}</span>
+                      </div>
+                      <form action={removeListingAccessGrantAction}>
+                        <input type="hidden" name="listingId" value={listing.id} />
+                        <input type="hidden" name="grantId" value={grant.id} />
+                        <button type="submit" className={styles.grantsRemove}>Remove</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className={styles.grantsEmpty}>No one has been granted access yet.</div>
+              )}
+              <form action={addListingAccessGrantAction} className={styles.grantsAddForm}>
+                <input type="hidden" name="listingId" value={listing.id} />
+                <div className={styles.grantsAddRow}>
+                  <input
+                    className={styles.grantsAddInput}
+                    name="email"
+                    placeholder="Email address"
+                    required
+                    type="email"
+                  />
+                  <button type="submit" className={styles.grantsAddButton}>Grant access</button>
+                </div>
+              </form>
             </div>
           ) : null}
 

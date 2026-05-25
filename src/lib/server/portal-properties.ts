@@ -148,6 +148,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           SELECT
             listing.id,
             listing.status,
+            listing.visibility,
             listing.asking_price_rwf,
             listing.marketing_type,
             listing.agency_id,

@@ -296,7 +296,7 @@ export function PortalPropertiesPage({
                           <ListingStatusButton
                             className={styles.secondaryAction}
                             currentStatus="inactive"
-                            disabled={!property.firstImageUrl}
+                            disabled={!property.listingAskingPrice || !property.firstImageUrl}
                             nextStatus="active"
                           />
                         </form>

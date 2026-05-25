@@ -26,7 +26,7 @@ export default async function PropertySlugDetailsPage({ params, searchParams }: 
     searchParams,
     getCurrentUser(),
   ]);
-  const propertyPageData = await getPublicPropertyPageData(propertyId);
+  const propertyPageData = await getPublicPropertyPageData(propertyId, currentUser?.id);
 
   if (!propertyPageData) {
     notFound();

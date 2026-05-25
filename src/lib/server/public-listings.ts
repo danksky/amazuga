@@ -479,7 +479,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
     .filter((entry): entry is PublicListingCardData => Boolean(entry));
 }
 
-export async function getPublicPropertyPageData(propertyId: string): Promise<PublicPropertyPageData | undefined> {
+export async function getPublicPropertyPageData(propertyId: string, viewerUserId?: string): Promise<PublicPropertyPageData | undefined> {
   const result = await getPgPool().query<ListingParcelRow>(
     `
       WITH target_parcel AS (
@@ -577,12 +577,27 @@ export async function getPublicPropertyPageData(propertyId: string): Promise<Pub
       LEFT JOIN listing l
         ON l.property_asset_id = pa.id
        AND l.status = 'active'
-       AND l.visibility IN ('public', 'unlisted')
+       AND (
+         l.visibility = 'public'
+         OR l.visibility = 'unlisted'
+         OR (
+           l.visibility = 'private'
+           AND $2::TEXT IS NOT NULL
+           AND (
+             l.agent_user_id = $2::TEXT
+             OR EXISTS (
+               SELECT 1 FROM listing_access_grant lag
+               WHERE lag.listing_id = l.id
+                 AND lag.granted_to_user_id = $2::TEXT
+             )
+           )
+         )
+       )
       LEFT JOIN property_profile pp
         ON pp.parcel_id = p.parcel_id
       LIMIT 1
     `,
-    [propertyId],
+    [propertyId, viewerUserId ?? null],
   );
 
   const row = result.rows[0];

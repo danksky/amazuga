@@ -74,6 +74,20 @@ export interface PortalListingPropertyOption {
   sector?: string;
 }
 
+export interface ListingPriceHistoryEntry {
+  id: string;
+  priceRwf: number;
+  changedAt: string;
+}
+
+export interface ListingAccessGrant {
+  id: string;
+  grantedToUserId: string;
+  userName: string;
+  userEmail: string;
+  createdAt: string;
+}
+
 export interface PortalEditableListing {
   id: string;
   propertyAssetId: string;
@@ -100,6 +114,8 @@ export interface PortalEditableListing {
     status: "ready" | "processing" | "failed" | "pending_delete" | "delete_failed";
     sortOrder: number;
   }>;
+  priceHistory: ListingPriceHistoryEntry[];
+  accessGrants: ListingAccessGrant[];
 }
 
 export interface PortalListingEditorData {
@@ -379,6 +395,92 @@ async function ensureCurrentUserOwnsProperty(userId: string, propertyAssetId: st
   }
 }
 
+async function getListingPriceHistory(listingId: string): Promise<ListingPriceHistoryEntry[]> {
+  const result = await getPgPool().query<{
+    id: string;
+    price_rwf: string | number;
+    changed_at: string;
+  }>(
+    `SELECT id, price_rwf, changed_at::TEXT
+     FROM listing_price_history
+     WHERE listing_id = $1
+     ORDER BY changed_at DESC
+     LIMIT 20`,
+    [listingId],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    priceRwf: Number(row.price_rwf),
+    changedAt: row.changed_at,
+  }));
+}
+
+async function getListingAccessGrants(listingId: string): Promise<ListingAccessGrant[]> {
+  const result = await getPgPool().query<{
+    id: string;
+    granted_to_user_id: string;
+    full_name: string;
+    email: string;
+    created_at: string;
+  }>(
+    `SELECT lag.id, lag.granted_to_user_id, u.full_name, u.email, lag.created_at::TEXT
+     FROM listing_access_grant lag
+     JOIN app_user u ON u.id = lag.granted_to_user_id
+     WHERE lag.listing_id = $1
+     ORDER BY lag.created_at ASC`,
+    [listingId],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    grantedToUserId: row.granted_to_user_id,
+    userName: row.full_name,
+    userEmail: row.email,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function addListingAccessGrantInDb(input: {
+  userId: string;
+  listingId: string;
+  grantedToEmail: string;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+  if (!listing) throw new Error("Listing not found or inaccessible");
+
+  const targetUser = await getPgPool().query<{ id: string }>(
+    `SELECT id FROM app_user WHERE LOWER(email) = LOWER($1) AND status = 'active' LIMIT 1`,
+    [input.grantedToEmail],
+  );
+
+  if (!targetUser.rows[0]) throw new Error("No active user found with that email address");
+
+  const grantedToUserId = targetUser.rows[0].id;
+  const id = `lag_${randomUUID().replace(/-/g, "")}`;
+
+  await getPgPool().query(
+    `INSERT INTO listing_access_grant (id, listing_id, granted_to_user_id, granted_by_user_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (listing_id, granted_to_user_id) DO NOTHING`,
+    [id, input.listingId, grantedToUserId, input.userId],
+  );
+}
+
+export async function removeListingAccessGrantInDb(input: {
+  userId: string;
+  listingId: string;
+  grantId: string;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+  if (!listing) throw new Error("Listing not found or inaccessible");
+
+  await getPgPool().query(
+    `DELETE FROM listing_access_grant WHERE id = $1 AND listing_id = $2`,
+    [input.grantId, input.listingId],
+  );
+}
+
 export async function getPortalListingEditorData(userId: string): Promise<PortalListingEditorData> {
   const [agencies, propertyOptions] = await Promise.all([
     getAccessibleListingAgencies(userId),
@@ -401,7 +503,11 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     return null;
   }
 
-  const images = await getEditableListingImages(listingId);
+  const [images, priceHistory, accessGrants] = await Promise.all([
+    getEditableListingImages(listingId),
+    getListingPriceHistory(listingId),
+    getListingAccessGrants(listingId),
+  ]);
   const listing: PortalEditableListing = {
     id: row.listing_id,
     propertyAssetId: row.property_asset_id,
@@ -421,6 +527,8 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     askingPrice: toNumber(row.asking_price_rwf),
     description: row.description || undefined,
     images,
+    priceHistory,
+    accessGrants,
   };
 
   return {
@@ -754,40 +862,56 @@ export async function updatePortalListingInDb(input: {
     });
   }
 
-  const result = await getPgPool().query<{
-    property_route_id: string;
-    marketing_type: Listing["marketingType"];
-  }>(
-    `
-      UPDATE listing
-      SET
-        agent_user_id = $2,
-        marketing_type = $3,
-        visibility = $4,
-        asking_price_rwf = COALESCE($5, asking_price_rwf),
-        description = $6,
-        updated_at = NOW()
-      WHERE id = $1
-      RETURNING
-        (
-          SELECT COALESCE(pa.public_id, p.public_id, p.parcel_id)
-          FROM parcel_app_ready_seed_preview p
-          LEFT JOIN property_asset pa
-            ON pa.id = listing.property_asset_id
-          WHERE p.parcel_id = listing.parcel_id
-          LIMIT 1
-        ) AS property_route_id,
-        marketing_type
-    `,
-    [
-      input.listingId,
-      input.agentUserId,
-      input.marketingType,
-      input.visibility,
-      input.askingPrice != null ? Math.round(input.askingPrice) : null,
-      input.description || null,
-    ],
-  );
+  const newPrice = input.askingPrice != null ? Math.round(input.askingPrice) : null;
+  const currentPrice = toNumber(listing.asking_price_rwf) ?? null;
+  const priceChanged = newPrice !== null && newPrice !== currentPrice;
+
+  const client = await getPgPool().connect();
+  let result: { rows: Array<{ property_route_id: string; marketing_type: Listing["marketingType"] }> };
+
+  try {
+    await client.query("BEGIN");
+
+    result = await client.query(
+      `
+        UPDATE listing
+        SET
+          agent_user_id = $2,
+          marketing_type = $3,
+          visibility = $4,
+          asking_price_rwf = COALESCE($5, asking_price_rwf),
+          description = $6,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+          (
+            SELECT COALESCE(pa.public_id, p.public_id, p.parcel_id)
+            FROM parcel_app_ready_seed_preview p
+            LEFT JOIN property_asset pa
+              ON pa.id = listing.property_asset_id
+            WHERE p.parcel_id = listing.parcel_id
+            LIMIT 1
+          ) AS property_route_id,
+          marketing_type
+      `,
+      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice, input.description || null],
+    );
+
+    if (priceChanged) {
+      await client.query(
+        `INSERT INTO listing_price_history (id, listing_id, price_rwf, changed_by_user_id)
+         VALUES ('lph_' || replace(gen_random_uuid()::text, '-', ''), $1, $2, $3)`,
+        [input.listingId, newPrice, input.userId],
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 
   return {
     listingId: input.listingId,

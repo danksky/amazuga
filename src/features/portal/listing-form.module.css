@@ -289,6 +289,209 @@
   letter-spacing: 0.06em;
 }
 
+.historySection {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 90%, white);
+}
+
+.historySectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.historyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.historyItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.historyItem:first-child {
+  padding-top: 0;
+}
+
+.historyPrice {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 1rem;
+}
+
+.historyDate {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.historyBadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2563eb 14%, transparent);
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.grantsSection {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 90%, white);
+}
+
+.grantsHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.grantsSectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.grantsBody {
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.grantsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.grantsItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.grantsItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.grantsItem:first-child {
+  padding-top: 0;
+}
+
+.grantsItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.grantsItemName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.grantsItemEmail {
+  color: var(--foreground-muted);
+  font-size: 0.875rem;
+}
+
+.grantsRemove {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+  white-space: nowrap;
+}
+
+.grantsRemove:hover,
+.grantsRemove:focus-visible {
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.grantsEmpty {
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+}
+
+.grantsAddForm {
+  display: grid;
+  gap: 0;
+}
+
+.grantsAddRow {
+  display: flex;
+  gap: 10px;
+}
+
+.grantsAddInput {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.grantsAddInput:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.grantsAddButton {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 140ms ease;
+}
+
+.grantsAddButton:hover,
+.grantsAddButton:focus-visible {
+  background: var(--surface-muted);
+}
+
 .actions {
   display: flex;
   gap: 12px;

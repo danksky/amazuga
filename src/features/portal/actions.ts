@@ -7,7 +7,9 @@ import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getPortalAccessState } from "@/lib/server/portal-access";
 import {
+  addListingAccessGrantInDb,
   createPortalListingInDb,
+  removeListingAccessGrantInDb,
   setPortalListingStatusInDb,
   updatePortalListingInDb,
 } from "@/lib/server/portal-listing-editor";
@@ -240,4 +242,32 @@ export async function setListingStatusAction(formData: FormData) {
     marketingType: listing.marketingType,
   });
   redirect(getListingRedirectHref(access.hasAgencyPortalAccess));
+}
+
+export async function addListingAccessGrantAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalListings);
+
+  if (!hasCapability(currentUser.roles, "edit_listing")) {
+    throw new Error("Current user cannot edit listings");
+  }
+
+  const listingId = getRequiredString(formData, "listingId");
+  const grantedToEmail = getRequiredString(formData, "email");
+
+  await addListingAccessGrantInDb({ userId: currentUser.id, listingId, grantedToEmail });
+  revalidatePath(routes.app.portalListingEdit(listingId));
+}
+
+export async function removeListingAccessGrantAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalListings);
+
+  if (!hasCapability(currentUser.roles, "edit_listing")) {
+    throw new Error("Current user cannot edit listings");
+  }
+
+  const listingId = getRequiredString(formData, "listingId");
+  const grantId = getRequiredString(formData, "grantId");
+
+  await removeListingAccessGrantInDb({ userId: currentUser.id, listingId, grantId });
+  revalidatePath(routes.app.portalListingEdit(listingId));
 }
