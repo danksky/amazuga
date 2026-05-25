@@ -52,6 +52,32 @@
 - `/admin/properties`
 - `/admin/listings`
 
+## Portal modes
+
+The portal (`/sell/portal/...`) serves two distinct user types whose nav
+and entry points differ.
+
+**Agency user** (`hasAgencyPortalAccess`): member or manager of at least one
+agency. Lands on `/listings`. Sees Properties, Listings, Agency, Team, and
+Valuations (if also a valuator) in the portal nav. The listings page shows
+all listings across the agency, not just those tied to properties they
+personally own.
+
+**Private lister** (`hasPropertyOwnerListingAccess`): owns at least one
+property asset but has no agency membership. Lands on `/properties`. The
+Listings nav item is hidden. All listing actions — create, edit, publish,
+deactivate, reactivate — surface inline on the portfolio cards on the
+Properties page. There is no reason for a private lister to visit a
+separate listings page.
+
+**Pending claimant**: has open claim requests but no approved ownership yet.
+Lands on `/properties` to track claim status. Cannot create listings until
+a claim is approved.
+
+A user can be both an agency member and a property owner. In that case
+`hasAgencyPortalAccess` takes precedence and they get the agency experience
+with Listings as the entry point.
+
 ## Notes
 
 - Public property browsing should live on `/buy` and `/rent`.
