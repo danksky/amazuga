@@ -104,6 +104,13 @@ CREATE TABLE IF NOT EXISTS listing_image (
   listing_id TEXT NOT NULL REFERENCES listing(id) ON DELETE CASCADE,
   sort_order INTEGER NOT NULL CHECK (sort_order >= 0),
   image_url TEXT NOT NULL,
+  storage_key TEXT,
+  content_type TEXT,
+  width INTEGER,
+  height INTEGER,
+  file_size_bytes INTEGER,
+  uploaded_by_user_id TEXT REFERENCES app_user(id),
+  status TEXT NOT NULL DEFAULT 'ready' CHECK (status IN ('ready', 'processing', 'failed')),
   alt_text TEXT,
   seed_source TEXT NOT NULL DEFAULT 'manual',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -263,6 +270,9 @@ CREATE INDEX IF NOT EXISTS property_ownership_user_id_idx
 
 CREATE INDEX IF NOT EXISTS property_ownership_parcel_id_idx
   ON property_ownership (parcel_id);
+
+CREATE INDEX IF NOT EXISTS listing_image_listing_id_status_idx
+  ON listing_image (listing_id, status);
 
 CREATE INDEX IF NOT EXISTS valuation_submission_property_asset_id_idx
   ON valuation_submission (property_asset_id);

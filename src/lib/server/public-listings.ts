@@ -311,8 +311,9 @@ async function getListingImages(listingId: string) {
   const result = await getPgPool().query<ListingImageRow>(
     `
       SELECT image_url
-      FROM listing_image
-      WHERE listing_id = $1
+      FROM listing_image li
+      WHERE li.listing_id = $1
+        AND COALESCE(to_jsonb(li)->>'status', 'ready') = 'ready'
       ORDER BY sort_order ASC
     `,
     [listingId],

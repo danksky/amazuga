@@ -33,6 +33,18 @@ interface EditableListingRow {
   description: string | null;
 }
 
+interface EditableListingImageRow {
+  id: string;
+  image_url: string;
+  storage_key: string | null;
+  width: number | string | null;
+  height: number | string | null;
+  content_type: string | null;
+  file_size_bytes: number | string | null;
+  status: "ready" | "processing" | "failed";
+  sort_order: number | string;
+}
+
 interface PropertyTargetRow {
   property_asset_id: string;
   parcel_id: string;
@@ -74,6 +86,17 @@ export interface PortalEditableListing {
   marketingType: Listing["marketingType"];
   askingPrice: number;
   description?: string;
+  images: Array<{
+    id: string;
+    imageUrl: string;
+    storageKey?: string;
+    width?: number;
+    height?: number;
+    contentType?: string;
+    fileSizeBytes?: number;
+    status: "ready" | "processing" | "failed";
+    sortOrder: number;
+  }>;
 }
 
 export interface PortalListingEditorData {
@@ -245,6 +268,39 @@ async function getEditableListingRow(userId: string, listingId: string) {
   return result.rows[0] || null;
 }
 
+async function getEditableListingImages(listingId: string) {
+  const result = await getPgPool().query<EditableListingImageRow>(
+    `
+      SELECT
+        li.id,
+        li.image_url,
+        to_jsonb(li)->>'storage_key' AS storage_key,
+        to_jsonb(li)->>'width' AS width,
+        to_jsonb(li)->>'height' AS height,
+        to_jsonb(li)->>'content_type' AS content_type,
+        to_jsonb(li)->>'file_size_bytes' AS file_size_bytes,
+        COALESCE(to_jsonb(li)->>'status', 'ready') AS status,
+        li.sort_order
+      FROM listing_image li
+      WHERE li.listing_id = $1
+      ORDER BY li.sort_order ASC, li.created_at ASC, li.id ASC
+    `,
+    [listingId],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    imageUrl: row.image_url,
+    storageKey: row.storage_key || undefined,
+    width: toNumber(row.width),
+    height: toNumber(row.height),
+    contentType: row.content_type || undefined,
+    fileSizeBytes: toNumber(row.file_size_bytes),
+    status: row.status,
+    sortOrder: toNumber(row.sort_order) ?? 0,
+  }));
+}
+
 async function ensureAgentBelongsToAgency(input: {
   agencies: PortalListingAgencyOption[];
   agencyId: string;
@@ -322,6 +378,7 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     return null;
   }
 
+  const images = await getEditableListingImages(listingId);
   const listing: PortalEditableListing = {
     id: row.listing_id,
     propertyAssetId: row.property_asset_id,
@@ -339,12 +396,156 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     marketingType: row.marketing_type,
     askingPrice: toNumber(row.asking_price_rwf) ?? 0,
     description: row.description || undefined,
+    images,
   };
 
   return {
     agencies,
     listing,
   };
+}
+
+export async function getEditablePortalListingSummary(userId: string, listingId: string) {
+  const row = await getEditableListingRow(userId, listingId);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    listingId: row.listing_id,
+    propertyRouteId: row.property_route_id,
+    propertyTitle: normalizePropertyTitle({
+      propertyTitle: row.property_title,
+      propertyRouteId: row.property_route_id,
+    }),
+    images: await getEditableListingImages(listingId),
+  };
+}
+
+export async function addListingImageToDb(input: {
+  userId: string;
+  listingId: string;
+  imageUrl: string;
+  storageKey: string;
+  width?: number;
+  height?: number;
+  contentType?: string;
+  fileSizeBytes?: number;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+
+  if (!listing) {
+    throw new Error("Listing not found or inaccessible");
+  }
+
+  const countResult = await getPgPool().query<{ count: string }>(
+    `
+      SELECT COUNT(*)::TEXT AS count
+      FROM listing_image
+      WHERE listing_id = $1
+    `,
+    [input.listingId],
+  );
+
+  const currentCount = Number(countResult.rows[0]?.count ?? 0);
+  if (currentCount >= 12) {
+    throw new Error("This listing already has the maximum number of photos");
+  }
+
+  const orderResult = await getPgPool().query<{ next_sort_order: number | string | null }>(
+    `
+      SELECT COALESCE(MAX(sort_order) + 1, 0) AS next_sort_order
+      FROM listing_image
+      WHERE listing_id = $1
+    `,
+    [input.listingId],
+  );
+
+  const id = `listing-image-${randomUUID()}`;
+  const sortOrder = toNumber(orderResult.rows[0]?.next_sort_order) ?? currentCount;
+
+  const result = await getPgPool().query<EditableListingImageRow>(
+    `
+      INSERT INTO listing_image (
+        id,
+        listing_id,
+        sort_order,
+        image_url,
+        storage_key,
+        content_type,
+        width,
+        height,
+        file_size_bytes,
+        uploaded_by_user_id,
+        status,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ready', 'manual_upload_v1')
+      RETURNING
+        id,
+        image_url,
+        storage_key,
+        width,
+        height,
+        content_type,
+        file_size_bytes,
+        status,
+        sort_order
+    `,
+    [
+      id,
+      input.listingId,
+      sortOrder,
+      input.imageUrl,
+      input.storageKey,
+      input.contentType || "image/jpeg",
+      input.width || null,
+      input.height || null,
+      input.fileSizeBytes || null,
+      input.userId,
+    ],
+  );
+
+  const row = result.rows[0];
+
+  return row
+    ? {
+        id: row.id,
+        imageUrl: row.image_url,
+        storageKey: row.storage_key || undefined,
+        width: toNumber(row.width),
+        height: toNumber(row.height),
+        contentType: row.content_type || undefined,
+        fileSizeBytes: toNumber(row.file_size_bytes),
+        status: row.status,
+        sortOrder: toNumber(row.sort_order) ?? sortOrder,
+      }
+    : null;
+}
+
+export async function removeListingImageFromDb(input: {
+  userId: string;
+  listingId: string;
+  imageId: string;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+
+  if (!listing) {
+    throw new Error("Listing not found or inaccessible");
+  }
+
+  const result = await getPgPool().query<{ id: string }>(
+    `
+      DELETE FROM listing_image
+      WHERE id = $1
+        AND listing_id = $2
+      RETURNING id
+    `,
+    [input.imageId, input.listingId],
+  );
+
+  return Boolean(result.rows[0]);
 }
 
 export async function createPortalListingInDb(input: {

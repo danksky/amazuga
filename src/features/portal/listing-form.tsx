@@ -3,12 +3,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getPublicListingId } from "@/lib/listing-public-id";
 import { routes } from "@/lib/routes";
+import { isListingImageUploadConfigured } from "@/lib/server/listing-image-storage";
 import type {
   PortalEditableListing,
   PortalListingAgencyOption,
   PortalListingPropertyOption,
 } from "@/lib/server/portal-listing-editor";
 
+import { ListingPhotoManager } from "./listing-photo-manager";
 import styles from "./listing-form.module.css";
 
 function getPropertyKindLabel(kind?: string) {
@@ -92,6 +94,7 @@ export function ListingForm({
         }
       : propertyOptions[0]);
   const showCreateEmptyState = mode === "create" && propertyOptions.length === 0;
+  const imageUploadConfigured = isListingImageUploadConfigured();
 
   return (
     <div className={`container ${styles.page}`}>
@@ -274,6 +277,19 @@ export function ListingForm({
               placeholder="Add listing copy, context, and useful details for the public property page."
             />
           </div>
+
+          {mode === "edit" && listing ? (
+            <ListingPhotoManager
+              initialImages={listing.images}
+              listingId={listing.id}
+              uploadEnabled={imageUploadConfigured}
+            />
+          ) : mode === "create" ? (
+            <div className={styles.notice}>
+              Photos come next. Create the listing first, then add and manage standardized gallery images from the edit
+              screen.
+            </div>
+          ) : null}
 
           <div className={styles.actions}>
             <Button type="submit">

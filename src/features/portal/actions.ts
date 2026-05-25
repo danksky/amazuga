@@ -119,7 +119,7 @@ export async function submitListingCreateAction(formData: FormData) {
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
-  redirect(routes.app.portalListings);
+  redirect(routes.app.portalListingEdit(listing.listingId));
 }
 
 export async function submitListingUpdateAction(formData: FormData) {

@@ -123,6 +123,64 @@ variable "cloudflare_tiles_worker_rate_limit_period_seconds" {
   default     = 60
 }
 
+variable "cloudflare_listing_media_bucket_name" {
+  description = "Bucket name for listing photos."
+  type        = string
+  default     = "amazuga-listing-images"
+}
+
+variable "cloudflare_listing_media_bucket_location" {
+  description = "Preferred location hint for the listing media bucket."
+  type        = string
+  default     = "enam"
+}
+
+variable "cloudflare_listing_media_custom_domain" {
+  description = "Custom domain for public listing images."
+  type        = string
+  default     = "media.amazuga.com"
+}
+
+variable "cloudflare_listing_media_worker_name" {
+  description = "Worker name used for listing media uploads."
+  type        = string
+  default     = "amazuga-listing-media"
+}
+
+variable "cloudflare_listing_media_worker_hostname" {
+  description = "Custom hostname for the listing media upload worker."
+  type        = string
+  default     = "uploads.amazuga.com"
+}
+
+variable "cloudflare_listing_media_local_allowed_origins" {
+  description = "Local origins allowed to post listing media uploads through the Worker."
+  type        = list(string)
+  default = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+  ]
+}
+
+variable "cloudflare_listing_media_public_allowed_origins" {
+  description = "Public production origins allowed to post listing media uploads through the Worker."
+  type        = list(string)
+  default = [
+    "https://amazuga.com",
+    "https://www.amazuga.com",
+  ]
+}
+
+variable "cloudflare_listing_media_preview_allowed_origins" {
+  description = "Preview origins or suffix patterns allowed to post listing media uploads through the Worker."
+  type        = list(string)
+  default = [
+    ".vercel.app",
+  ]
+}
+
 variable "vercel_token" {
   description = "Vercel API token."
   type        = string

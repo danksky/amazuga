@@ -40,6 +40,18 @@ output "cloudflare_tiles_worker_public_url" {
   value = format("https://%s%s", cloudflare_workers_custom_domain.parcel_tiles.hostname, var.cloudflare_tiles_worker_public_path)
 }
 
+output "cloudflare_listing_media_bucket_name" {
+  value = cloudflare_r2_bucket.listing_media.name
+}
+
+output "cloudflare_listing_media_public_url" {
+  value = local.listing_media_public_base_url
+}
+
+output "cloudflare_listing_media_upload_url" {
+  value = local.listing_media_upload_url
+}
+
 output "production_database_url" {
   value     = neon_project.amazuga.connection_uri
   sensitive = true

@@ -136,6 +136,131 @@
   gap: 8px;
 }
 
+.mediaSection {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 90%, white);
+}
+
+.mediaHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mediaTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.mediaBody,
+.mediaHint,
+.mediaCardMeta,
+.mediaCardStatus,
+.mediaMeta,
+.mediaEmpty,
+.mediaStatus {
+  color: var(--foreground-muted);
+  line-height: 1.5;
+}
+
+.mediaActions {
+  display: grid;
+  gap: 10px;
+}
+
+.mediaInput {
+  display: none;
+}
+
+.mediaButton,
+.mediaRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.mediaButton:hover,
+.mediaButton:focus-visible,
+.mediaRemove:hover,
+.mediaRemove:focus-visible {
+  background: var(--surface-muted);
+}
+
+.mediaButton:disabled,
+.mediaRemove:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.mediaError {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #ef4444 28%, var(--border));
+  border-radius: 16px;
+  background: color-mix(in srgb, #ef4444 10%, white);
+  color: #991b1b;
+}
+
+.mediaStatus {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-muted) 86%, white);
+}
+
+.mediaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mediaCard {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 94%, white);
+}
+
+.mediaThumbWrap {
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--surface-muted);
+  aspect-ratio: 4 / 3;
+}
+
+.mediaThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mediaCardBody {
+  display: grid;
+  gap: 4px;
+}
+
+.mediaEmpty {
+  padding: 12px 0 4px;
+}
+
 .pill {
   padding: 6px 10px;
   border-radius: 999px;
@@ -160,5 +285,11 @@
 
   .split {
     grid-template-columns: 1fr;
+  }
+
+  .mediaHeader,
+  .mediaGrid {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 }

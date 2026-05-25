@@ -39,6 +39,7 @@ override.tf.json
 # editor
 .vscode/
 .idea/
+.vercel/
 
 # typescript
 *.tsbuildinfo
