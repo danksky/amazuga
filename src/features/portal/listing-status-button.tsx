@@ -6,12 +6,18 @@ export function ListingStatusButton({
   className,
   currentStatus,
   disabled: disabledProp,
+  formAction,
   nextStatus,
+  submitName,
+  submitValue,
 }: {
   className: string;
   currentStatus: "draft" | "active" | "inactive" | "archived";
   disabled?: boolean;
+  formAction?: string | ((formData: FormData) => void | Promise<void>);
   nextStatus: "active" | "inactive" | "archived";
+  submitName?: string;
+  submitValue?: string;
 }) {
   const { pending } = useFormStatus();
 
@@ -37,7 +43,10 @@ export function ListingStatusButton({
       aria-busy={pending}
       className={className}
       disabled={pending || disabledProp}
+      formAction={formAction}
+      name={submitName}
       type="submit"
+      value={submitValue}
     >
       {pending ? pendingLabel : idleLabel}
     </button>

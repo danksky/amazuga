@@ -176,34 +176,12 @@ export function PortalListingsPage({
                             </Link>
                             {canEditListing ? (
                               <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(listing.id)}>
-                                Edit listing
+                                {listing.status === "draft" ? "Continue draft" : "Edit listing"}
                               </Link>
                             ) : null}
                             {canManageListingLifecycle ? (
                               <>
-                                {listing.status === "draft" ? (
-                                  <>
-                                    <form action={setListingStatusAction} className={styles.inlineForm}>
-                                      <input name="listingId" type="hidden" value={listing.id} />
-                                      <input name="status" type="hidden" value="active" />
-                                      <ListingStatusButton
-                                        className={styles.secondaryAction}
-                                        currentStatus="draft"
-                                        disabled={!listing.askingPrice}
-                                        nextStatus="active"
-                                      />
-                                    </form>
-                                    <form action={setListingStatusAction} className={styles.inlineForm}>
-                                      <input name="listingId" type="hidden" value={listing.id} />
-                                      <input name="status" type="hidden" value="archived" />
-                                      <ListingStatusButton
-                                        className={styles.secondaryAction}
-                                        currentStatus="draft"
-                                        nextStatus="archived"
-                                      />
-                                    </form>
-                                  </>
-                                ) : (
+                                {listing.status === "draft" ? null : (
                                   <form action={setListingStatusAction} className={styles.inlineForm}>
                                     <input name="listingId" type="hidden" value={listing.id} />
                                     <input
@@ -323,34 +301,12 @@ export function PortalListingsPage({
                     </Link>
                     {canEditListing ? (
                       <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(listing.id)}>
-                        Edit listing
+                        {listing.status === "draft" ? "Continue draft" : "Edit listing"}
                       </Link>
                     ) : null}
                     {canManageListingLifecycle ? (
                       <>
-                        {listing.status === "draft" ? (
-                          <>
-                            <form action={setListingStatusAction} className={styles.inlineForm}>
-                              <input name="listingId" type="hidden" value={listing.id} />
-                              <input name="status" type="hidden" value="active" />
-                              <ListingStatusButton
-                                className={styles.secondaryAction}
-                                currentStatus="draft"
-                                disabled={!listing.askingPrice}
-                                nextStatus="active"
-                              />
-                            </form>
-                            <form action={setListingStatusAction} className={styles.inlineForm}>
-                              <input name="listingId" type="hidden" value={listing.id} />
-                              <input name="status" type="hidden" value="archived" />
-                              <ListingStatusButton
-                                className={styles.secondaryAction}
-                                currentStatus="draft"
-                                nextStatus="archived"
-                              />
-                            </form>
-                          </>
-                        ) : (
+                        {listing.status === "draft" ? null : (
                           <form action={setListingStatusAction} className={styles.inlineForm}>
                             <input name="listingId" type="hidden" value={listing.id} />
                             <input

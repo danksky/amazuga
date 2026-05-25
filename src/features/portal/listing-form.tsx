@@ -5,7 +5,6 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { getPublicListingId } from "@/lib/listing-public-id";
 import { routes } from "@/lib/routes";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type {
@@ -14,8 +13,13 @@ import type {
   PortalListingPropertyOption,
 } from "@/lib/server/portal-listing-editor";
 
-import { addListingAccessGrantAction, removeListingAccessGrantAction } from "./actions";
+import {
+  addListingAccessGrantAction,
+  removeListingAccessGrantAction,
+  setListingStatusAction,
+} from "./actions";
 import { ListingPhotoManager } from "./listing-photo-manager";
+import { ListingStatusButton } from "./listing-status-button";
 import styles from "./listing-form.module.css";
 
 function getPropertyKindLabel(kind?: string) {
@@ -36,6 +40,23 @@ function getPropertyKindLabel(kind?: string) {
       return "Other";
     default:
       return "Property";
+  }
+}
+
+function getPropertyDetailsTitle(kind?: string) {
+  switch (kind) {
+    case "house":
+      return "Home details";
+    case "land":
+      return "Parcel details";
+    case "building":
+      return "Building details";
+    case "apartment_unit":
+      return "Unit details";
+    case "commercial_unit":
+      return "Commercial details";
+    default:
+      return "Property details";
   }
 }
 
@@ -129,12 +150,12 @@ export function ListingForm({
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
         <div className={styles.eyebrow}>Portal</div>
-        <h1 className={styles.title}>{mode === "create" ? "Create a draft listing" : "Edit listing"}</h1>
+        <h1 className={styles.title}>{mode === "create" ? "Start a draft listing" : "Edit listing"}</h1>
         <div className={styles.body}>
           {mode === "create"
             ? isPrivateListerMode
-              ? "Start a draft listing for one of the properties you own."
-              : "Start a draft listing for one of the properties your account already owns, then attach it to the right agency and agent."
+              ? "Start a draft listing for one of the properties you own, then add the market-facing details before publishing."
+              : "Start a draft listing for one of the properties your account already owns, attach it to the right agency and agent, and then finish the publish details in the editor."
             : listing?.status === "draft"
               ? "This listing is still a draft. Add details and photos here, then publish it when you're ready."
               : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
@@ -254,7 +275,11 @@ export function ListingForm({
 
           {selectedProperty ? (
             <div className={styles.propertyMeta}>
-              <h2 className={styles.propertyMetaTitle}>{selectedProperty.propertyTitle}</h2>
+              <h2 className={styles.propertyMetaTitle}>{getPropertyDetailsTitle(selectedProperty.propertyKind)}</h2>
+              <div className={styles.propertyMetaBody}>
+                These details come from the property record and are used in this listing.
+              </div>
+              <h3 className={styles.propertyMetaTitle}>{selectedProperty.propertyTitle}</h3>
               <div className={styles.propertyMetaBody}>
                 {selectedProperty.sector ? `${selectedProperty.sector}, ` : ""}
                 {selectedProperty.district}. Public route: {selectedProperty.propertyRouteId}
@@ -269,7 +294,7 @@ export function ListingForm({
           <div className={styles.split}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="marketing-type">
-                Marketing type
+                Listing type
               </label>
               <select
                 className={styles.select}
@@ -390,10 +415,31 @@ export function ListingForm({
                   type="submit"
                   value="publish"
                 >
-                  Publish listing
+                  Publish
                 </Button>
                 <Button name="intent" type="submit" value="discard" variant="secondary">Discard draft</Button>
               </>
+            ) : null}
+            {mode === "edit" && listing?.status === "active" ? (
+              <ListingStatusButton
+                className={styles.secondaryAction}
+                currentStatus="active"
+                formAction={setListingStatusAction}
+                nextStatus="inactive"
+                submitName="status"
+                submitValue="inactive"
+              />
+            ) : null}
+            {mode === "edit" && listing?.status === "inactive" ? (
+              <ListingStatusButton
+                className={styles.secondaryAction}
+                currentStatus="inactive"
+                disabled={!askingPriceHasValue || photoCount === 0}
+                formAction={setListingStatusAction}
+                nextStatus="active"
+                submitName="status"
+                submitValue="active"
+              />
             ) : null}
             <Link href={cancelHref}>
               <Button type="button" variant="secondary">

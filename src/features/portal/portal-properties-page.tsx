@@ -303,25 +303,14 @@ export function PortalPropertiesPage({
                       </Link>
                       {canCreateListing && property.listingId ? (
                         <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(property.listingId)}>
-                          Edit listing
+                          {property.listingStatus === "draft" ? "Continue draft" : "Edit listing"}
                         </Link>
                       ) : canCreateListing ? (
                         <Link className={styles.secondaryAction} href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}>
-                          Create listing
+                          Create draft
                         </Link>
                       ) : null}
-                      {canManageListingLifecycle && property.listingId && property.listingStatus === "draft" ? (
-                        <form action={setListingStatusAction}>
-                          <input name="listingId" type="hidden" value={property.listingId} />
-                          <input name="status" type="hidden" value="active" />
-                          <ListingStatusButton
-                            className={styles.secondaryAction}
-                            currentStatus="draft"
-                            disabled={!property.listingAskingPrice || !property.firstImageUrl}
-                            nextStatus="active"
-                          />
-                        </form>
-                      ) : canManageListingLifecycle && property.listingId && property.listingStatus === "active" ? (
+                      {canManageListingLifecycle && property.listingId && property.listingStatus === "active" ? (
                         <form action={setListingStatusAction}>
                           <input name="listingId" type="hidden" value={property.listingId} />
                           <input name="status" type="hidden" value="inactive" />
