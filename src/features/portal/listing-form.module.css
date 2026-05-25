@@ -305,6 +305,31 @@
   letter-spacing: -0.02em;
 }
 
+.historyGroups {
+  display: grid;
+  gap: 16px;
+}
+
+.historyCampaign {
+  display: grid;
+  gap: 10px;
+}
+
+.historyCampaignHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.historyCampaignTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+}
+
 .historyList {
   list-style: none;
   margin: 0;

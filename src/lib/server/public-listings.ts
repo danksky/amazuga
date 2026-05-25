@@ -43,6 +43,7 @@ interface ListingParcelRow {
   agency_id: string | null;
   agent_user_id: string | null;
   listing_status: Listing["status"] | null;
+  listing_visibility: Listing["visibility"] | null;
   marketing_type: Listing["marketingType"] | null;
   asking_price_rwf: number | string | null;
   currency: Listing["currency"] | null;
@@ -266,6 +267,7 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
     agencyId: row.agency_id ?? undefined,
     agentUserId: row.agent_user_id,
     status: row.listing_status,
+    visibility: row.listing_visibility ?? "public",
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf) ?? 0,
     currency: row.currency,
@@ -426,6 +428,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.agency_id,
         l.agent_user_id,
         l.status AS listing_status,
+        l.visibility AS listing_visibility,
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
@@ -523,6 +526,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.agency_id,
         l.agent_user_id,
         l.status AS listing_status,
+        l.visibility AS listing_visibility,
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,

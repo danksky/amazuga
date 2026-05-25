@@ -265,7 +265,7 @@ export function ListingPhotoManager({
     <section className={`${styles.mediaSection}${hasError ? ` ${styles.mediaSectionError}` : ""}`}>
       <div className={styles.mediaHeader}>
         <div>
-          <h2 className={styles.mediaTitle}>Listing photos <sup>* Required</sup></h2>
+          <h2 className={styles.mediaTitle}>Listing photos</h2>
           <div className={styles.mediaBody}>
             Photos are compressed to standardized JPEGs in the browser before upload, then sent through the listing
             media gateway for validation and storage.

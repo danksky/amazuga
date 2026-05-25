@@ -32,6 +32,7 @@ interface EditableListingRow {
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string | null;
   description: string | null;
+  campaign_index: number;
 }
 
 interface EditableListingImageRow {
@@ -78,6 +79,7 @@ export interface ListingPriceHistoryEntry {
   id: string;
   priceRwf: number;
   changedAt: string;
+  campaignIndex: number;
 }
 
 export interface ListingAccessGrant {
@@ -263,7 +265,8 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.visibility,
         l.marketing_type,
         l.asking_price_rwf,
-        l.description
+        l.description,
+        l.campaign_index
       FROM listing l
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = l.parcel_id
@@ -400,11 +403,12 @@ async function getListingPriceHistory(listingId: string): Promise<ListingPriceHi
     id: string;
     price_rwf: string | number;
     changed_at: string;
+    campaign_index: number;
   }>(
-    `SELECT id, price_rwf, changed_at::TEXT
+    `SELECT id, price_rwf, changed_at::TEXT, campaign_index
      FROM listing_price_history
      WHERE listing_id = $1
-     ORDER BY changed_at DESC
+     ORDER BY campaign_index DESC, changed_at DESC
      LIMIT 20`,
     [listingId],
   );
@@ -413,6 +417,7 @@ async function getListingPriceHistory(listingId: string): Promise<ListingPriceHi
     id: row.id,
     priceRwf: Number(row.price_rwf),
     changedAt: row.changed_at,
+    campaignIndex: row.campaign_index,
   }));
 }
 
@@ -899,9 +904,9 @@ export async function updatePortalListingInDb(input: {
 
     if (priceChanged) {
       await client.query(
-        `INSERT INTO listing_price_history (id, listing_id, price_rwf, changed_by_user_id)
-         VALUES ('lph_' || replace(gen_random_uuid()::text, '-', ''), $1, $2, $3)`,
-        [input.listingId, newPrice, input.userId],
+        `INSERT INTO listing_price_history (id, listing_id, price_rwf, changed_by_user_id, campaign_index)
+         VALUES ('lph_' || replace(gen_random_uuid()::text, '-', ''), $1, $2, $3, $4)`,
+        [input.listingId, newPrice, input.userId, listing.campaign_index],
       );
     }
 
@@ -931,40 +936,105 @@ export async function setPortalListingStatusInDb(input: {
     throw new Error("Listing not found or inaccessible");
   }
 
-  if (input.status === "active") {
-    await ensureNoOtherActiveListing(listing.property_asset_id, listing.listing_id);
-    if (listing.asking_price_rwf == null) {
-      throw new Error("An asking price is required before publishing a listing");
-    }
-  }
+  const client = await getPgPool().connect();
+  let result: { rows: Array<{ property_route_id: string; marketing_type: Listing["marketingType"] }> };
 
-  const result = await getPgPool().query<{
-    property_route_id: string;
-    marketing_type: Listing["marketingType"];
-  }>(
-    `
-      UPDATE listing
-      SET
-        status = $2,
-        published_at = CASE
-          WHEN $2 = 'active' THEN COALESCE(published_at, NOW())
-          ELSE published_at
-        END,
-        updated_at = NOW()
-      WHERE id = $1
-      RETURNING
-        (
-          SELECT COALESCE(pa.public_id, p.public_id, p.parcel_id)
-          FROM parcel_app_ready_seed_preview p
-          LEFT JOIN property_asset pa
-            ON pa.id = listing.property_asset_id
-          WHERE p.parcel_id = listing.parcel_id
+  try {
+    await client.query("BEGIN");
+
+    const lockedListingResult = await client.query<{
+      status: Listing["status"];
+      asking_price_rwf: number | string | null;
+      campaign_index: number;
+      property_asset_id: string;
+    }>(
+      `
+        SELECT
+          status,
+          asking_price_rwf,
+          campaign_index,
+          property_asset_id
+        FROM listing
+        WHERE id = $1
+        FOR UPDATE
+      `,
+      [input.listingId],
+    );
+
+    const lockedListing = lockedListingResult.rows[0];
+
+    if (!lockedListing) {
+      throw new Error("Listing not found or inaccessible");
+    }
+
+    if (input.status === "active") {
+      const otherActiveListingResult = await client.query<{ id: string }>(
+        `
+          SELECT id
+          FROM listing
+          WHERE property_asset_id = $1
+            AND status = 'active'
+            AND id <> $2
           LIMIT 1
-        ) AS property_route_id,
-        marketing_type
-    `,
-    [input.listingId, input.status],
-  );
+        `,
+        [lockedListing.property_asset_id, input.listingId],
+      );
+
+      if (otherActiveListingResult.rows[0]) {
+        throw new Error("This property already has an active listing");
+      }
+
+      if (lockedListing.asking_price_rwf == null) {
+        throw new Error("An asking price is required before publishing a listing");
+      }
+    }
+
+    const opensNewCampaign = lockedListing.status === "inactive" && input.status === "active";
+    const nextCampaignIndex = opensNewCampaign ? lockedListing.campaign_index + 1 : lockedListing.campaign_index;
+
+    result = await client.query(
+      `
+        UPDATE listing
+        SET
+          status = $2,
+          campaign_index = $3,
+          published_at = CASE
+            WHEN $2 = 'active' THEN COALESCE(published_at, NOW())
+            ELSE published_at
+          END,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+          (
+            SELECT COALESCE(pa.public_id, p.public_id, p.parcel_id)
+            FROM parcel_app_ready_seed_preview p
+            LEFT JOIN property_asset pa
+              ON pa.id = listing.property_asset_id
+            WHERE p.parcel_id = listing.parcel_id
+            LIMIT 1
+          ) AS property_route_id,
+          marketing_type
+      `,
+      [input.listingId, input.status, nextCampaignIndex],
+    );
+
+    if (opensNewCampaign && lockedListing.asking_price_rwf != null) {
+      await client.query(
+        `
+          INSERT INTO listing_price_history (id, listing_id, price_rwf, changed_by_user_id, campaign_index)
+          VALUES ('lph_' || replace(gen_random_uuid()::text, '-', ''), $1, $2, $3, $4)
+        `,
+        [input.listingId, Math.round(Number(lockedListing.asking_price_rwf)), input.userId, nextCampaignIndex],
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 
   return {
     listingId: input.listingId,

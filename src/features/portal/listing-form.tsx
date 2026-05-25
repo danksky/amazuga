@@ -64,6 +64,21 @@ function getUniqueAgencyMembers(agency: PortalListingAgencyOption) {
   return Array.from(membersByUserId.values());
 }
 
+function groupPriceHistoryByCampaign(priceHistory: PortalEditableListing["priceHistory"]) {
+  const groups = new Map<number, PortalEditableListing["priceHistory"]>();
+
+  for (const entry of priceHistory) {
+    const currentEntries = groups.get(entry.campaignIndex) ?? [];
+    currentEntries.push(entry);
+    groups.set(entry.campaignIndex, currentEntries);
+  }
+
+  return Array.from(groups.entries()).map(([campaignIndex, entries]) => ({
+    campaignIndex,
+    entries,
+  }));
+}
+
 export function ListingForm({
   agencies,
   listing,
@@ -108,6 +123,7 @@ export function ListingForm({
       : propertyOptions[0]);
   const showCreateEmptyState = mode === "create" && propertyOptions.length === 0;
   const canPublish = askingPriceHasValue && photoCount > 0;
+  const priceHistoryGroups = listing ? groupPriceHistoryByCampaign(listing.priceHistory) : [];
 
   return (
     <div className={`container ${styles.page}`}>
@@ -285,7 +301,7 @@ export function ListingForm({
             {mode === "edit" ? (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="asking-price">
-                  Asking price (RWF) <sup>* Required</sup>
+                  Asking price (RWF)
                 </label>
                 <input
                   className={`${styles.input}${publishAttempted && !askingPriceHasValue ? ` ${styles.inputError}` : ""}`}
@@ -294,6 +310,7 @@ export function ListingForm({
                   inputMode="numeric"
                   name="askingPrice"
                   onChange={(e) => setAskingPriceHasValue(Boolean(e.target.value))}
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="Example: 185000000"
                   step="1"
                   type="number"
@@ -335,15 +352,24 @@ export function ListingForm({
           {mode === "edit" && listing && listing.priceHistory.length > 0 ? (
             <div className={styles.historySection}>
               <h2 className={styles.historySectionTitle}>Price history</h2>
-              <ol className={styles.historyList}>
-                {listing.priceHistory.map((entry, index) => (
-                  <li key={entry.id} className={styles.historyItem}>
-                    <span className={styles.historyPrice}>{formatCurrency(entry.priceRwf)}</span>
-                    <span className={styles.historyDate}>{formatDate(entry.changedAt)}</span>
-                    {index === 0 ? <span className={styles.historyBadge}>Current</span> : null}
-                  </li>
+              <div className={styles.historyGroups}>
+                {priceHistoryGroups.map((group, groupIndex) => (
+                  <div key={group.campaignIndex} className={styles.historyCampaign}>
+                    <div className={styles.historyCampaignHeader}>
+                      <div className={styles.historyCampaignTitle}>Campaign {group.campaignIndex}</div>
+                      {groupIndex === 0 ? <span className={styles.historyBadge}>Current</span> : null}
+                    </div>
+                    <ol className={styles.historyList}>
+                      {group.entries.map((entry) => (
+                        <li key={entry.id} className={styles.historyItem}>
+                          <span className={styles.historyPrice}>{formatCurrency(entry.priceRwf)}</span>
+                          <span className={styles.historyDate}>{formatDate(entry.changedAt)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 ))}
-              </ol>
+              </div>
             </div>
           ) : null}
 
