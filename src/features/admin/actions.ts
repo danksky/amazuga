@@ -22,6 +22,7 @@ const reviewPaths = [
   routes.admin.valuations,
   routes.admin.properties,
   routes.app.portalProperties,
+  routes.app.portalListings,
   routes.app.portalValuations,
   routes.app.portalValuationNew,
   routes.app.portalListingNew,
@@ -68,6 +69,9 @@ export async function reviewApplicationAction(formData: FormData) {
     if (claimRequest?.propertyId) {
       revalidatePath(routes.public.property(claimRequest.propertyId));
     }
+
+    revalidatePath(routes.public.buy);
+    revalidatePath(routes.public.rent);
 
     return;
   }

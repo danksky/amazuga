@@ -2,6 +2,8 @@ export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | 
 
 export type ListingStatus = "draft" | "active" | "inactive" | "archived";
 export type ListingVisibility = "public" | "unlisted" | "private";
+export type PropertyClaimRequestKind = "claim" | "transfer";
+export type PropertyTransferMode = "sale" | "transfer";
 
 export type SubmissionStatus = "pending" | "approved" | "denied";
 
@@ -194,6 +196,7 @@ export interface ValuationSubmission {
 export interface PropertyClaimRequest {
   id: string;
   userId: string;
+  kind: PropertyClaimRequestKind;
   propertyId?: string;
   propertyInternalId?: string;
   parcelId: string;
@@ -203,6 +206,12 @@ export interface PropertyClaimRequest {
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
   declaredAssetType?: PropertyKind;
+  transferMode?: PropertyTransferMode;
+  transferFromUserId?: string;
+  transferInitiatedByUserId?: string;
+  buyerConfirmedAt?: string;
+  buyerDeclinedAt?: string;
+  transferNote?: string;
   status: SubmissionStatus;
   createdAt: string;
 }

@@ -13,7 +13,12 @@ import {
   setPortalListingStatusInDb,
   updatePortalListingInDb,
 } from "@/lib/server/portal-listing-editor";
-import { createValuationSubmissionInDb } from "@/lib/server/workflows";
+import {
+  createOwnershipTransferRequestInDb,
+  createValuationSubmissionInDb,
+  respondToOwnershipTransferRequestInDb,
+} from "@/lib/server/workflows";
+import type { PropertyTransferMode } from "@/types/domain";
 import { hasCapability } from "@/types/permissions";
 
 function getListingRedirectHref(hasAgencyPortalAccess: boolean) {
@@ -91,6 +96,16 @@ function getRequiredListingStatus(formData: FormData, key: string) {
   return value;
 }
 
+function getRequiredTransferMode(formData: FormData, key: string): PropertyTransferMode {
+  const value = getRequiredString(formData, key);
+
+  if (value !== "sale" && value !== "transfer") {
+    throw new Error(`Invalid transfer mode: ${key}`);
+  }
+
+  return value;
+}
+
 function revalidateListingSurfaces(input: { propertyRouteId?: string | null; marketingType?: "sale" | "rent" }) {
   revalidatePath(routes.app.portalListings);
   revalidatePath(routes.app.portalAgency);
@@ -101,6 +116,50 @@ function revalidateListingSurfaces(input: { propertyRouteId?: string | null; mar
   if (input.propertyRouteId) {
     revalidatePath(routes.public.property(input.propertyRouteId));
   }
+}
+
+function buildTransferStatusHref(input: {
+  status:
+    | "created"
+    | "existing_pending"
+    | "buyer_not_found"
+    | "self"
+    | "not_owner"
+    | "error"
+    | "accepted"
+    | "declined";
+  propertyRouteId?: string;
+  buyerEmail?: string;
+}) {
+  const params = new URLSearchParams({
+    transferStatus: input.status,
+  });
+
+  if (input.propertyRouteId) {
+    params.set("transferProperty", input.propertyRouteId);
+  }
+
+  if (input.buyerEmail) {
+    params.set("transferEmail", input.buyerEmail);
+  }
+
+  return `${routes.app.portalProperties}?${params.toString()}`;
+}
+
+function buildTransferPageHref(input: {
+  propertyRouteId: string;
+  status: "created" | "existing_pending" | "buyer_not_found" | "self" | "not_owner" | "error";
+  buyerEmail?: string;
+}) {
+  const params = new URLSearchParams({
+    transferStatus: input.status,
+  });
+
+  if (input.buyerEmail) {
+    params.set("transferEmail", input.buyerEmail);
+  }
+
+  return `${routes.app.portalPropertyTransfer(input.propertyRouteId)}?${params.toString()}`;
 }
 
 export async function submitValuationSubmissionAction(formData: FormData) {
@@ -289,4 +348,79 @@ export async function removeListingAccessGrantAction(formData: FormData) {
 
   await removeListingAccessGrantInDb({ userId: currentUser.id, listingId, grantId });
   revalidatePath(routes.app.portalListingEdit(listingId));
+}
+
+export async function createOwnershipTransferAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalProperties);
+  const propertyInternalId = getRequiredString(formData, "propertyInternalId");
+  const propertyRouteId = getRequiredString(formData, "propertyRouteId");
+  const buyerEmail = getRequiredString(formData, "buyerEmail");
+  const transferMode = getRequiredTransferMode(formData, "transferMode");
+  const transferNote = getOptionalString(formData, "transferNote");
+
+  try {
+    const result = await createOwnershipTransferRequestInDb({
+      sellerUserId: currentUser.id,
+      propertyInternalId,
+      buyerEmail,
+      transferMode,
+      transferNote,
+    });
+
+    revalidatePath(routes.app.portalProperties);
+    revalidatePath(routes.admin.properties);
+    redirect(
+      buildTransferPageHref({
+        status: result.outcome === "existing_pending" ? "existing_pending" : "created",
+        propertyRouteId,
+        buyerEmail,
+      }),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not create transfer request";
+    const status =
+      message === "No active Amazuga user exists for that email address yet"
+        ? "buyer_not_found"
+        : message === "You cannot transfer a property to yourself"
+          ? "self"
+          : message === "Current user no longer owns this property"
+            ? "not_owner"
+            : "error";
+
+    redirect(
+      buildTransferPageHref({
+        status,
+        propertyRouteId,
+        buyerEmail,
+      }),
+    );
+  }
+}
+
+export async function respondToOwnershipTransferAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalProperties);
+  const decision = getRequiredString(formData, "decision");
+  if (decision !== "accept" && decision !== "decline") {
+    throw new Error("Invalid transfer decision");
+  }
+
+  const propertyRouteId = getOptionalString(formData, "propertyRouteId");
+  await respondToOwnershipTransferRequestInDb({
+    buyerUserId: currentUser.id,
+    claimRequestId: getRequiredString(formData, "claimId"),
+    decision,
+  });
+
+  revalidatePath(routes.app.portalProperties);
+  revalidatePath(routes.admin.properties);
+  if (propertyRouteId) {
+    revalidatePath(routes.public.property(propertyRouteId));
+  }
+
+  redirect(
+    buildTransferStatusHref({
+      status: decision === "accept" ? "accepted" : "declined",
+      propertyRouteId,
+    }),
+  );
 }

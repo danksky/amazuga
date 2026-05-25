@@ -1,6 +1,8 @@
 import "server-only";
 
 import type {
+  PropertyClaimRequestKind,
+  PropertyTransferMode,
   ListingVisibility,
   PropertyClaimScope,
   PropertyDataSource,
@@ -33,6 +35,7 @@ interface PortalOwnedPropertyRow {
 
 interface PortalClaimRequestRow {
   claim_id: string;
+  claim_kind: PropertyClaimRequestKind;
   claim_status: SubmissionStatus;
   claim_created_at: string;
   property_internal_id: string | null;
@@ -44,6 +47,12 @@ interface PortalClaimRequestRow {
   unit_label: string | null;
   tenure_type: PropertyTenureType;
   tenure_source: PropertyDataSource;
+  transfer_mode: PropertyTransferMode | null;
+  transfer_from_user_id: string | null;
+  transfer_from_user_name: string | null;
+  buyer_confirmed_at: string | null;
+  buyer_declined_at: string | null;
+  transfer_note: string | null;
   district: string | null;
   sector: string | null;
 }
@@ -80,6 +89,7 @@ export interface PortalOwnedPropertySummary {
 
 export interface PortalPropertyClaimSummary {
   id: string;
+  kind: PropertyClaimRequestKind;
   status: SubmissionStatus;
   createdAt: string;
   upi: string;
@@ -87,6 +97,12 @@ export interface PortalPropertyClaimSummary {
   unitLabel?: string;
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
+  transferMode?: PropertyTransferMode;
+  transferFromUserId?: string;
+  transferFromUserName?: string;
+  buyerConfirmedAt?: string;
+  buyerDeclinedAt?: string;
+  transferNote?: string;
   propertyInternalId?: string;
   propertyRouteId?: string;
   propertyTitle?: string;
@@ -181,6 +197,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       `
         SELECT
           pcr.id AS claim_id,
+          pcr.request_kind AS claim_kind,
           pcr.status AS claim_status,
           pcr.created_at::TEXT AS claim_created_at,
           pa.id AS property_internal_id,
@@ -192,9 +209,17 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           pcr.unit_label,
           pcr.tenure_type,
           pcr.tenure_source,
+          pcr.transfer_mode,
+          pcr.transfer_from_user_id,
+          transfer_from.full_name AS transfer_from_user_name,
+          pcr.buyer_confirmed_at::TEXT,
+          pcr.buyer_declined_at::TEXT,
+          pcr.transfer_note,
           p.district,
           p.sector
         FROM property_claim_request pcr
+        LEFT JOIN app_user transfer_from
+          ON transfer_from.id = pcr.transfer_from_user_id
         LEFT JOIN property_asset pa
           ON pa.id = pcr.property_internal_id
         JOIN parcel_app_ready_seed_preview p
@@ -269,6 +294,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
     })),
     claimRequests: claimResult.rows.map((row) => ({
       id: row.claim_id,
+      kind: row.claim_kind,
       status: row.claim_status,
       createdAt: row.claim_created_at,
       upi: row.upi,
@@ -276,6 +302,12 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       unitLabel: row.unit_label || undefined,
       tenureType: row.tenure_type,
       tenureSource: row.tenure_source,
+      transferMode: row.transfer_mode || undefined,
+      transferFromUserId: row.transfer_from_user_id || undefined,
+      transferFromUserName: row.transfer_from_user_name || undefined,
+      buyerConfirmedAt: row.buyer_confirmed_at || undefined,
+      buyerDeclinedAt: row.buyer_declined_at || undefined,
+      transferNote: row.transfer_note || undefined,
       propertyInternalId: row.property_internal_id || undefined,
       propertyRouteId: row.property_route_id || undefined,
       propertyTitle:

@@ -403,6 +403,62 @@
   letter-spacing: 0.02em;
 }
 
+.transferBox {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-muted) 68%, white);
+}
+
+.transferSummary {
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.transferSummary::-webkit-details-marker {
+  display: none;
+}
+
+.transferBody {
+  display: grid;
+  gap: 14px;
+}
+
+.transferCopy,
+.transferNote {
+  color: var(--foreground-muted);
+  line-height: 1.55;
+}
+
+.transferForm {
+  display: grid;
+  gap: 14px;
+}
+
+.transferTextarea {
+  min-height: 108px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  resize: vertical;
+}
+
+.transferTextarea::placeholder {
+  color: var(--foreground-muted);
+}
+
+.transferTextarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  outline-offset: 2px;
+}
+
 .primaryAction,
 .secondaryAction {
   display: inline-flex;

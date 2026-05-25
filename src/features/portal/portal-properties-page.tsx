@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { PortalPropertiesWorkspaceData } from "@/lib/server/portal-properties";
 
-import { setListingStatusAction } from "./actions";
+import { respondToOwnershipTransferAction, setListingStatusAction } from "./actions";
 import { ListingStatusButton } from "./listing-status-button";
 import styles from "./portal-properties-page.module.css";
 
@@ -50,6 +50,7 @@ export function PortalPropertiesPage({
   claimFeedback,
   claimStatusFilter = "pending",
   data,
+  transferFeedback,
 }: {
   canCreateListing: boolean;
   canManageListingLifecycle: boolean;
@@ -62,6 +63,11 @@ export function PortalPropertiesPage({
   };
   claimStatusFilter?: "all" | "pending" | "denied";
   data: PortalPropertiesWorkspaceData;
+  transferFeedback?: {
+    status: "created" | "existing_pending" | "buyer_not_found" | "self" | "not_owner" | "accepted" | "declined";
+    propertyRouteId?: string;
+    buyerEmail?: string;
+  };
 }) {
   const listableCount = data.ownedProperties.filter((property) => !property.listingId).length;
   const pendingCount = data.claimRequests.filter((c) => c.status === "pending").length;
@@ -84,6 +90,22 @@ export function PortalPropertiesPage({
             : claimFeedback?.status === "no_match"
               ? `No Preview parcel matched the UPI ${claimFeedback.upi}.`
               : null;
+  const transferFeedbackMessage =
+    transferFeedback?.status === "created"
+      ? `Transfer request sent to ${transferFeedback.buyerEmail || "the buyer"}. They need to accept before admin can approve it.`
+      : transferFeedback?.status === "existing_pending"
+        ? "There is already an open transfer request for this property."
+        : transferFeedback?.status === "buyer_not_found"
+          ? `No active Amazuga account exists yet for ${transferFeedback.buyerEmail || "that email address"}.`
+          : transferFeedback?.status === "self"
+            ? "You cannot transfer a property to yourself."
+            : transferFeedback?.status === "not_owner"
+              ? "This transfer could not be created because the property is no longer owned by your account."
+              : transferFeedback?.status === "accepted"
+                ? "Transfer accepted. It now waits for admin approval."
+                : transferFeedback?.status === "declined"
+                  ? "Transfer declined."
+                  : null;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -140,6 +162,26 @@ export function PortalPropertiesPage({
                 <>
                   {" "}
                   <Link href={routes.public.property(claimFeedback.propertyRouteId)}>Open the resolved property page.</Link>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          {transferFeedbackMessage ? (
+            <div
+              className={`${styles.feedback} ${
+                transferFeedback?.status === "buyer_not_found" ||
+                transferFeedback?.status === "self" ||
+                transferFeedback?.status === "not_owner"
+                  ? styles.feedbackWarning
+                  : styles.feedbackSuccess
+              }`}
+            >
+              {transferFeedbackMessage}
+              {transferFeedback?.propertyRouteId ? (
+                <>
+                  {" "}
+                  <Link href={routes.public.property(transferFeedback.propertyRouteId)}>Open the resolved property page.</Link>
                 </>
               ) : null}
             </div>
@@ -301,6 +343,9 @@ export function PortalPropertiesPage({
                           />
                         </form>
                       ) : null}
+                      <Link className={styles.secondaryAction} href={routes.app.portalPropertyTransfer(property.propertyRouteId)}>
+                        Transfer / sell
+                      </Link>
                     </div>
                     <div className={styles.propertyId}>Property ID: {property.propertyRouteId}</div>
                   </div>
@@ -319,7 +364,7 @@ export function PortalPropertiesPage({
           <div className={styles.sectionHeader}>
             <div className={styles.sectionHeaderRow}>
               <div>
-                <h2 className={styles.sectionTitle}>Claim status</h2>
+                <h2 className={styles.sectionTitle}>Claim and transfer status</h2>
                 <div className={styles.sectionMeta}>
                   {pendingCount} pending · {deniedCount} denied
                 </div>
@@ -349,7 +394,7 @@ export function PortalPropertiesPage({
           {data.claimRequests.length > 0 ? (
             <>
               {filteredClaims.length === 0 ? (
-                <div className={styles.empty}>No {claimStatusFilter} claims.</div>
+                <div className={styles.empty}>No {claimStatusFilter} claims or transfers.</div>
               ) : null}
             <div className={styles.cardGrid}>
               {filteredClaims.map((claim) => (
@@ -366,6 +411,7 @@ export function PortalPropertiesPage({
                       </div>
                       <div className={styles.badges}>
                         <div className={styles.badge}>{claim.status}</div>
+                        <div className={styles.badge}>{claim.kind === "transfer" ? "Transfer" : "Claim"}</div>
                         <div className={styles.badge}>{getClaimScopeLabel(claim.claimScope)}</div>
                       </div>
                     </div>
@@ -377,17 +423,58 @@ export function PortalPropertiesPage({
                       <span>Land tenure</span>
                       <span>{getTenureLabel(claim.tenureType)}</span>
                     </div>
+                    {claim.kind === "transfer" ? (
+                      <div className={styles.detailRow}>
+                        <span>Current owner</span>
+                        <span>{claim.transferFromUserName || "Unknown owner"}</span>
+                      </div>
+                    ) : null}
+                    {claim.kind === "transfer" ? (
+                      <div className={styles.detailRow}>
+                        <span>Type</span>
+                        <span>{claim.transferMode === "sale" ? "Sale" : "Transfer"}</span>
+                      </div>
+                    ) : null}
+                    {claim.kind === "transfer" ? (
+                      <div className={styles.detailRow}>
+                        <span>Buyer response</span>
+                        <span>{claim.buyerConfirmedAt ? "Accepted" : "Awaiting response"}</span>
+                      </div>
+                    ) : null}
                     {claim.propertyRouteId ? (
                       <div className={styles.detailRow}>
                         <span>Property ID</span>
                         <span>{claim.propertyRouteId}</span>
                       </div>
                     ) : null}
+                    {claim.kind === "transfer" && claim.transferNote ? (
+                      <div className={styles.transferNote}>{claim.transferNote}</div>
+                    ) : null}
                     <div className={styles.actions}>
                       {claim.propertyRouteId ? (
                         <Link className={styles.primaryAction} href={routes.public.property(claim.propertyRouteId, claim.propertyTitle)}>
                           Open property page
                         </Link>
+                      ) : null}
+                      {claim.kind === "transfer" && claim.status === "pending" && !claim.buyerConfirmedAt ? (
+                        <>
+                          <form action={respondToOwnershipTransferAction}>
+                            <input name="claimId" type="hidden" value={claim.id} />
+                            <input name="decision" type="hidden" value="accept" />
+                            <input name="propertyRouteId" type="hidden" value={claim.propertyRouteId || ""} />
+                            <button className={styles.secondaryAction} type="submit">
+                              Accept transfer
+                            </button>
+                          </form>
+                          <form action={respondToOwnershipTransferAction}>
+                            <input name="claimId" type="hidden" value={claim.id} />
+                            <input name="decision" type="hidden" value="decline" />
+                            <input name="propertyRouteId" type="hidden" value={claim.propertyRouteId || ""} />
+                            <button className={styles.secondaryAction} type="submit">
+                              Decline transfer
+                            </button>
+                          </form>
+                        </>
                       ) : null}
                     </div>
                   </div>
@@ -396,7 +483,7 @@ export function PortalPropertiesPage({
             </div>
             </>
           ) : (
-            <div className={styles.empty}>No open claim requests right now.</div>
+            <div className={styles.empty}>No open claim requests or transfers right now.</div>
           )}
         </section>
       </div>

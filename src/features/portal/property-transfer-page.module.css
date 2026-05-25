@@ -1,0 +1,264 @@
+.page {
+  padding: 32px 0 48px;
+}
+
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+.header {
+  display: grid;
+  gap: 10px;
+}
+
+.eyebrow {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.body,
+.helperText,
+.note,
+.propertyMeta {
+  color: var(--foreground-muted);
+  line-height: 1.6;
+}
+
+.card,
+.form,
+.feedback {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+}
+
+.card,
+.form {
+  padding: 24px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.propertyTitle {
+  margin: 0;
+  font-size: 1.55rem;
+  letter-spacing: -0.04em;
+}
+
+.badges,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.badge {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.priceLine {
+  margin-top: 16px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.helperText {
+  margin-top: 10px;
+}
+
+.feedback {
+  padding: 14px 16px;
+}
+
+.feedbackSuccess {
+  background: color-mix(in srgb, var(--surface) 82%, #dcefd5);
+}
+
+.feedbackWarning {
+  background: color-mix(in srgb, var(--surface) 82%, #f5e6d1);
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.transferForm {
+  display: grid;
+  gap: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.modeCard {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.modeCard:hover,
+.modeCard:focus-visible {
+  background: var(--surface-muted);
+}
+
+.modeCardActive {
+  border-color: var(--foreground);
+  background: color-mix(in srgb, var(--surface-muted) 72%, white);
+}
+
+.modeTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.modeBody {
+  color: var(--foreground-muted);
+  line-height: 1.55;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.input,
+.select {
+  min-height: 54px;
+  padding: 0 18px;
+}
+
+.select {
+  appearance: none;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  background-size: 12px;
+}
+
+.textarea {
+  min-height: 120px;
+  padding: 14px 18px;
+  resize: vertical;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--foreground-muted);
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  outline-offset: 2px;
+}
+
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.primaryAction {
+  background: var(--foreground);
+  color: var(--surface);
+  border-color: var(--foreground);
+  cursor: pointer;
+}
+
+.primaryAction:hover,
+.primaryAction:focus-visible {
+  background: color-mix(in srgb, var(--foreground) 90%, white);
+}
+
+.secondaryAction {
+  color: var(--foreground);
+}
+
+.secondaryAction:hover,
+.secondaryAction:focus-visible {
+  background: var(--surface-muted);
+}
+
+.note a {
+  color: inherit;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .grid,
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
+}

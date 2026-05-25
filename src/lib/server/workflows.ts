@@ -7,12 +7,14 @@ import type {
   AgencyApplication,
   AgentApplication,
   PropertyClaimScope,
+  PropertyClaimRequestKind,
   PropertyDataSource,
   PropertyClaimRequest,
   PropertyKind,
   PropertyOwnership,
   PropertyOwnershipScope,
   PropertyTenureType,
+  PropertyTransferMode,
   Role,
   SubmissionStatus,
   ValuationSubmission,
@@ -69,6 +71,7 @@ interface ValuatorApplicationRow {
 interface PropertyClaimRequestRow {
   id: string;
   user_id: string;
+  request_kind: PropertyClaimRequestKind;
   property_id: string | null;
   property_internal_id: string | null;
   parcel_id: string;
@@ -78,6 +81,12 @@ interface PropertyClaimRequestRow {
   tenure_type: PropertyTenureType;
   tenure_source: PropertyDataSource;
   declared_asset_type: PropertyKind | null;
+  transfer_mode: PropertyTransferMode | null;
+  transfer_from_user_id: string | null;
+  transfer_initiated_by_user_id: string | null;
+  buyer_confirmed_at: string | null;
+  buyer_declined_at: string | null;
+  transfer_note: string | null;
   status: SubmissionStatus;
   created_at: string;
 }
@@ -99,6 +108,10 @@ interface AdminPropertyClaimRequestRow extends PropertyClaimRequestRow {
   district: string | null;
   sector: string | null;
   user_full_name: string | null;
+  transfer_from_user_full_name: string | null;
+  transfer_from_user_email: string | null;
+  current_owner_user_id: string | null;
+  current_owner_full_name: string | null;
   asset_count_for_parcel: string | number;
   conflicting_ownership_id: string | null;
   conflicting_owner_full_name: string | null;
@@ -113,6 +126,10 @@ export interface AdminPropertyClaimRequest extends PropertyClaimRequest {
   district: string;
   sector?: string;
   userFullName: string;
+  transferFromUserFullName?: string;
+  transferFromUserEmail?: string;
+  currentOwnerUserId?: string;
+  currentOwnerFullName?: string;
   approvalBlockedReason?: string;
 }
 
@@ -227,6 +244,7 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
   return {
     id: row.id,
     userId: row.user_id,
+    kind: row.request_kind,
     propertyId: row.property_id || undefined,
     propertyInternalId: row.property_internal_id || undefined,
     parcelId: row.parcel_id,
@@ -236,6 +254,12 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
     declaredAssetType: row.declared_asset_type || undefined,
+    transferMode: row.transfer_mode || undefined,
+    transferFromUserId: row.transfer_from_user_id || undefined,
+    transferInitiatedByUserId: row.transfer_initiated_by_user_id || undefined,
+    buyerConfirmedAt: row.buyer_confirmed_at || undefined,
+    buyerDeclinedAt: row.buyer_declined_at || undefined,
+    transferNote: row.transfer_note || undefined,
     status: row.status,
     createdAt: row.created_at,
   };
@@ -254,11 +278,22 @@ function toPropertyOwnership(row: PropertyOwnershipRow): PropertyOwnership {
 }
 
 function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPropertyClaimRequest {
+  const isTransfer = row.request_kind === "transfer";
   const propertyKind = row.property_kind || undefined;
   const isUnitOwnership = row.claim_scope === "unit_partial" || propertyKind === "apartment_unit" || propertyKind === "commercial_unit";
   const conflictingOwnerName = row.conflicting_owner_full_name?.trim() || "another user";
   const conflictingPropertyTitle = row.conflicting_property_title?.trim() || "another property on this parcel";
-  const approvalBlockedReason = !row.property_internal_id
+  const approvalBlockedReason = isTransfer
+    ? !row.property_internal_id
+      ? "This transfer request is missing its property target and cannot be approved."
+      : !row.transfer_from_user_id
+        ? "This transfer request is missing the current owner reference."
+        : !row.buyer_confirmed_at
+          ? "The recipient still needs to accept this transfer before it can be approved."
+          : row.current_owner_user_id !== row.transfer_from_user_id
+            ? `${row.transfer_from_user_full_name || "The original owner"} no longer appears to own this property. Resolve the ownership mismatch before approving the transfer.`
+            : undefined
+    : !row.property_internal_id
     ? row.claim_scope === "unit_partial"
       ? "This claim still needs to be matched to a specific unit in Preview before it can be approved."
       : !row.declared_asset_type
@@ -275,6 +310,7 @@ function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPr
   return {
     id: row.id,
     userId: row.user_id,
+    kind: row.request_kind,
     userFullName: row.user_full_name || row.user_id,
     propertyId: row.property_id || undefined,
     propertyInternalId: row.property_internal_id || undefined,
@@ -285,11 +321,21 @@ function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPr
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
     declaredAssetType: row.declared_asset_type || undefined,
+    transferMode: row.transfer_mode || undefined,
     propertyRouteId: row.property_route_id || undefined,
     propertyTitle: row.property_title || row.property_route_id || row.property_id || row.upi || "Preview property",
     propertyKind,
     district: row.district || "Unknown district",
     sector: row.sector || undefined,
+    transferFromUserId: row.transfer_from_user_id || undefined,
+    transferInitiatedByUserId: row.transfer_initiated_by_user_id || undefined,
+    transferFromUserFullName: row.transfer_from_user_full_name || undefined,
+    transferFromUserEmail: row.transfer_from_user_email || undefined,
+    currentOwnerUserId: row.current_owner_user_id || undefined,
+    currentOwnerFullName: row.current_owner_full_name || undefined,
+    buyerConfirmedAt: row.buyer_confirmed_at || undefined,
+    buyerDeclinedAt: row.buyer_declined_at || undefined,
+    transferNote: row.transfer_note || undefined,
     status: row.status,
     createdAt: row.created_at,
     approvalBlockedReason,
@@ -633,6 +679,7 @@ export async function listPropertyClaimRequestsFromDb() {
       SELECT
         pcr.id,
         pcr.user_id,
+        pcr.request_kind,
         pcr.property_id,
         pcr.property_internal_id,
         pcr.parcel_id,
@@ -642,6 +689,12 @@ export async function listPropertyClaimRequestsFromDb() {
         pcr.tenure_type,
         pcr.tenure_source,
         pcr.declared_asset_type,
+        pcr.transfer_mode,
+        pcr.transfer_from_user_id,
+        pcr.transfer_initiated_by_user_id,
+        pcr.buyer_confirmed_at::TEXT,
+        pcr.buyer_declined_at::TEXT,
+        pcr.transfer_note,
         pcr.status,
         pcr.created_at::TEXT,
         COALESCE(pa.public_id, parcel.public_id) AS property_route_id,
@@ -650,6 +703,10 @@ export async function listPropertyClaimRequestsFromDb() {
         parcel.district,
         parcel.sector,
         claimant.full_name AS user_full_name,
+        transfer_from.full_name AS transfer_from_user_full_name,
+        transfer_from.email AS transfer_from_user_email,
+        current_owner.user_id AS current_owner_user_id,
+        current_owner.owner_full_name AS current_owner_full_name,
         (
           SELECT COUNT(*)
           FROM property_asset pa_count
@@ -662,12 +719,26 @@ export async function listPropertyClaimRequestsFromDb() {
       FROM property_claim_request pcr
       JOIN app_user claimant
         ON claimant.id = pcr.user_id
+      LEFT JOIN app_user transfer_from
+        ON transfer_from.id = pcr.transfer_from_user_id
       JOIN parcel_app_ready_seed_preview parcel
         ON parcel.parcel_id = pcr.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = pcr.property_internal_id
       LEFT JOIN property_profile pp
         ON pp.parcel_id = pcr.parcel_id
+      LEFT JOIN LATERAL (
+        SELECT
+          po.user_id,
+          owner.full_name AS owner_full_name
+        FROM property_ownership po
+        JOIN app_user owner
+          ON owner.id = po.user_id
+        WHERE pcr.property_internal_id IS NOT NULL
+          AND po.property_internal_id = pcr.property_internal_id
+        LIMIT 1
+      ) current_owner
+        ON TRUE
       LEFT JOIN LATERAL (
         SELECT
           po.id,
@@ -691,6 +762,7 @@ export async function listPropertyClaimRequestsFromDb() {
         LEFT JOIN property_profile pp_conflict
           ON pp_conflict.parcel_id = po.parcel_id
         WHERE po.user_id <> pcr.user_id
+          AND (pcr.request_kind <> 'transfer' OR po.user_id <> pcr.transfer_from_user_id)
           AND (
             (pcr.property_internal_id IS NOT NULL AND po.property_internal_id = pcr.property_internal_id)
             OR (
@@ -739,6 +811,7 @@ export async function listPropertyClaimRequestsForUser(userId: string) {
       SELECT
         id,
         user_id,
+        request_kind,
         property_id,
         property_internal_id,
         parcel_id,
@@ -748,6 +821,12 @@ export async function listPropertyClaimRequestsForUser(userId: string) {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
         status,
         created_at::TEXT
       FROM property_claim_request
@@ -784,6 +863,7 @@ export async function getUserPropertyRelationship(userId: string, propertyIntern
         SELECT
           id,
           user_id,
+          request_kind,
           property_id,
           property_internal_id,
           parcel_id,
@@ -793,6 +873,12 @@ export async function getUserPropertyRelationship(userId: string, propertyIntern
           tenure_type,
           tenure_source,
           declared_asset_type,
+          transfer_mode,
+          transfer_from_user_id,
+          transfer_initiated_by_user_id,
+          buyer_confirmed_at::TEXT,
+          buyer_declined_at::TEXT,
+          transfer_note,
           status,
           created_at::TEXT
         FROM property_claim_request
@@ -1364,6 +1450,7 @@ export async function createPropertyClaimRequestInDb(input: {
       SELECT
         id,
         user_id,
+        request_kind,
         property_id,
         property_internal_id,
         parcel_id,
@@ -1373,6 +1460,12 @@ export async function createPropertyClaimRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
         status,
         created_at::TEXT
       FROM property_claim_request
@@ -1415,6 +1508,7 @@ export async function createPropertyClaimRequestInDb(input: {
       RETURNING
         id,
         user_id,
+        'claim'::TEXT AS request_kind,
         property_id,
         property_internal_id,
         parcel_id,
@@ -1424,6 +1518,12 @@ export async function createPropertyClaimRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        NULL::TEXT AS transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
         status,
         created_at::TEXT
     `,
@@ -1448,15 +1548,73 @@ export async function createPropertyClaimRequestInDb(input: {
   };
 }
 
-export async function updatePropertyClaimRequestStatusInDb(
-  claimRequestId: string,
-  status: SubmissionStatus,
-) {
-  const existingResult = await getPgPool().query<PropertyClaimRequestRow>(
+export async function createOwnershipTransferRequestInDb(input: {
+  sellerUserId: string;
+  propertyInternalId: string;
+  buyerEmail: string;
+  transferMode: PropertyTransferMode;
+  transferNote?: string;
+}) {
+  const normalizedBuyerEmail = input.buyerEmail.trim().toLowerCase();
+  if (!normalizedBuyerEmail) {
+    throw new Error("Buyer email is required");
+  }
+
+  const sellerOwnershipResult = await getPgPool().query<{
+    property_id: string;
+    property_internal_id: string;
+    parcel_id: string;
+    ownership_scope: PropertyOwnershipScope;
+    unit_label: string | null;
+    asset_type: PropertyKind | null;
+    upi: string;
+  }>(
+    `
+      SELECT
+        po.property_id,
+        po.property_internal_id,
+        po.parcel_id,
+        po.ownership_scope,
+        pa.unit_label,
+        pa.asset_type,
+        parcel.upi
+      FROM property_ownership po
+      JOIN property_asset pa
+        ON pa.id = po.property_internal_id
+      JOIN parcel_app_ready_seed_preview parcel
+        ON parcel.parcel_id = po.parcel_id
+      WHERE po.user_id = $1
+        AND po.property_internal_id = $2
+      LIMIT 1
+    `,
+    [input.sellerUserId, input.propertyInternalId],
+  );
+
+  const sellerOwnership = sellerOwnershipResult.rows[0];
+  if (!sellerOwnership) {
+    throw new Error("Current user no longer owns this property");
+  }
+
+  const buyerResult = await getPgPool().query<{ id: string }>(
+    `SELECT id FROM app_user WHERE LOWER(email) = $1 AND status = 'active' LIMIT 1`,
+    [normalizedBuyerEmail],
+  );
+  const buyerId = buyerResult.rows[0]?.id;
+
+  if (!buyerId) {
+    throw new Error("No active Amazuga user exists for that email address yet");
+  }
+
+  if (buyerId === input.sellerUserId) {
+    throw new Error("You cannot transfer a property to yourself");
+  }
+
+  const existingPendingTransferResult = await getPgPool().query<PropertyClaimRequestRow>(
     `
       SELECT
         id,
         user_id,
+        request_kind,
         property_id,
         property_internal_id,
         parcel_id,
@@ -1466,6 +1624,182 @@ export async function updatePropertyClaimRequestStatusInDb(
         tenure_type,
         tenure_source,
         declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
+        status,
+        created_at::TEXT
+      FROM property_claim_request
+      WHERE request_kind = 'transfer'
+        AND property_internal_id = $1
+        AND status = 'pending'
+      LIMIT 1
+    `,
+    [input.propertyInternalId],
+  );
+
+  if (existingPendingTransferResult.rows[0]) {
+    return {
+      outcome: "existing_pending" as const,
+      request: toPropertyClaimRequest(existingPendingTransferResult.rows[0]),
+    };
+  }
+
+  const transferId = createRecordId("property-transfer");
+  const result = await getPgPool().query<PropertyClaimRequestRow>(
+    `
+      INSERT INTO property_claim_request (
+        id,
+        user_id,
+        request_kind,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        upi,
+        claim_scope,
+        unit_label,
+        tenure_type,
+        tenure_source,
+        declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        transfer_note,
+        status,
+        seed_source
+      )
+      VALUES ($1, $2, 'transfer', $3, $4, $5, $6, $7, $8, 'unspecified', 'unspecified', $9, $10, $11, $12, $13, 'pending', 'manual_workflow_v1')
+      RETURNING
+        id,
+        user_id,
+        request_kind,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        upi,
+        claim_scope,
+        unit_label,
+        tenure_type,
+        tenure_source,
+        declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
+        status,
+        created_at::TEXT
+    `,
+    [
+      transferId,
+      buyerId,
+      sellerOwnership.property_id,
+      sellerOwnership.property_internal_id,
+      sellerOwnership.parcel_id,
+      sellerOwnership.upi,
+      sellerOwnership.ownership_scope === "unit" ? "unit_partial" : "full_parcel",
+      sellerOwnership.unit_label || null,
+      sellerOwnership.asset_type,
+      input.transferMode,
+      input.sellerUserId,
+      input.sellerUserId,
+      input.transferNote?.trim() || null,
+    ],
+  );
+
+  return {
+    outcome: "created" as const,
+    request: toPropertyClaimRequest(result.rows[0]),
+  };
+}
+
+export async function respondToOwnershipTransferRequestInDb(input: {
+  buyerUserId: string;
+  claimRequestId: string;
+  decision: "accept" | "decline";
+}) {
+  const result = await getPgPool().query<PropertyClaimRequestRow>(
+    `
+      UPDATE property_claim_request
+      SET
+        buyer_confirmed_at = CASE
+          WHEN $3 = 'accept' THEN NOW()
+          ELSE buyer_confirmed_at
+        END,
+        buyer_declined_at = CASE
+          WHEN $3 = 'decline' THEN NOW()
+          ELSE buyer_declined_at
+        END,
+        status = CASE
+          WHEN $3 = 'decline' THEN 'denied'
+          ELSE status
+        END,
+        updated_at = NOW()
+      WHERE id = $1
+        AND user_id = $2
+        AND request_kind = 'transfer'
+        AND status = 'pending'
+      RETURNING
+        id,
+        user_id,
+        request_kind,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        upi,
+        claim_scope,
+        unit_label,
+        tenure_type,
+        tenure_source,
+        declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
+        status,
+        created_at::TEXT
+    `,
+    [input.claimRequestId, input.buyerUserId, input.decision],
+  );
+
+  if (!result.rows[0]) {
+    throw new Error("Transfer request not found or no longer open");
+  }
+
+  return toPropertyClaimRequest(result.rows[0]);
+}
+
+export async function updatePropertyClaimRequestStatusInDb(
+  claimRequestId: string,
+  status: SubmissionStatus,
+) {
+  const existingResult = await getPgPool().query<PropertyClaimRequestRow>(
+    `
+      SELECT
+        id,
+        user_id,
+        request_kind,
+        property_id,
+        property_internal_id,
+        parcel_id,
+        upi,
+        claim_scope,
+        unit_label,
+        tenure_type,
+        tenure_source,
+        declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
         status,
         created_at::TEXT
       FROM property_claim_request
@@ -1483,6 +1817,10 @@ export async function updatePropertyClaimRequestStatusInDb(
 
   if (status === "approved") {
     if (!existingClaimRequest.propertyInternalId || !existingClaimRequest.propertyId) {
+      if (existingClaimRequest.kind === "transfer") {
+        throw new Error("This transfer request is missing its property target.");
+      }
+
       if (existingClaimRequest.claimScope !== "full_parcel" || !existingClaimRequest.declaredAssetType) {
         throw new Error("This claim still needs to be resolved to a specific property or unit before approval.");
       }
@@ -1548,24 +1886,48 @@ export async function updatePropertyClaimRequestStatusInDb(
       existingClaimRequest.claimScope === "unit_partial"
         ? "unit"
         : getOwnershipScopeForPropertyKind(targetResult.rows[0]?.property_kind);
-    const ownershipConflict = await getPgPool().query<{ id: string }>(
-      `
-        SELECT id
-        FROM property_ownership
-        WHERE
-          (
-            property_internal_id = $1
-            OR ($2 = 'full' AND parcel_id = $3)
-            OR (ownership_scope = 'full' AND parcel_id = $3)
-          )
-          AND user_id <> $4
-        LIMIT 1
-      `,
-      [existingClaimRequest.propertyInternalId, ownershipScope, existingClaimRequest.parcelId, existingClaimRequest.userId],
-    );
+    if (existingClaimRequest.kind === "transfer") {
+      if (!existingClaimRequest.transferFromUserId) {
+        throw new Error("This transfer request is missing the current owner reference.");
+      }
 
-    if (ownershipConflict.rows[0]) {
-      throw new Error("This property or parcel already has an owner in Preview.");
+      if (!existingClaimRequest.buyerConfirmedAt) {
+        throw new Error("The buyer still needs to accept this transfer before it can be approved.");
+      }
+
+      const currentOwnerResult = await getPgPool().query<{ user_id: string }>(
+        `
+          SELECT user_id
+          FROM property_ownership
+          WHERE property_internal_id = $1
+          LIMIT 1
+        `,
+        [existingClaimRequest.propertyInternalId],
+      );
+
+      if (currentOwnerResult.rows[0]?.user_id !== existingClaimRequest.transferFromUserId) {
+        throw new Error("The original owner no longer appears to own this property.");
+      }
+    } else {
+      const ownershipConflict = await getPgPool().query<{ id: string }>(
+        `
+          SELECT id
+          FROM property_ownership
+          WHERE
+            (
+              property_internal_id = $1
+              OR ($2 = 'full' AND parcel_id = $3)
+              OR (ownership_scope = 'full' AND parcel_id = $3)
+            )
+            AND user_id <> $4
+          LIMIT 1
+        `,
+        [existingClaimRequest.propertyInternalId, ownershipScope, existingClaimRequest.parcelId, existingClaimRequest.userId],
+      );
+
+      if (ownershipConflict.rows[0]) {
+        throw new Error("This property or parcel already has an owner in Preview.");
+      }
     }
   }
 
@@ -1579,6 +1941,7 @@ export async function updatePropertyClaimRequestStatusInDb(
       RETURNING
         id,
         user_id,
+        request_kind,
         property_id,
         property_internal_id,
         parcel_id,
@@ -1588,6 +1951,12 @@ export async function updatePropertyClaimRequestStatusInDb(
         tenure_type,
         tenure_source,
         declared_asset_type,
+        transfer_mode,
+        transfer_from_user_id,
+        transfer_initiated_by_user_id,
+        buyer_confirmed_at::TEXT,
+        buyer_declined_at::TEXT,
+        transfer_note,
         status,
         created_at::TEXT
     `,
@@ -1619,6 +1988,21 @@ export async function updatePropertyClaimRequestStatusInDb(
   const ownershipScope =
     claimRequest.claimScope === "unit_partial" ? "unit" : getOwnershipScopeForPropertyKind(targetResult.rows[0]?.property_kind);
   const ownershipId = `property-ownership-${claimRequest.propertyInternalId}`;
+
+  if (claimRequest.kind === "transfer") {
+    await getPgPool().query(
+      `
+        UPDATE listing
+        SET
+          status = 'archived',
+          updated_at = NOW()
+        WHERE property_asset_id = $1
+          AND status IN ('draft', 'active', 'inactive')
+      `,
+      [claimRequest.propertyInternalId],
+    );
+  }
+
   await getPgPool().query(
     `
       INSERT INTO property_ownership (

@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 type ClaimStatus = "created" | "pending" | "owned" | "no_match" | "unit_required";
 type ClaimScope = "full_parcel" | "unit_partial";
+type TransferStatus = "created" | "existing_pending" | "buyer_not_found" | "self" | "not_owner" | "accepted" | "declined";
 
 function isClaimStatus(value: string | undefined): value is ClaimStatus {
   return value === "created" || value === "pending" || value === "owned" || value === "no_match" || value === "unit_required";
@@ -17,6 +18,18 @@ function isClaimStatus(value: string | undefined): value is ClaimStatus {
 
 function isClaimScope(value: string | undefined): value is ClaimScope {
   return value === "full_parcel" || value === "unit_partial";
+}
+
+function isTransferStatus(value: string | undefined): value is TransferStatus {
+  return (
+    value === "created" ||
+    value === "existing_pending" ||
+    value === "buyer_not_found" ||
+    value === "self" ||
+    value === "not_owner" ||
+    value === "accepted" ||
+    value === "declined"
+  );
 }
 
 export default async function SellPortalPropertiesRoute({
@@ -29,6 +42,9 @@ export default async function SellPortalPropertiesRoute({
     claimUnit?: string;
     claimProperty?: string;
     claims?: string;
+    transferStatus?: string;
+    transferProperty?: string;
+    transferEmail?: string;
   }>;
 }) {
   const currentUser = await requireCurrentUser(routes.app.portalProperties);
@@ -45,6 +61,13 @@ export default async function SellPortalPropertiesRoute({
         propertyRouteId: typeof query.claimProperty === "string" ? query.claimProperty : undefined,
       }
     : undefined;
+  const transferFeedback = isTransferStatus(query.transferStatus)
+    ? {
+        status: query.transferStatus,
+        propertyRouteId: typeof query.transferProperty === "string" ? query.transferProperty : undefined,
+        buyerEmail: typeof query.transferEmail === "string" ? query.transferEmail : undefined,
+      }
+    : undefined;
 
   return (
     <PortalShell access={access}>
@@ -54,6 +77,7 @@ export default async function SellPortalPropertiesRoute({
         claimFeedback={claimFeedback}
         claimStatusFilter={claimStatusFilter}
         data={data}
+        transferFeedback={transferFeedback}
       />
     </PortalShell>
   );
