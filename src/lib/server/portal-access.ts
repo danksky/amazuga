@@ -78,18 +78,18 @@ export const getPortalAccessState = cache(async (userId: string): Promise<Portal
     hasPendingManagerActivation,
     hasApplicationAttention,
     hasProfessionalExpansionOptions,
-    primaryPortalHref: hasAgencyPortalAccess
+    primaryPortalHref: hasAgencyPortalAccess || hasPropertyOwnerListingAccess
       ? routes.app.portalListings
       : hasPropertyWorkspaceAccess
         ? routes.app.portalProperties
-      : hasValuatorPortalAccess
-        ? routes.app.portalValuations
-        : null,
-    primaryPortalLabel: hasAgencyPortalAccess
+        : hasValuatorPortalAccess
+          ? routes.app.portalValuations
+          : null,
+    primaryPortalLabel: hasAgencyPortalAccess || hasPropertyOwnerListingAccess
       ? "Listings"
       : hasPropertyWorkspaceAccess
         ? "Properties"
-      : hasValuatorPortalAccess
+        : hasValuatorPortalAccess
           ? "Valuations"
           : null,
     shouldShowApplicationsNav,
