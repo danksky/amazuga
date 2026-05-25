@@ -207,16 +207,16 @@
 }
 
 .listingThumb {
-  width: 88px;
-  height: 66px;
+  width: 176px;
+  height: 132px;
   border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .listingThumbPlaceholder {
-  width: 88px;
-  height: 66px;
+  width: 176px;
+  height: 132px;
   border-radius: 10px;
   background: var(--surface);
   border: 1px dashed var(--border);
