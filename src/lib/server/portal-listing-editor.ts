@@ -926,6 +926,7 @@ export async function updatePortalListingInDb(input: {
 }
 
 export async function setPortalListingStatusInDb(input: {
+  allowDraftLifecycle?: boolean;
   userId: string;
   listingId: string;
   status: "active" | "inactive" | "archived";
@@ -965,6 +966,10 @@ export async function setPortalListingStatusInDb(input: {
 
     if (!lockedListing) {
       throw new Error("Listing not found or inaccessible");
+    }
+
+    if (lockedListing.status === "draft" && !input.allowDraftLifecycle) {
+      throw new Error("Draft lifecycle actions must be completed from the listing editor");
     }
 
     if (input.status === "active") {

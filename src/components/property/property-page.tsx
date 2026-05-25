@@ -506,7 +506,7 @@ export function PropertyPage({
                           className={styles.actionLinkSecondary}
                           href={`${routes.app.portalListingNew}?property=${encodeURIComponent(propertyRouteId)}`}
                         >
-                          Create listing
+                          Create draft
                         </Link>
                       ) : null}
                     </>

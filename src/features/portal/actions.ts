@@ -264,6 +264,7 @@ export async function submitListingEditAction(formData: FormData) {
 
     const status = intent === "publish" ? "active" : "archived";
     const listing = await setPortalListingStatusInDb({
+      allowDraftLifecycle: true,
       userId: currentUser.id,
       listingId,
       status,

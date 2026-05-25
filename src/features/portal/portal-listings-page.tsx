@@ -335,7 +335,7 @@ export function PortalListingsPage({
             {canCreateListing ? (
               <>
                 <Link className={styles.secondaryAction} href={routes.app.portalListingNew}>
-                  Create your first listing
+                  Create your first draft
                 </Link>{" "}
                 from one of your owned properties.
               </>
