@@ -114,7 +114,8 @@ export function PortalPropertiesPage({
           <h1 className={styles.title}>Properties</h1>
           <div className={styles.body}>
             Private sale starts here. Begin from the parcel UPI, optionally describe the apartment or unit you mean,
-            and then turn the approved claim into a listing only after the ownership record is unlocked.
+            and then turn the approved claim into a listing only after the ownership record is unlocked and the asset
+            is listing-ready.
           </div>
         </div>
 
