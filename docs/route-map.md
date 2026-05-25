@@ -34,6 +34,7 @@
 - `/saved`
 - `/portal`
 - `/portal/listings`
+- `/portal/listings/[listingId]/edit`
 - `/portal/valuations`
 - `/portal/valuations/new`
 - `/portal/agency`
@@ -58,3 +59,5 @@
 - There is no standalone public listing detail page in v1.
 - There is no standalone UPI lookup page in v1.
 - UPI resolution should happen from the shared search experience and route to `/property/[propertyId]`.
+- Internal maintenance route: `/api/internal/listing-image-cleanup`
+  - triggered by Vercel Cron once daily on the current plan to retry queued listing image deletions from R2

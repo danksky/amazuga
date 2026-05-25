@@ -248,7 +248,6 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
 function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): Listing | undefined {
   if (
     !row.listing_id ||
-    !row.agency_id ||
     !row.agent_user_id ||
     !row.listing_status ||
     !row.marketing_type ||
@@ -264,7 +263,7 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
     id: row.listing_id,
     propertyId: row.property_public_id || row.public_id,
     propertyInternalId: row.property_internal_id || undefined,
-    agencyId: row.agency_id,
+    agencyId: row.agency_id ?? undefined,
     agentUserId: row.agent_user_id,
     status: row.listing_status,
     marketingType: row.marketing_type,

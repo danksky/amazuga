@@ -201,14 +201,43 @@
 }
 
 .listingBody {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.listingThumb {
+  width: 88px;
+  height: 66px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.listingThumbPlaceholder {
+  width: 88px;
+  height: 66px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  flex-shrink: 0;
+}
+
+.listingBodyContent {
   display: grid;
-  gap: 8px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .listingTitle {
   margin: 0;
   font-size: 1.12rem;
   letter-spacing: -0.02em;
+}
+
+.listingAddress {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
 }
 
 .listingHeadline {
@@ -218,7 +247,7 @@
 
 .listingFacts {
   color: var(--foreground-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .detailGrid {

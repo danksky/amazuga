@@ -24,6 +24,7 @@ interface PortalOwnedPropertyRow {
   listing_status: "active" | "inactive" | null;
   agency_id: string | null;
   agency_name: string | null;
+  first_image_url: string | null;
 }
 
 interface PortalClaimRequestRow {
@@ -67,6 +68,7 @@ export interface PortalOwnedPropertySummary {
   listingStatus?: "active" | "inactive";
   listingAgencyId?: string;
   listingAgencyName?: string;
+  firstImageUrl?: string;
 }
 
 export interface PortalPropertyClaimSummary {
@@ -123,7 +125,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           l.id AS listing_id,
           l.status AS listing_status,
           l.agency_id,
-          agency.business_name AS agency_name
+          agency.business_name AS agency_name,
+          l.first_image_url
         FROM property_ownership po
         JOIN property_asset pa
           ON pa.id = po.property_internal_id
@@ -135,7 +138,14 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           SELECT
             listing.id,
             listing.status,
-            listing.agency_id
+            listing.agency_id,
+            (
+              SELECT image_url
+              FROM listing_image
+              WHERE listing_id = listing.id AND status = 'ready'
+              ORDER BY sort_order ASC
+              LIMIT 1
+            ) AS first_image_url
           FROM listing
           WHERE listing.property_asset_id = pa.id
             AND listing.status IN ('active', 'inactive')
@@ -239,6 +249,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       listingStatus: row.listing_status || undefined,
       listingAgencyId: row.agency_id || undefined,
       listingAgencyName: row.agency_name || undefined,
+      firstImageUrl: row.first_image_url ?? undefined,
     })),
     claimRequests: claimResult.rows.map((row) => ({
       id: row.claim_id,

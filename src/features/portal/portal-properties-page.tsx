@@ -197,38 +197,47 @@ export function PortalPropertiesPage({
             <div className={styles.cardGrid}>
               {data.ownedProperties.map((property) => (
                 <article className={styles.card} key={property.ownershipId}>
-                  <div className={styles.cardTop}>
-                    <div>
-                      <h3 className={styles.cardTitle}>{property.propertyTitle}</h3>
-                      <div className={styles.cardMeta}>
-                        {property.sector ? `${property.sector}, ` : ""}
-                        {property.district}
+                  <div className={styles.cardThumbWrap}>
+                    {property.firstImageUrl ? (
+                      <img alt={property.propertyTitle} className={styles.cardThumb} src={property.firstImageUrl} />
+                    ) : (
+                      <div className={styles.cardThumbPlaceholder} />
+                    )}
+                  </div>
+                  <div className={styles.cardContent}>
+                    <div className={styles.cardTop}>
+                      <div>
+                        <h3 className={styles.cardTitle}>{property.propertyTitle}</h3>
+                        <div className={styles.cardMeta}>
+                          {property.sector ? `${property.sector}, ` : ""}
+                          {property.district}
+                        </div>
+                      </div>
+                      <div className={styles.badges}>
+                        <div className={styles.badge}>{property.propertyRouteId}</div>
+                        <div className={styles.badge}>{getScopeLabel(property.ownershipScope)}</div>
+                        <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
                       </div>
                     </div>
-                    <div className={styles.badges}>
-                      <div className={styles.badge}>{property.propertyRouteId}</div>
-                      <div className={styles.badge}>{getScopeLabel(property.ownershipScope)}</div>
-                      <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
-                    </div>
-                  </div>
-                  {property.listingAgencyName ? (
-                    <div className={styles.detailRow}>
-                      <span>Current listing agency</span>
-                      <span>{property.listingAgencyName}</span>
-                    </div>
-                  ) : null}
-                  <div className={styles.actions}>
-                    <Link className={styles.primaryAction} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
-                      Open property page
-                    </Link>
-                    {canCreateListing && !property.listingId ? (
-                      <Link
-                        className={styles.secondaryAction}
-                        href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}
-                      >
-                        Create listing
-                      </Link>
+                    {property.listingAgencyName ? (
+                      <div className={styles.detailRow}>
+                        <span>Current listing agency</span>
+                        <span>{property.listingAgencyName}</span>
+                      </div>
                     ) : null}
+                    <div className={styles.actions}>
+                      <Link className={styles.primaryAction} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
+                        Open property page
+                      </Link>
+                      {canCreateListing && !property.listingId ? (
+                        <Link
+                          className={styles.secondaryAction}
+                          href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}
+                        >
+                          Create listing
+                        </Link>
+                      ) : null}
+                    </div>
                   </div>
                 </article>
               ))}
@@ -280,40 +289,42 @@ export function PortalPropertiesPage({
             <div className={styles.cardGrid}>
               {filteredClaims.map((claim) => (
                 <article className={styles.card} key={claim.id}>
-                  <div className={styles.cardTop}>
-                    <div>
-                      <h3 className={styles.cardTitle}>{claim.upi}</h3>
-                      <div className={styles.cardMeta}>
-                        {claim.sector ? `${claim.sector}, ` : ""}
-                        {claim.district}
-                        {claim.unitLabel ? ` · Unit ${claim.unitLabel}` : ""}
+                  <div className={styles.cardContent}>
+                    <div className={styles.cardTop}>
+                      <div>
+                        <h3 className={styles.cardTitle}>{claim.upi}</h3>
+                        <div className={styles.cardMeta}>
+                          {claim.sector ? `${claim.sector}, ` : ""}
+                          {claim.district}
+                          {claim.unitLabel ? ` · Unit ${claim.unitLabel}` : ""}
+                        </div>
+                      </div>
+                      <div className={styles.badges}>
+                        <div className={styles.badge}>{claim.status}</div>
+                        <div className={styles.badge}>{getClaimScopeLabel(claim.claimScope)}</div>
                       </div>
                     </div>
-                    <div className={styles.badges}>
-                      <div className={styles.badge}>{claim.status}</div>
-                      <div className={styles.badge}>{getClaimScopeLabel(claim.claimScope)}</div>
-                    </div>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span>Submitted</span>
-                    <span>{formatDate(claim.createdAt)}</span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span>Land tenure</span>
-                    <span>{getTenureLabel(claim.tenureType)}</span>
-                  </div>
-                  {claim.propertyRouteId ? (
                     <div className={styles.detailRow}>
-                      <span>Property ID</span>
-                      <span>{claim.propertyRouteId}</span>
+                      <span>Submitted</span>
+                      <span>{formatDate(claim.createdAt)}</span>
                     </div>
-                  ) : null}
-                  <div className={styles.actions}>
+                    <div className={styles.detailRow}>
+                      <span>Land tenure</span>
+                      <span>{getTenureLabel(claim.tenureType)}</span>
+                    </div>
                     {claim.propertyRouteId ? (
-                      <Link className={styles.primaryAction} href={routes.public.property(claim.propertyRouteId, claim.propertyTitle)}>
-                        Open property page
-                      </Link>
+                      <div className={styles.detailRow}>
+                        <span>Property ID</span>
+                        <span>{claim.propertyRouteId}</span>
+                      </div>
                     ) : null}
+                    <div className={styles.actions}>
+                      {claim.propertyRouteId ? (
+                        <Link className={styles.primaryAction} href={routes.public.property(claim.propertyRouteId, claim.propertyTitle)}>
+                          Open property page
+                        </Link>
+                      ) : null}
+                    </div>
                   </div>
                 </article>
               ))}

@@ -11,7 +11,7 @@ interface ListingPhoto {
   width?: number;
   height?: number;
   fileSizeBytes?: number;
-  status: "ready" | "processing" | "failed";
+  status: "ready" | "processing" | "failed" | "pending_delete" | "delete_failed";
   sortOrder: number;
 }
 

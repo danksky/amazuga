@@ -9,7 +9,7 @@ interface PortalListingRow {
   listing_id: string;
   listing_status: Listing["status"];
   marketing_type: Listing["marketingType"];
-  asking_price_rwf: number | string;
+  asking_price_rwf: number | string | null;
   currency: Listing["currency"];
   listing_created_at: string;
   listing_updated_at: string;
@@ -32,6 +32,7 @@ interface PortalListingRow {
   bedrooms: number | string | null;
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
+  first_image_url: string | null;
 }
 
 export interface PortalAgencyAccessSummary {
@@ -58,7 +59,7 @@ export interface PortalListingSummary {
   areaSqm?: number;
   status: Listing["status"];
   marketingType: Listing["marketingType"];
-  askingPrice: number;
+  askingPrice?: number;
   currency: Listing["currency"];
   createdAt: string;
   updatedAt: string;
@@ -67,6 +68,7 @@ export interface PortalListingSummary {
   agentUserId: string;
   agentFullName: string;
   isAssignedToCurrentUser: boolean;
+  firstImageUrl?: string;
 }
 
 export interface PortalListingsWorkspaceData {
@@ -142,7 +144,8 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         ) AS property_type,
         pp.bedrooms,
         pp.bathrooms,
-        pp.interior_area_sqm
+        pp.interior_area_sqm,
+        first_img.image_url AS first_image_url
       FROM listing l
       JOIN app_user agent
         ON agent.id = l.agent_user_id
@@ -152,8 +155,17 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         ON pa.id = l.property_asset_id
       LEFT JOIN property_profile pp
         ON pp.parcel_id = l.parcel_id
+      LEFT JOIN LATERAL (
+        SELECT image_url
+        FROM listing_image
+        WHERE listing_id = l.id AND status = 'ready'
+        ORDER BY sort_order ASC
+        LIMIT 1
+      ) first_img ON TRUE
       WHERE
-        (array_length($1::TEXT[], 1) > 0 AND l.agency_id = ANY($1::TEXT[]))
+        l.status <> 'archived'
+        AND (
+          (array_length($1::TEXT[], 1) > 0 AND l.agency_id = ANY($1::TEXT[]))
         OR (
           l.agency_id IS NULL
           AND EXISTS (
@@ -161,6 +173,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
             WHERE po.user_id = $2
               AND po.property_internal_id = l.property_asset_id
           )
+        )
         )
       ORDER BY
         l.agency_id ASC NULLS LAST,
@@ -187,7 +200,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     areaSqm: toNullableNumber(row.interior_area_sqm),
     status: row.listing_status,
     marketingType: row.marketing_type,
-    askingPrice: toNullableNumber(row.asking_price_rwf) ?? 0,
+    askingPrice: toNullableNumber(row.asking_price_rwf),
     currency: row.currency,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,
@@ -196,6 +209,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     agentUserId: row.agent_user_id,
     agentFullName: row.agent_full_name,
     isAssignedToCurrentUser: row.agent_user_id === userId,
+    firstImageUrl: row.first_image_url ?? undefined,
   }));
 
   const agencySummaries = agencies.map((agency) => {

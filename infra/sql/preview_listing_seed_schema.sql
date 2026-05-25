@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS listing (
   agent_user_id TEXT NOT NULL REFERENCES app_user(id),
   status TEXT NOT NULL CHECK (status IN ('draft', 'active', 'inactive', 'archived')),
   marketing_type TEXT NOT NULL CHECK (marketing_type IN ('sale', 'rent')),
-  asking_price_rwf BIGINT NOT NULL CHECK (asking_price_rwf > 0),
+  asking_price_rwf BIGINT CHECK (asking_price_rwf IS NULL OR asking_price_rwf > 0),
   currency TEXT NOT NULL DEFAULT 'RWF' CHECK (currency = 'RWF'),
   description TEXT,
   seed_source TEXT NOT NULL DEFAULT 'manual',
@@ -110,11 +110,27 @@ CREATE TABLE IF NOT EXISTS listing_image (
   height INTEGER,
   file_size_bytes INTEGER,
   uploaded_by_user_id TEXT REFERENCES app_user(id),
-  status TEXT NOT NULL DEFAULT 'ready' CHECK (status IN ('ready', 'processing', 'failed')),
+  status TEXT NOT NULL DEFAULT 'ready' CHECK (status IN ('ready', 'processing', 'failed', 'pending_delete', 'delete_failed')),
   alt_text TEXT,
   seed_source TEXT NOT NULL DEFAULT 'manual',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (listing_id, sort_order)
+);
+
+CREATE TABLE IF NOT EXISTS listing_image_cleanup_job (
+  id TEXT PRIMARY KEY,
+  image_id TEXT NOT NULL,
+  listing_id TEXT NOT NULL REFERENCES listing(id) ON DELETE CASCADE,
+  storage_key TEXT NOT NULL UNIQUE,
+  uploaded_by_user_id TEXT REFERENCES app_user(id),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'failed', 'completed')),
+  attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+  last_error TEXT,
+  run_after TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  locked_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS saved_property (
@@ -273,6 +289,9 @@ CREATE INDEX IF NOT EXISTS property_ownership_parcel_id_idx
 
 CREATE INDEX IF NOT EXISTS listing_image_listing_id_status_idx
   ON listing_image (listing_id, status);
+
+CREATE INDEX IF NOT EXISTS listing_image_cleanup_job_status_run_after_idx
+  ON listing_image_cleanup_job (status, run_after);
 
 CREATE INDEX IF NOT EXISTS valuation_submission_property_asset_id_idx
   ON valuation_submission (property_asset_id);

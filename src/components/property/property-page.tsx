@@ -314,8 +314,8 @@ export function PropertyPage({
   });
   const galleryImages = listing?.imageUrls ?? [];
   const primaryImage = galleryImages[0];
-  const secondaryImage = galleryImages[1] ?? galleryImages[0];
-  const tertiaryImage = galleryImages[2] ?? galleryImages[1] ?? galleryImages[0];
+  const secondaryImage = galleryImages[1];
+  const tertiaryImage = galleryImages[2];
   const propertyKind = inferPropertyKind(property);
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
   const factItems = buildFactItems(property, propertyKind);
@@ -331,21 +331,30 @@ export function PropertyPage({
       <div className={styles.hero}>
         {behavior.mediaMode === "gallery" && primaryImage ? (
           <div className={`${styles.panel} ${styles.mediaPanel}`}>
-            <div className={styles.gallery}>
+            <div className={`${styles.gallery}${!secondaryImage ? ` ${styles.gallerySingle}` : ""}`}>
               <div className={styles.galleryPrimary}>
                 <img alt={property.title} className={styles.galleryImage} src={primaryImage} />
               </div>
-              <div className={styles.galleryStack}>
-                <div className={styles.gallerySecondary}>
-                  <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+              {tertiaryImage ? (
+                <div className={styles.galleryStack}>
+                  <div className={styles.gallerySecondary}>
+                    <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+                  </div>
+                  <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
+                    <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
+                    <button className={styles.galleryCta} type="button">
+                      See all images
+                    </button>
+                  </div>
                 </div>
-                <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
-                  <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
+              ) : secondaryImage ? (
+                <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction} ${styles.gallerySecondaryFull}`}>
+                  <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
                   <button className={styles.galleryCta} type="button">
                     See all images
                   </button>
                 </div>
-              </div>
+              ) : null}
             </div>
           </div>
         ) : (

@@ -39,7 +39,7 @@ export function PortalListingsPage({
   canManageListingLifecycle: boolean;
   currentUserFirstName: string;
   data: PortalListingsWorkspaceData;
-  listingStatusFilter?: "active" | "inactive";
+  listingStatusFilter?: "draft" | "active" | "inactive";
 }) {
   const totalListings = data.listings.length;
   const assignedToUserCount = data.listings.filter((listing) => listing.isAssignedToCurrentUser).length;
@@ -47,6 +47,7 @@ export function PortalListingsPage({
   const rentCount = data.listings.filter((listing) => listing.marketingType === "rent").length;
   const allPrivateListerListings = data.listings.filter((listing) => !listing.agencyId);
   const privateListerListings = allPrivateListerListings.filter((l) => l.status === listingStatusFilter);
+  const draftCount = allPrivateListerListings.filter((l) => l.status === "draft").length;
   const activeCount = allPrivateListerListings.filter((l) => l.status === "active").length;
   const inactiveCount = allPrivateListerListings.filter((l) => l.status === "inactive").length;
 
@@ -57,7 +58,8 @@ export function PortalListingsPage({
           <h1 className={styles.title}>Listings</h1>
           <div className={styles.body}>
             This view shows the listings your current agency access can work with, including which owned properties have
-            already been turned into active listings and which listings are assigned directly to {currentUserFirstName}.
+            already been turned into listings, which ones are still drafts, and which listings are assigned directly to{" "}
+            {currentUserFirstName}.
           </div>
           {canCreateListing ? (
             <div className={styles.headerActions}>
@@ -65,7 +67,7 @@ export function PortalListingsPage({
                 View owned properties
               </Link>
               <Link className={styles.primaryAction} href={routes.app.portalListingNew}>
-                Create listing
+                Create draft
               </Link>
             </div>
           ) : null}
@@ -124,12 +126,22 @@ export function PortalListingsPage({
                               </div>
                               <div className={`${styles.pill} ${styles.statusPill}`}>{listing.status}</div>
                             </div>
-                            <div className={styles.listingPrice}>{formatCurrency(listing.askingPrice, listing.currency)}</div>
+                            <div className={styles.listingPrice}>{listing.askingPrice ? formatCurrency(listing.askingPrice, listing.currency) : "—"}</div>
                           </div>
 
                           <div className={styles.listingBody}>
-                            <h3 className={styles.listingTitle}>{listing.propertyTitle}</h3>
-                            <div className={styles.listingFacts}>{buildListingFacts(listing)}</div>
+                            {listing.firstImageUrl ? (
+                              <img alt={listing.propertyTitle} className={styles.listingThumb} src={listing.firstImageUrl} />
+                            ) : (
+                              <div className={styles.listingThumbPlaceholder} />
+                            )}
+                            <div className={styles.listingBodyContent}>
+                              <h3 className={styles.listingTitle}>{listing.propertyTitle}</h3>
+                              <div className={styles.listingAddress}>
+                                {listing.sector ? `${listing.sector}, ` : ""}{listing.district}
+                              </div>
+                              <div className={styles.listingFacts}>{buildListingFacts(listing)}</div>
+                            </div>
                           </div>
 
                           <div className={styles.detailGrid}>
@@ -167,18 +179,44 @@ export function PortalListingsPage({
                               </Link>
                             ) : null}
                             {canManageListingLifecycle ? (
-                              <form action={setListingStatusAction} className={styles.inlineForm}>
-                                <input name="listingId" type="hidden" value={listing.id} />
-                                <input
-                                  name="status"
-                                  type="hidden"
-                                  value={listing.status === "active" ? "inactive" : "active"}
-                                />
-                                <ListingStatusButton
-                                  className={styles.secondaryAction}
-                                  nextStatus={listing.status === "active" ? "inactive" : "active"}
-                                />
-                              </form>
+                              <>
+                                {listing.status === "draft" ? (
+                                  <>
+                                    <form action={setListingStatusAction} className={styles.inlineForm}>
+                                      <input name="listingId" type="hidden" value={listing.id} />
+                                      <input name="status" type="hidden" value="active" />
+                                      <ListingStatusButton
+                                        className={styles.secondaryAction}
+                                        currentStatus="draft"
+                                        nextStatus="active"
+                                      />
+                                    </form>
+                                    <form action={setListingStatusAction} className={styles.inlineForm}>
+                                      <input name="listingId" type="hidden" value={listing.id} />
+                                      <input name="status" type="hidden" value="archived" />
+                                      <ListingStatusButton
+                                        className={styles.secondaryAction}
+                                        currentStatus="draft"
+                                        nextStatus="archived"
+                                      />
+                                    </form>
+                                  </>
+                                ) : (
+                                  <form action={setListingStatusAction} className={styles.inlineForm}>
+                                    <input name="listingId" type="hidden" value={listing.id} />
+                                    <input
+                                      name="status"
+                                      type="hidden"
+                                      value={listing.status === "active" ? "inactive" : "active"}
+                                    />
+                                    <ListingStatusButton
+                                      className={styles.secondaryAction}
+                                      currentStatus={listing.status}
+                                      nextStatus={listing.status === "active" ? "inactive" : "active"}
+                                    />
+                                  </form>
+                                )}
+                              </>
                             ) : null}
                           </div>
                         </article>
@@ -199,10 +237,16 @@ export function PortalListingsPage({
               <div className={styles.sectionTitleWrap}>
                 <h2 className={styles.sectionTitle}>Your listings</h2>
                 <div className={styles.sectionMeta}>
-                  {activeCount} active · {inactiveCount} inactive
+                  {draftCount} draft · {activeCount} active · {inactiveCount} inactive
                 </div>
               </div>
               <div className={styles.filterTabs}>
+                <Link
+                  className={`${styles.filterTab} ${listingStatusFilter === "draft" ? styles.filterTabActive : ""}`}
+                  href={`${routes.app.portalListings}?status=draft`}
+                >
+                  Drafts
+                </Link>
                 <Link
                   className={`${styles.filterTab} ${listingStatusFilter === "active" ? styles.filterTabActive : ""}`}
                   href={routes.app.portalListings}
@@ -228,14 +272,24 @@ export function PortalListingsPage({
                       <div className={`${styles.pill} ${listing.marketingType === "rent" ? styles.rentPill : styles.salePill}`}>
                         {listing.marketingType === "rent" ? "For rent" : "For sale"}
                       </div>
-                      <div className={`${styles.pill} ${styles.statusPill}`}>{listing.status}</div>
+                    <div className={`${styles.pill} ${styles.statusPill}`}>{listing.status}</div>
                     </div>
-                    <div className={styles.listingPrice}>{formatCurrency(listing.askingPrice, listing.currency)}</div>
+                    <div className={styles.listingPrice}>{listing.askingPrice ? formatCurrency(listing.askingPrice, listing.currency) : "—"}</div>
                   </div>
 
                   <div className={styles.listingBody}>
-                    <h3 className={styles.listingTitle}>{listing.propertyTitle}</h3>
-                    <div className={styles.listingFacts}>{buildListingFacts(listing)}</div>
+                    {listing.firstImageUrl ? (
+                      <img alt={listing.propertyTitle} className={styles.listingThumb} src={listing.firstImageUrl} />
+                    ) : (
+                      <div className={styles.listingThumbPlaceholder} />
+                    )}
+                    <div className={styles.listingBodyContent}>
+                      <h3 className={styles.listingTitle}>{listing.propertyTitle}</h3>
+                      <div className={styles.listingAddress}>
+                        {listing.sector ? `${listing.sector}, ` : ""}{listing.district}
+                      </div>
+                      <div className={styles.listingFacts}>{buildListingFacts(listing)}</div>
+                    </div>
                   </div>
 
                   <div className={styles.detailGrid}>
@@ -269,18 +323,44 @@ export function PortalListingsPage({
                       </Link>
                     ) : null}
                     {canManageListingLifecycle ? (
-                      <form action={setListingStatusAction} className={styles.inlineForm}>
-                        <input name="listingId" type="hidden" value={listing.id} />
-                        <input
-                          name="status"
-                          type="hidden"
-                          value={listing.status === "active" ? "inactive" : "active"}
-                        />
-                        <ListingStatusButton
-                          className={styles.secondaryAction}
-                          nextStatus={listing.status === "active" ? "inactive" : "active"}
-                        />
-                      </form>
+                      <>
+                        {listing.status === "draft" ? (
+                          <>
+                            <form action={setListingStatusAction} className={styles.inlineForm}>
+                              <input name="listingId" type="hidden" value={listing.id} />
+                              <input name="status" type="hidden" value="active" />
+                              <ListingStatusButton
+                                className={styles.secondaryAction}
+                                currentStatus="draft"
+                                nextStatus="active"
+                              />
+                            </form>
+                            <form action={setListingStatusAction} className={styles.inlineForm}>
+                              <input name="listingId" type="hidden" value={listing.id} />
+                              <input name="status" type="hidden" value="archived" />
+                              <ListingStatusButton
+                                className={styles.secondaryAction}
+                                currentStatus="draft"
+                                nextStatus="archived"
+                              />
+                            </form>
+                          </>
+                        ) : (
+                          <form action={setListingStatusAction} className={styles.inlineForm}>
+                            <input name="listingId" type="hidden" value={listing.id} />
+                            <input
+                              name="status"
+                              type="hidden"
+                              value={listing.status === "active" ? "inactive" : "active"}
+                            />
+                            <ListingStatusButton
+                              className={styles.secondaryAction}
+                              currentStatus={listing.status}
+                              nextStatus={listing.status === "active" ? "inactive" : "active"}
+                            />
+                          </form>
+                        )}
+                      </>
                     ) : null}
                   </div>
                 </article>
