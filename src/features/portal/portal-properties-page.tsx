@@ -8,8 +8,18 @@ import { setListingStatusAction } from "./actions";
 import { ListingStatusButton } from "./listing-status-button";
 import styles from "./portal-properties-page.module.css";
 
-function getScopeLabel(scope: PortalPropertiesWorkspaceData["ownedProperties"][number]["ownershipScope"]) {
-  return scope === "unit" ? "Unit ownership" : "Full property ownership";
+function getKindLabel(kind: PortalPropertiesWorkspaceData["ownedProperties"][number]["propertyKind"]) {
+  if (!kind) return null;
+  const labels: Record<NonNullable<typeof kind>, string> = {
+    house: "House",
+    land: "Land",
+    building: "Apartment building",
+    apartment_unit: "Apartment unit",
+    commercial_unit: "Commercial unit",
+    mixed_use: "Mixed use",
+    other: "Property",
+  };
+  return labels[kind];
 }
 
 function getClaimScopeLabel(scope: PortalPropertiesWorkspaceData["claimRequests"][number]["claimScope"]) {
@@ -216,15 +226,18 @@ export function PortalPropertiesPage({
                         </div>
                       </div>
                       <div className={styles.badges}>
-                        <div className={styles.badge}>{property.propertyRouteId}</div>
-                        <div className={styles.badge}>{getScopeLabel(property.ownershipScope)}</div>
+                        {getKindLabel(property.propertyKind) ? (
+                          <div className={styles.badge}>{getKindLabel(property.propertyKind)}</div>
+                        ) : null}
+                        {property.listingId ? (
+                          <div className={styles.badge}>{property.listingMarketingType === "rent" ? "For rent" : "For sale"}</div>
+                        ) : null}
                         <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
                       </div>
                     </div>
                     {property.listingId ? (
-                      <div className={styles.detailRow}>
-                        <span>{property.listingMarketingType === "rent" ? "For rent" : "For sale"}</span>
-                        <span>{property.listingAskingPrice ? formatCurrency(property.listingAskingPrice, "RWF") : "—"}</span>
+                      <div className={styles.askingPrice}>
+                        {property.listingAskingPrice ? formatCurrency(property.listingAskingPrice, "RWF") : "—"}
                       </div>
                     ) : null}
                     {property.listingAgencyName ? (
@@ -279,6 +292,7 @@ export function PortalPropertiesPage({
                         </form>
                       ) : null}
                     </div>
+                    <div className={styles.propertyId}>Property ID: {property.propertyRouteId}</div>
                   </div>
                 </article>
               ))}
