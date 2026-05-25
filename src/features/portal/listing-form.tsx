@@ -109,7 +109,7 @@ function getListingDetailsTitle(mode: "create" | "edit", status?: PortalEditable
     return "Listing details";
   }
 
-  return "Listing details";
+  return "Manage listing details";
 }
 
 export function ListingForm({
@@ -157,25 +157,26 @@ export function ListingForm({
       : propertyOptions[0]);
   const showCreateEmptyState = mode === "create" && propertyOptions.length === 0;
   const canPublish = askingPriceHasValue && descriptionHasValue && photoCount > 0;
+  const isManageMode = mode === "edit";
   const priceHistoryGroups = listing ? groupPriceHistoryByCampaign(listing.priceHistory) : [];
 
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
         <div className={styles.eyebrow}>Portal</div>
-        <h1 className={styles.title}>{mode === "create" ? "Start a draft listing" : "Edit listing"}</h1>
+        <h1 className={styles.title}>{mode === "create" ? "Start a draft listing" : "Manage listing"}</h1>
         <div className={styles.body}>
           {mode === "create"
             ? isPrivateListerMode
               ? "Start a draft listing for one of your owned, listing-ready properties, then add the market-facing details before publishing."
               : "Start a draft listing for one of your owned, listing-ready properties, attach it to the right agency and agent, and then finish the publish details in the editor."
             : listing?.status === "draft"
-              ? "This listing is still a draft. Add details and photos here, then publish it when you're ready."
-              : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
+              ? "Manage this draft by adding the market-facing details and photos needed before publishing."
+              : "Manage this listing's market-facing details, assignment, and lifecycle while keeping the property record attachment intact."}
         </div>
         {listing ? (
           <div className={styles.submeta}>
-            Status: {listing.status}
+            {isManageMode ? "Manage listing mode" : "Start draft mode"}{listing ? ` · Status: ${listing.status}` : ""}
           </div>
         ) : null}
         {showCreateEmptyState ? (
@@ -372,7 +373,8 @@ export function ListingForm({
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>{getPropertyDetailsTitle(selectedProperty.propertyKind)}</h2>
                 <div className={styles.sectionBody}>
-                  These details come from the property record and are used in this listing.
+                  These details come from the property record and are used in this listing. They are intentionally
+                  separate from the market-facing edits you make here.
                 </div>
               </div>
               <div className={styles.propertyMeta}>
@@ -384,6 +386,15 @@ export function ListingForm({
                 <div className={styles.propertyMetaFacts}>
                   <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind)}</div>
                   <div className={styles.pill}>{selectedProperty.propertyRouteId}</div>
+                </div>
+                <div className={styles.propertyMetaFooter}>
+                  <div className={styles.propertyMetaFooterCopy}>
+                    <strong>Need a correction?</strong> Property-record correction requests will be added here in a
+                    later pass so listing managers can flag issues without editing asset facts directly.
+                  </div>
+                  <button className={styles.propertyMetaPlaceholderAction} disabled type="button">
+                    Request correction
+                  </button>
                 </div>
               </div>
             </section>
