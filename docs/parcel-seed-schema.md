@@ -48,7 +48,6 @@ These are the columns the current app integration depends on:
 - `parcel_id`
 - `public_id`
 - `display_id`
-- `address_like_label`
 - `district`
 - `sector`
 - `cell`
@@ -64,6 +63,33 @@ These are the columns the current app integration depends on:
 - `zone_code`
 - `gen_lu`
 - `inventory_status`
+
+## display_id Derivation
+
+`display_id` encodes the human-readable parcel address in the format:
+
+```
+<parcel_number>[-<letter>] <village>, <sector>
+```
+
+Examples: `3996-A Kabeza, Gatenga`, `1 Nyanza, Kagarama`
+
+The optional letter suffix disambiguates sibling parcels — parcels that share
+the same `parcel_number` within the same `village` and `sector`. This happens
+because the Rwandan UPI encodes `Province/District/Sector/Cell/ParcelNumber`,
+and two parcels can share a number while sitting in different cells. When that
+occurs, parcels are ranked by the cell code (4th UPI segment) ascending and
+assigned letters A, B, C, … in that order.
+
+This means `display_id` is **fully reconstructable** from columns already in
+the table (`parcel_number`, `village`, `sector`, `upi`) using a window function.
+It does not need to be stored. The reconstruction formula is documented and
+implemented as a materialized view in:
+
+- `infra/sql/preview_parcel_display_name_view.sql`
+
+That view can serve as a drop-in replacement for the stored column and can be
+dropped cleanly if the display name system is replaced.
 
 ## Current Semantics
 
