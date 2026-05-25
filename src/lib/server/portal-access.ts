@@ -78,14 +78,14 @@ export const getPortalAccessState = cache(async (userId: string): Promise<Portal
     hasPendingManagerActivation,
     hasApplicationAttention,
     hasProfessionalExpansionOptions,
-    primaryPortalHref: hasAgencyPortalAccess || hasPropertyOwnerListingAccess
+    primaryPortalHref: hasAgencyPortalAccess
       ? routes.app.portalListings
       : hasPropertyWorkspaceAccess
         ? routes.app.portalProperties
         : hasValuatorPortalAccess
           ? routes.app.portalValuations
           : null,
-    primaryPortalLabel: hasAgencyPortalAccess || hasPropertyOwnerListingAccess
+    primaryPortalLabel: hasAgencyPortalAccess
       ? "Listings"
       : hasPropertyWorkspaceAccess
         ? "Properties"
@@ -117,7 +117,7 @@ export function getPortalNavItems(access: PortalAccessState) {
 
   allowedHrefs.add(routes.app.portalProperties);
 
-  if (access.hasAgencyPortalAccess || access.hasPropertyOwnerListingAccess) {
+  if (access.hasAgencyPortalAccess) {
     allowedHrefs.add(routes.app.portalListings);
   }
 

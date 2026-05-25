@@ -7,6 +7,7 @@ import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getPortalAccessState, getPortalEntryHref } from "@/lib/server/portal-access";
 import { getEditablePortalListingData } from "@/lib/server/portal-listing-editor";
+import { isListingImageUploadConfigured } from "@/lib/server/listing-image-storage";
 import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export default async function SellPortalListingEditRoute({
 
   return (
     <PortalShell access={access}>
-      <ListingForm agencies={data.agencies} listing={data.listing} mode="edit" submitAction={submitListingEditAction} />
+      <ListingForm agencies={data.agencies} listing={data.listing} mode="edit" submitAction={submitListingEditAction} uploadEnabled={isListingImageUploadConfigured()} />
     </PortalShell>
   );
 }

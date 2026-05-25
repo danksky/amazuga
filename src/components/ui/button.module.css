@@ -12,6 +12,11 @@
   cursor: pointer;
 }
 
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .primary {
   background: var(--brand);
   color: #ffffff;

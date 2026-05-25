@@ -1,9 +1,11 @@
 import Link from "next/link";
 
-import { formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { PortalPropertiesWorkspaceData } from "@/lib/server/portal-properties";
 
+import { setListingStatusAction } from "./actions";
+import { ListingStatusButton } from "./listing-status-button";
 import styles from "./portal-properties-page.module.css";
 
 function getScopeLabel(scope: PortalPropertiesWorkspaceData["ownedProperties"][number]["ownershipScope"]) {
@@ -28,11 +30,13 @@ function getTenureLabel(tenureType: PortalPropertiesWorkspaceData["claimRequests
 
 export function PortalPropertiesPage({
   canCreateListing,
+  canManageListingLifecycle,
   claimFeedback,
   claimStatusFilter = "all",
   data,
 }: {
   canCreateListing: boolean;
+  canManageListingLifecycle: boolean;
   claimFeedback?: {
     status: "created" | "pending" | "owned" | "no_match" | "unit_required";
     upi?: string;
@@ -74,13 +78,6 @@ export function PortalPropertiesPage({
             Private sale starts here. Begin from the parcel UPI, optionally describe the apartment or unit you mean,
             and then turn the approved claim into a listing only after the ownership record is unlocked.
           </div>
-          {canCreateListing ? (
-            <div className={styles.actions}>
-              <Link className={styles.secondaryAction} href={routes.app.portalListings}>
-                View listings
-              </Link>
-            </div>
-          ) : null}
         </div>
 
         <section className={styles.section}>
@@ -219,9 +216,15 @@ export function PortalPropertiesPage({
                         <div className={styles.badge}>{property.listingId ? `Listing ${property.listingStatus}` : "Off-market"}</div>
                       </div>
                     </div>
+                    {property.listingId ? (
+                      <div className={styles.detailRow}>
+                        <span>{property.listingMarketingType === "rent" ? "For rent" : "For sale"}</span>
+                        <span>{property.listingAskingPrice ? formatCurrency(property.listingAskingPrice, "RWF") : "—"}</span>
+                      </div>
+                    ) : null}
                     {property.listingAgencyName ? (
                       <div className={styles.detailRow}>
-                        <span>Current listing agency</span>
+                        <span>Agency</span>
                         <span>{property.listingAgencyName}</span>
                       </div>
                     ) : null}
@@ -229,13 +232,46 @@ export function PortalPropertiesPage({
                       <Link className={styles.primaryAction} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
                         Open property page
                       </Link>
-                      {canCreateListing && !property.listingId ? (
-                        <Link
-                          className={styles.secondaryAction}
-                          href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}
-                        >
+                      {canCreateListing && property.listingId ? (
+                        <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(property.listingId)}>
+                          Edit listing
+                        </Link>
+                      ) : canCreateListing ? (
+                        <Link className={styles.secondaryAction} href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}>
                           Create listing
                         </Link>
+                      ) : null}
+                      {canManageListingLifecycle && property.listingId && property.listingStatus === "draft" ? (
+                        <form action={setListingStatusAction}>
+                          <input name="listingId" type="hidden" value={property.listingId} />
+                          <input name="status" type="hidden" value="active" />
+                          <ListingStatusButton
+                            className={styles.secondaryAction}
+                            currentStatus="draft"
+                            disabled={!property.listingAskingPrice || !property.firstImageUrl}
+                            nextStatus="active"
+                          />
+                        </form>
+                      ) : canManageListingLifecycle && property.listingId && property.listingStatus === "active" ? (
+                        <form action={setListingStatusAction}>
+                          <input name="listingId" type="hidden" value={property.listingId} />
+                          <input name="status" type="hidden" value="inactive" />
+                          <ListingStatusButton
+                            className={styles.secondaryAction}
+                            currentStatus="active"
+                            nextStatus="inactive"
+                          />
+                        </form>
+                      ) : canManageListingLifecycle && property.listingId && property.listingStatus === "inactive" ? (
+                        <form action={setListingStatusAction}>
+                          <input name="listingId" type="hidden" value={property.listingId} />
+                          <input name="status" type="hidden" value="active" />
+                          <ListingStatusButton
+                            className={styles.secondaryAction}
+                            currentStatus="inactive"
+                            nextStatus="active"
+                          />
+                        </form>
                       ) : null}
                     </div>
                   </div>

@@ -63,6 +63,10 @@ img {
   display: block;
 }
 
+sup {
+  color: var(--foreground-muted);
+}
+
 .app-root {
   min-height: 100vh;
 }

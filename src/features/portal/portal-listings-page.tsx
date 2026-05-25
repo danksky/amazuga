@@ -188,6 +188,7 @@ export function PortalListingsPage({
                                       <ListingStatusButton
                                         className={styles.secondaryAction}
                                         currentStatus="draft"
+                                        disabled={!listing.askingPrice}
                                         nextStatus="active"
                                       />
                                     </form>
@@ -332,6 +333,7 @@ export function PortalListingsPage({
                               <ListingStatusButton
                                 className={styles.secondaryAction}
                                 currentStatus="draft"
+                                disabled={!listing.askingPrice}
                                 nextStatus="active"
                               />
                             </form>

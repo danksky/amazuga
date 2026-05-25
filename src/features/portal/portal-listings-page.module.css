@@ -338,7 +338,7 @@
 }
 
 .secondaryAction:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.58;
   background: color-mix(in srgb, var(--surface) 90%, var(--foreground) 6%);
   border-color: color-mix(in srgb, var(--border) 86%, var(--foreground) 14%);

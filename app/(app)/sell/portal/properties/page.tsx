@@ -50,6 +50,7 @@ export default async function SellPortalPropertiesRoute({
     <PortalShell access={access}>
       <PortalPropertiesPage
         canCreateListing={hasCapability(currentUser.roles, "create_listing")}
+        canManageListingLifecycle={hasCapability(currentUser.roles, "deactivate_listing")}
         claimFeedback={claimFeedback}
         claimStatusFilter={claimStatusFilter}
         data={data}

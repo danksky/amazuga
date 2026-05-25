@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import styles from "./listing-form.module.css";
 
@@ -106,12 +106,16 @@ async function normalizeImage(file: File) {
 }
 
 export function ListingPhotoManager({
+  hasError,
   initialImages,
   listingId,
+  onCountChange,
   uploadEnabled,
 }: {
+  hasError?: boolean;
   initialImages: ListingPhoto[];
   listingId: string;
+  onCountChange?: (count: number) => void;
   uploadEnabled: boolean;
 }) {
   const [images, setImages] = useState<ListingPhoto[]>(initialImages);
@@ -120,6 +124,10 @@ export function ListingPhotoManager({
   const [status, setStatus] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const remainingSlots = useMemo(() => Math.max(0, 12 - images.length), [images.length]);
+
+  useEffect(() => {
+    onCountChange?.(images.length);
+  }, [images.length, onCountChange]);
 
   async function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
@@ -254,10 +262,10 @@ export function ListingPhotoManager({
   }
 
   return (
-    <section className={styles.mediaSection}>
+    <section className={`${styles.mediaSection}${hasError ? ` ${styles.mediaSectionError}` : ""}`}>
       <div className={styles.mediaHeader}>
         <div>
-          <h2 className={styles.mediaTitle}>Listing photos</h2>
+          <h2 className={styles.mediaTitle}>Listing photos <sup>* Required</sup></h2>
           <div className={styles.mediaBody}>
             Photos are compressed to standardized JPEGs in the browser before upload, then sent through the listing
             media gateway for validation and storage.
@@ -289,7 +297,7 @@ export function ListingPhotoManager({
         </button>
         <div className={styles.mediaHint}>
           {uploadEnabled
-            ? "Use JPG, PNG, HEIC, or phone-camera images. The uploader standardizes them to compressed JPEGs before they leave the browser."
+            ? "Use JPG, PNG, HEIC, or phone-camera images. At least one photo is required to publish."
             : "Listing photo upload is not configured yet. Add the Cloudflare Worker and media bucket env values first."}
         </div>
       </div>
@@ -322,8 +330,7 @@ export function ListingPhotoManager({
         </div>
       ) : (
         <div className={styles.mediaEmpty}>
-          No photos yet. Add them here after the listing exists so the public property page has a real gallery instead
-          of a text-only state.
+          No photos yet.
         </div>
       )}
     </section>

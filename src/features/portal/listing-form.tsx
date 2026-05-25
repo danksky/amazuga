@@ -1,9 +1,12 @@
+"use client";
+
+import { useState } from "react";
+
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { getPublicListingId } from "@/lib/listing-public-id";
 import { routes } from "@/lib/routes";
-import { isListingImageUploadConfigured } from "@/lib/server/listing-image-storage";
 import type {
   PortalEditableListing,
   PortalListingAgencyOption,
@@ -66,6 +69,7 @@ export function ListingForm({
   propertyOptions = [],
   selectedPropertyRouteId,
   submitAction,
+  uploadEnabled = false,
 }: {
   agencies: PortalListingAgencyOption[];
   listing?: PortalEditableListing;
@@ -73,7 +77,12 @@ export function ListingForm({
   propertyOptions?: PortalListingPropertyOption[];
   selectedPropertyRouteId?: string;
   submitAction: (formData: FormData) => void | Promise<void>;
+  uploadEnabled?: boolean;
 }) {
+  const [publishAttempted, setPublishAttempted] = useState(false);
+  const [askingPriceHasValue, setAskingPriceHasValue] = useState(Boolean(listing?.askingPrice));
+  const [photoCount, setPhotoCount] = useState(listing?.images.length ?? 0);
+
   const isPrivateListerMode = agencies.length === 0;
   const selectedAgency =
     agencies.find((agency) => agency.agencyId === listing?.agencyId) ?? agencies[0];
@@ -94,7 +103,7 @@ export function ListingForm({
         }
       : propertyOptions[0]);
   const showCreateEmptyState = mode === "create" && propertyOptions.length === 0;
-  const imageUploadConfigured = isListingImageUploadConfigured();
+  const canPublish = askingPriceHasValue && photoCount > 0;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -112,7 +121,7 @@ export function ListingForm({
         </div>
         {listing ? (
           <div className={styles.submeta}>
-            Public listing ID: {getPublicListingId(listing.id)} · Status: {listing.status}
+            Status: {listing.status}
           </div>
         ) : null}
         {showCreateEmptyState ? (
@@ -255,22 +264,20 @@ export function ListingForm({
             {mode === "edit" ? (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="asking-price">
-                  Asking price (RWF)
+                  Asking price (RWF) <sup>* Required</sup>
                 </label>
                 <input
-                  className={styles.input}
+                  className={`${styles.input}${publishAttempted && !askingPriceHasValue ? ` ${styles.inputError}` : ""}`}
                   defaultValue={listing?.askingPrice}
                   id="asking-price"
                   inputMode="numeric"
                   min="1"
                   name="askingPrice"
+                  onChange={(e) => setAskingPriceHasValue(Boolean(e.target.value))}
                   placeholder="Example: 185000000"
                   step="1"
                   type="number"
                 />
-                {listing?.status === "draft" ? (
-                  <div className={styles.hint}>Required before you can publish.</div>
-                ) : null}
               </div>
             ) : null}
           </div>
@@ -292,9 +299,11 @@ export function ListingForm({
 
           {mode === "edit" && listing ? (
             <ListingPhotoManager
+              hasError={publishAttempted && photoCount === 0}
               initialImages={listing.images}
               listingId={listing.id}
-              uploadEnabled={imageUploadConfigured}
+              onCountChange={setPhotoCount}
+              uploadEnabled={uploadEnabled}
             />
           ) : mode === "create" ? (
             <div className={styles.notice}>
@@ -310,9 +319,13 @@ export function ListingForm({
             {mode === "edit" && listing?.status === "draft" ? (
               <>
                 <Button
-                  disabled={!listing.askingPrice}
                   name="intent"
-                  title={!listing.askingPrice ? "Enter an asking price above before publishing" : undefined}
+                  onClick={(e) => {
+                    if (!canPublish) {
+                      e.preventDefault();
+                      setPublishAttempted(true);
+                    }
+                  }}
                   type="submit"
                   value="publish"
                 >

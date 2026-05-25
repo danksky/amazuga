@@ -5,10 +5,12 @@ import { useFormStatus } from "react-dom";
 export function ListingStatusButton({
   className,
   currentStatus,
+  disabled: disabledProp,
   nextStatus,
 }: {
   className: string;
   currentStatus: "draft" | "active" | "inactive" | "archived";
+  disabled?: boolean;
   nextStatus: "active" | "inactive" | "archived";
 }) {
   const { pending } = useFormStatus();
@@ -34,7 +36,7 @@ export function ListingStatusButton({
     <button
       aria-busy={pending}
       className={className}
-      disabled={pending}
+      disabled={pending || disabledProp}
       type="submit"
     >
       {pending ? pendingLabel : idleLabel}
