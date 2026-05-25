@@ -35,7 +35,9 @@ export default async function AdminPropertiesPage() {
       ],
       approvalBlockedReason: claim.approvalBlockedReason,
       reviewNote:
-        claim.declaredAssetType && !claim.propertyInternalId
+        claim.claimScope === "unit_partial" && !claim.propertyInternalId
+          ? "This claim is for a specific unit. Approval will only work after the request is matched to an existing Preview unit asset, then an active ownership record can be created for the user."
+          : claim.declaredAssetType && !claim.propertyInternalId
           ? `Approving this claim will create a new ${claim.declaredAssetType} asset on this parcel, then create an active ownership record for the user.`
           : "Approving this claim creates an active ownership record for the user and makes the property appear in their portal properties workspace.",
     }));

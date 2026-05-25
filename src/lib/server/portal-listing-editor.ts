@@ -14,7 +14,7 @@ interface PropertyOptionRow {
   property_kind: string | null;
   district: string | null;
   sector: string | null;
-  active_listing_id: string | null;
+  open_listing_id: string | null;
 }
 
 interface EditableListingRow {
@@ -29,7 +29,7 @@ interface EditableListingRow {
   agent_user_id: string;
   status: Listing["status"];
   marketing_type: Listing["marketingType"];
-  asking_price_rwf: number | string;
+  asking_price_rwf: number | string | null;
   description: string | null;
 }
 
@@ -41,8 +41,9 @@ interface EditableListingImageRow {
   height: number | string | null;
   content_type: string | null;
   file_size_bytes: number | string | null;
-  status: "ready" | "processing" | "failed";
+  status: "ready" | "processing" | "failed" | "pending_delete" | "delete_failed";
   sort_order: number | string;
+  uploaded_by_user_id?: string | null;
 }
 
 interface PropertyTargetRow {
@@ -84,7 +85,7 @@ export interface PortalEditableListing {
   agentUserId: string;
   status: Listing["status"];
   marketingType: Listing["marketingType"];
-  askingPrice: number;
+  askingPrice?: number;
   description?: string;
   images: Array<{
     id: string;
@@ -94,7 +95,7 @@ export interface PortalEditableListing {
     height?: number;
     contentType?: string;
     fileSizeBytes?: number;
-    status: "ready" | "processing" | "failed";
+    status: "ready" | "processing" | "failed" | "pending_delete" | "delete_failed";
     sortOrder: number;
   }>;
 }
@@ -142,7 +143,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         pa.asset_type AS property_kind,
         p.district,
         p.sector,
-        active_listing.id AS active_listing_id
+        open_listing.id AS open_listing_id
       FROM property_ownership po
       JOIN property_asset pa
         ON pa.id = po.property_internal_id
@@ -150,11 +151,11 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         ON p.parcel_id = pa.parcel_id
       LEFT JOIN property_profile pp
         ON pp.parcel_id = pa.parcel_id
-      LEFT JOIN listing active_listing
-        ON active_listing.property_asset_id = pa.id
-       AND active_listing.status = 'active'
+      LEFT JOIN listing open_listing
+        ON open_listing.property_asset_id = pa.id
+       AND open_listing.status IN ('draft', 'active', 'inactive')
       WHERE po.user_id = $1
-        AND active_listing.id IS NULL
+        AND open_listing.id IS NULL
       ORDER BY
         COALESCE(pa.title, pp.title, p.display_id, p.public_id, p.parcel_id) ASC,
         pa.public_id ASC
@@ -283,6 +284,7 @@ async function getEditableListingImages(listingId: string) {
         li.sort_order
       FROM listing_image li
       WHERE li.listing_id = $1
+        AND COALESCE(to_jsonb(li)->>'status', 'ready') = 'ready'
       ORDER BY li.sort_order ASC, li.created_at ASC, li.id ASC
     `,
     [listingId],
@@ -336,6 +338,24 @@ async function ensureNoOtherActiveListing(propertyAssetId: string, exceptListing
 
   if (result.rows[0]) {
     throw new Error("This property already has an active listing");
+  }
+}
+
+async function ensureNoExistingOpenListing(propertyAssetId: string, exceptListingId?: string) {
+  const result = await getPgPool().query<{ id: string }>(
+    `
+      SELECT id
+      FROM listing
+      WHERE property_asset_id = $1
+        AND status IN ('draft', 'active', 'inactive')
+        AND ($2::TEXT IS NULL OR id <> $2)
+      LIMIT 1
+    `,
+    [propertyAssetId, exceptListingId || null],
+  );
+
+  if (result.rows[0]) {
+    throw new Error("This property already has an open listing or draft");
   }
 }
 
@@ -394,7 +414,7 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     agentUserId: row.agent_user_id,
     status: row.status,
     marketingType: row.marketing_type,
-    askingPrice: toNumber(row.asking_price_rwf) ?? 0,
+    askingPrice: toNumber(row.asking_price_rwf),
     description: row.description || undefined,
     images,
   };
@@ -444,6 +464,7 @@ export async function addListingImageToDb(input: {
       SELECT COUNT(*)::TEXT AS count
       FROM listing_image
       WHERE listing_id = $1
+        AND COALESCE(to_jsonb(listing_image)->>'status', 'ready') NOT IN ('pending_delete', 'delete_failed')
     `,
     [input.listingId],
   );
@@ -524,7 +545,7 @@ export async function addListingImageToDb(input: {
     : null;
 }
 
-export async function removeListingImageFromDb(input: {
+export async function queueListingImageDeletion(input: {
   userId: string;
   listingId: string;
   imageId: string;
@@ -535,17 +556,110 @@ export async function removeListingImageFromDb(input: {
     throw new Error("Listing not found or inaccessible");
   }
 
-  const result = await getPgPool().query<{ id: string }>(
-    `
-      DELETE FROM listing_image
-      WHERE id = $1
-        AND listing_id = $2
-      RETURNING id
-    `,
-    [input.imageId, input.listingId],
-  );
+  const client = await getPgPool().connect();
 
-  return Boolean(result.rows[0]);
+  try {
+    await client.query("BEGIN");
+
+    const imageResult = await client.query<EditableListingImageRow>(
+      `
+        SELECT
+          li.id,
+          li.image_url,
+          to_jsonb(li)->>'storage_key' AS storage_key,
+          to_jsonb(li)->>'width' AS width,
+          to_jsonb(li)->>'height' AS height,
+          to_jsonb(li)->>'content_type' AS content_type,
+          to_jsonb(li)->>'file_size_bytes' AS file_size_bytes,
+          COALESCE(to_jsonb(li)->>'status', 'ready') AS status,
+          li.sort_order,
+          to_jsonb(li)->>'uploaded_by_user_id' AS uploaded_by_user_id
+        FROM listing_image li
+        WHERE li.id = $1
+          AND li.listing_id = $2
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [input.imageId, input.listingId],
+    );
+
+    const image = imageResult.rows[0];
+
+    if (!image) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (!image.storage_key) {
+      await client.query(
+        `
+          DELETE FROM listing_image
+          WHERE id = $1
+            AND listing_id = $2
+        `,
+        [input.imageId, input.listingId],
+      );
+      await client.query("COMMIT");
+
+      return {
+        imageId: image.id,
+        storageKey: undefined,
+        uploadedByUserId: image.uploaded_by_user_id || null,
+        queuedCleanupJobId: null,
+        deletedImmediately: true,
+      };
+    }
+
+    await client.query(
+      `
+        UPDATE listing_image
+        SET status = 'pending_delete'
+        WHERE id = $1
+          AND listing_id = $2
+      `,
+      [input.imageId, input.listingId],
+    );
+
+    const cleanupJobResult = await client.query<{ id: string }>(
+      `
+        INSERT INTO listing_image_cleanup_job (
+          id,
+          image_id,
+          listing_id,
+          storage_key,
+          uploaded_by_user_id,
+          status,
+          run_after
+        )
+        VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+        ON CONFLICT (storage_key)
+        DO UPDATE
+        SET status = 'pending',
+            run_after = NOW(),
+            locked_at = NULL,
+            last_error = NULL,
+            updated_at = NOW(),
+            uploaded_by_user_id = COALESCE(EXCLUDED.uploaded_by_user_id, listing_image_cleanup_job.uploaded_by_user_id)
+        RETURNING id
+      `,
+      [randomUUID(), image.id, input.listingId, image.storage_key, image.uploaded_by_user_id || null],
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      imageId: image.id,
+      storageKey: image.storage_key,
+      uploadedByUserId: image.uploaded_by_user_id || null,
+      queuedCleanupJobId: cleanupJobResult.rows[0]?.id ?? null,
+      deletedImmediately: false,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function createPortalListingInDb(input: {
@@ -554,8 +668,6 @@ export async function createPortalListingInDb(input: {
   propertyRouteId: string;
   agentUserId: string;
   marketingType: Listing["marketingType"];
-  askingPrice: number;
-  description?: string;
 }) {
   if (input.agencyId) {
     const agencies = await getAccessibleListingAgencies(input.userId);
@@ -573,7 +685,7 @@ export async function createPortalListingInDb(input: {
   }
 
   await ensureCurrentUserOwnsProperty(input.userId, propertyTarget.property_asset_id);
-  await ensureNoOtherActiveListing(propertyTarget.property_asset_id);
+  await ensureNoExistingOpenListing(propertyTarget.property_asset_id);
 
   const id = `listing-${randomUUID()}`;
   await getPgPool().query(
@@ -592,7 +704,7 @@ export async function createPortalListingInDb(input: {
         seed_source,
         published_at
       )
-      VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, 'RWF', $8, 'manual_workflow_v1', NOW())
+      VALUES ($1, $2, $3, $4, $5, 'draft', $6, NULL, 'RWF', NULL, 'manual_workflow_v1', NULL)
     `,
     [
       id,
@@ -601,8 +713,6 @@ export async function createPortalListingInDb(input: {
       input.agencyId,
       input.agentUserId,
       input.marketingType,
-      Math.round(input.askingPrice),
-      input.description || null,
     ],
   );
 
@@ -618,7 +728,7 @@ export async function updatePortalListingInDb(input: {
   listingId: string;
   agentUserId: string;
   marketingType: Listing["marketingType"];
-  askingPrice: number;
+  askingPrice?: number;
   description?: string;
 }) {
   const listing = await getEditableListingRow(input.userId, input.listingId);
@@ -645,7 +755,7 @@ export async function updatePortalListingInDb(input: {
       SET
         agent_user_id = $2,
         marketing_type = $3,
-        asking_price_rwf = $4,
+        asking_price_rwf = COALESCE($4, asking_price_rwf),
         description = $5,
         updated_at = NOW()
       WHERE id = $1
@@ -664,7 +774,7 @@ export async function updatePortalListingInDb(input: {
       input.listingId,
       input.agentUserId,
       input.marketingType,
-      Math.round(input.askingPrice),
+      input.askingPrice != null ? Math.round(input.askingPrice) : null,
       input.description || null,
     ],
   );
@@ -679,7 +789,7 @@ export async function updatePortalListingInDb(input: {
 export async function setPortalListingStatusInDb(input: {
   userId: string;
   listingId: string;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "archived";
 }) {
   const listing = await getEditableListingRow(input.userId, input.listingId);
 
@@ -689,6 +799,9 @@ export async function setPortalListingStatusInDb(input: {
 
   if (input.status === "active") {
     await ensureNoOtherActiveListing(listing.property_asset_id, listing.listing_id);
+    if (listing.asking_price_rwf == null) {
+      throw new Error("An asking price is required before publishing a listing");
+    }
   }
 
   const result = await getPgPool().query<{

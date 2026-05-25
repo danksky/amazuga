@@ -22,7 +22,7 @@ export default async function SellPortalListingsRoute({
   }
 
   const data = await getPortalListingsWorkspaceData(currentUser.id);
-  const listingStatusFilter = status === "inactive" ? "inactive" : "active";
+  const listingStatusFilter = status === "draft" ? "draft" : status === "inactive" ? "inactive" : "active";
 
   return (
     <PortalShell access={access}>

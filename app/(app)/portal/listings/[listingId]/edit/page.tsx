@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { PortalShell } from "@/features/portal/portal-shell";
-import { submitListingUpdateAction } from "@/features/portal/actions";
+import { submitListingEditAction } from "@/features/portal/actions";
 import { ListingForm } from "@/features/portal/listing-form";
 import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
@@ -20,7 +20,7 @@ export default async function PortalListingEditRoute({
   const access = await getPortalAccessState(currentUser.id);
   const { listingId } = await params;
 
-  if (!access.hasAgencyPortalAccess || !hasCapability(currentUser.roles, "edit_listing")) {
+  if ((!access.hasAgencyPortalAccess && !access.hasPropertyOwnerListingAccess) || !hasCapability(currentUser.roles, "edit_listing")) {
     redirect(getPortalEntryHref(access));
   }
 
@@ -32,7 +32,7 @@ export default async function PortalListingEditRoute({
 
   return (
     <PortalShell access={access}>
-      <ListingForm agencies={data.agencies} listing={data.listing} mode="edit" submitAction={submitListingUpdateAction} />
+      <ListingForm agencies={data.agencies} listing={data.listing} mode="edit" submitAction={submitListingEditAction} />
     </PortalShell>
   );
 }

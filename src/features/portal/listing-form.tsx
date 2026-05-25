@@ -100,16 +100,20 @@ export function ListingForm({
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
         <div className={styles.eyebrow}>Portal</div>
-        <h1 className={styles.title}>{mode === "create" ? "Create a listing" : "Edit listing"}</h1>
+        <h1 className={styles.title}>{mode === "create" ? "Create a draft listing" : "Edit listing"}</h1>
         <div className={styles.body}>
           {mode === "create"
             ? isPrivateListerMode
-              ? "Create a new listing for one of the properties you own."
-              : "Create a new active listing for one of the properties your account already owns, then attach it to the right agency and agent."
-            : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
+              ? "Start a draft listing for one of the properties you own."
+              : "Start a draft listing for one of the properties your account already owns, then attach it to the right agency and agent."
+            : listing?.status === "draft"
+              ? "This listing is still a draft. Add details and photos here, then publish it when you're ready."
+              : "Update listing details, assignment, and marketing posture while keeping the existing property attachment intact."}
         </div>
         {listing ? (
-          <div className={styles.submeta}>Public listing ID: {getPublicListingId(listing.id)}</div>
+          <div className={styles.submeta}>
+            Public listing ID: {getPublicListingId(listing.id)} · Status: {listing.status}
+          </div>
         ) : null}
         {showCreateEmptyState ? (
           <div className={styles.emptyState}>
@@ -118,8 +122,9 @@ export function ListingForm({
               now.
             </div>
             <div className={styles.emptyBody}>
-              All of your currently owned properties already have active listings. To create another listing, first
-              claim a different property or deactivate an existing listing so that property becomes listable again.
+              All of your currently owned properties already have an open listing or draft. To create another one,
+              first claim a different property or archive/deactivate the existing listing so that property becomes
+              listable again.
             </div>
             <div className={styles.actions}>
               <Link href={routes.app.portalProperties}>
@@ -212,7 +217,7 @@ export function ListingForm({
                 ))}
               </select>
               <div className={styles.hint}>
-                This flow only offers properties you own and that do not currently have an active listing.
+                This flow only offers properties you own and that do not currently have another open listing or draft.
               </div>
             </div>
           ) : null}
@@ -247,36 +252,43 @@ export function ListingForm({
               </select>
             </div>
 
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="asking-price">
-                Asking price (RWF)
-              </label>
-              <input
-                className={styles.input}
-                defaultValue={listing?.askingPrice}
-                id="asking-price"
-                inputMode="numeric"
-                min="1"
-                name="askingPrice"
-                placeholder="Example: 185000000"
-                step="1"
-                type="number"
-              />
-            </div>
+            {mode === "edit" ? (
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="asking-price">
+                  Asking price (RWF)
+                </label>
+                <input
+                  className={styles.input}
+                  defaultValue={listing?.askingPrice}
+                  id="asking-price"
+                  inputMode="numeric"
+                  min="1"
+                  name="askingPrice"
+                  placeholder="Example: 185000000"
+                  step="1"
+                  type="number"
+                />
+                {listing?.status === "draft" ? (
+                  <div className={styles.hint}>Required before you can publish.</div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="description">
-              Description
-            </label>
-            <textarea
-              className={styles.textarea}
-              defaultValue={listing?.description}
-              id="description"
-              name="description"
-              placeholder="Add listing copy, context, and useful details for the public property page."
-            />
-          </div>
+          {mode === "edit" ? (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="description">
+                Description
+              </label>
+              <textarea
+                className={styles.textarea}
+                defaultValue={listing?.description}
+                id="description"
+                name="description"
+                placeholder="Add listing copy, context, and useful details for the public property page."
+              />
+            </div>
+          ) : null}
 
           {mode === "edit" && listing ? (
             <ListingPhotoManager
@@ -286,15 +298,29 @@ export function ListingForm({
             />
           ) : mode === "create" ? (
             <div className={styles.notice}>
-              Photos come next. Create the listing first, then add and manage standardized gallery images from the edit
-              screen.
+              Photos come next. This first step creates a draft listing, then sends you to the full editor to add and
+              manage gallery images before publishing.
             </div>
           ) : null}
 
           <div className={styles.actions}>
-            <Button type="submit">
-              {mode === "create" ? "Create listing" : "Save changes"}
+            <Button name="intent" type="submit" value="save">
+              {mode === "create" ? "Create draft" : listing?.status === "draft" ? "Save draft" : "Save changes"}
             </Button>
+            {mode === "edit" && listing?.status === "draft" ? (
+              <>
+                <Button
+                  disabled={!listing.askingPrice}
+                  name="intent"
+                  title={!listing.askingPrice ? "Enter an asking price above before publishing" : undefined}
+                  type="submit"
+                  value="publish"
+                >
+                  Publish listing
+                </Button>
+                <Button name="intent" type="submit" value="discard" variant="secondary">Discard draft</Button>
+              </>
+            ) : null}
             <Link href={routes.app.portalListings}>
               <Button type="button" variant="secondary">
                 Back to listings

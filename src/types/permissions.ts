@@ -29,6 +29,7 @@ export const roleCapabilities: Record<Role, Capability[]> = {
     "leave_agency",
     "create_listing",
     "edit_listing",
+    "deactivate_listing",
   ],
   agency_manager: [
     "save_property",

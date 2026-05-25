@@ -37,6 +37,13 @@ function getRequiredNumber(formData: FormData, key: string) {
   return value;
 }
 
+function getOptionalNumber(formData: FormData, key: string) {
+  const str = getOptionalString(formData, key);
+  if (str === undefined) return undefined;
+  const value = Number(str);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 function getOptionalString(formData: FormData, key: string) {
   const value = formData.get(key);
   if (typeof value !== "string") {
@@ -60,7 +67,7 @@ function getRequiredListingMarketingType(formData: FormData, key: string) {
 function getRequiredListingStatus(formData: FormData, key: string) {
   const value = getRequiredString(formData, key);
 
-  if (value !== "active" && value !== "inactive") {
+  if (value !== "active" && value !== "inactive" && value !== "archived") {
     throw new Error(`Invalid listing status: ${key}`);
   }
 
@@ -111,10 +118,9 @@ export async function submitListingCreateAction(formData: FormData) {
     propertyRouteId: getRequiredString(formData, "propertyRouteId"),
     agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
-    askingPrice: getRequiredNumber(formData, "askingPrice"),
-    description: getOptionalString(formData, "description"),
   });
 
+  revalidatePath(routes.app.portalProperties);
   revalidateListingSurfaces({
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
@@ -132,9 +138,53 @@ export async function submitListingUpdateAction(formData: FormData) {
   const listing = await updatePortalListingInDb({
     userId: currentUser.id,
     listingId: getRequiredString(formData, "listingId"),
-    agentUserId: getRequiredString(formData, "agentUserId"),
+    agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
-    askingPrice: getRequiredNumber(formData, "askingPrice"),
+    askingPrice: getOptionalNumber(formData, "askingPrice"),
+    description: getOptionalString(formData, "description"),
+  });
+
+  revalidateListingSurfaces({
+    propertyRouteId: listing.propertyRouteId,
+    marketingType: listing.marketingType,
+  });
+  redirect(routes.app.portalListings);
+}
+
+export async function submitListingEditAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalListings);
+  const intent = formData.get("intent");
+
+  if (intent === "publish" || intent === "discard") {
+    if (!hasCapability(currentUser.roles, "deactivate_listing")) {
+      throw new Error("Current user cannot change listing status");
+    }
+
+    const status = intent === "publish" ? "active" : "archived";
+    const listing = await setPortalListingStatusInDb({
+      userId: currentUser.id,
+      listingId: getRequiredString(formData, "listingId"),
+      status,
+    });
+
+    revalidatePath(routes.app.portalProperties);
+    revalidateListingSurfaces({
+      propertyRouteId: listing.propertyRouteId,
+      marketingType: listing.marketingType,
+    });
+    redirect(routes.app.portalListings);
+  }
+
+  if (!hasCapability(currentUser.roles, "edit_listing")) {
+    throw new Error("Current user cannot edit listings");
+  }
+
+  const listing = await updatePortalListingInDb({
+    userId: currentUser.id,
+    listingId: getRequiredString(formData, "listingId"),
+    agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
+    marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+    askingPrice: getOptionalNumber(formData, "askingPrice"),
     description: getOptionalString(formData, "description"),
   });
 
@@ -158,6 +208,7 @@ export async function setListingStatusAction(formData: FormData) {
     status: getRequiredListingStatus(formData, "status"),
   });
 
+  revalidatePath(routes.app.portalProperties);
   revalidateListingSurfaces({
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,

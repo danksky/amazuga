@@ -4,15 +4,31 @@ import { useFormStatus } from "react-dom";
 
 export function ListingStatusButton({
   className,
+  currentStatus,
   nextStatus,
 }: {
   className: string;
-  nextStatus: "active" | "inactive";
+  currentStatus: "draft" | "active" | "inactive" | "archived";
+  nextStatus: "active" | "inactive" | "archived";
 }) {
   const { pending } = useFormStatus();
 
-  const idleLabel = nextStatus === "inactive" ? "Deactivate" : "Reactivate";
-  const pendingLabel = nextStatus === "inactive" ? "Deactivating..." : "Reactivating...";
+  const idleLabel =
+    currentStatus === "draft" && nextStatus === "active"
+      ? "Publish"
+      : currentStatus === "draft" && nextStatus === "archived"
+        ? "Discard draft"
+        : nextStatus === "inactive"
+          ? "Deactivate"
+          : "Reactivate";
+  const pendingLabel =
+    currentStatus === "draft" && nextStatus === "active"
+      ? "Publishing..."
+      : currentStatus === "draft" && nextStatus === "archived"
+        ? "Discarding..."
+        : nextStatus === "inactive"
+          ? "Deactivating..."
+          : "Reactivating...";
 
   return (
     <button
