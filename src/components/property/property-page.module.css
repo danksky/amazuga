@@ -2,11 +2,18 @@
   padding: 28px 0 48px;
 }
 
-.hero {
+.pageGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 540px);
   gap: 24px;
-  align-items: stretch;
+  align-items: start;
+}
+
+.leftRail,
+.rightRail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
 }
 
 .panel {
@@ -88,6 +95,39 @@
 
 .summary {
   padding: 24px;
+}
+
+.primaryInfoPanel {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  min-width: 0;
+}
+
+.priceLabel {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.priceValue {
+  font-size: clamp(1.8rem, 4vw, 3.1rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+  font-weight: 650;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.primaryAddress {
+  margin: 0;
+  font-size: clamp(1.44rem, 2.72vw, 2.24rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .eyebrow {
@@ -234,25 +274,23 @@
   font-weight: 650;
 }
 
-.mapSection,
-.tertiaryGrid {
-  margin-top: 24px;
+.section {
+  padding: 24px;
+}
+
+.mapSection {
+  margin-top: 0;
+}
+
+.mapSection .section {
+  padding: 0;
+  overflow: hidden;
 }
 
 .secondaryMapFrame {
   min-height: 420px;
-  border-radius: 16px;
+  height: 100%;
   overflow: hidden;
-}
-
-.tertiaryGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 24px;
-}
-
-.section {
-  padding: 24px;
 }
 
 .sectionTitle {
@@ -285,29 +323,6 @@
   text-align: left;
 }
 
-.sidebar {
-  display: grid;
-  gap: 16px;
-}
-
-.listingCard,
-.nonListedState {
-  display: grid;
-  gap: 12px;
-}
-
-.listingPrice {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.listingHeadline {
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
 .listingMeta,
 .listingDescription,
 .nonListedBody,
@@ -327,6 +342,35 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
+}
+
+.contactSummary {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.contactSummaryLabel {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.contactSummaryName {
+  margin-top: 6px;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.contactSummaryMeta {
+  margin-top: 4px;
+  color: var(--foreground-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .contactLabel {
@@ -351,17 +395,30 @@
   gap: 10px;
 }
 
+.whatsappAction,
 .actionLinkPrimary,
 .actionLinkSecondary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
+  padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
+  font-size: 0.95rem;
   font-weight: 600;
+  line-height: normal;
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.whatsappAction {
+  background: #128c49;
+  color: #ffffff;
+  border-color: #128c49;
+}
+
+.whatsappAction:hover,
+.whatsappAction:focus-visible {
+  background: color-mix(in srgb, #128c49 88%, white);
 }
 
 .actionLinkPrimary {
@@ -423,15 +480,8 @@
   font-size: 0.9rem;
 }
 
-.listingCard {
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--surface-muted);
-}
-
 @media (max-width: 1000px) {
-  .hero,
-  .tertiaryGrid {
+  .pageGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -442,6 +492,7 @@
   }
 
   .summary,
+  .primaryInfoPanel,
   .section,
   .mapPanel {
     padding: 18px;

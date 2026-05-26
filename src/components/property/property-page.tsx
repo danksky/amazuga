@@ -16,6 +16,7 @@ interface PropertyPageProps {
   property: Property;
   listing?: Listing;
   agency?: Agency;
+  contactName?: string;
   valuations: ValuationSubmission[];
   isSaved?: boolean;
   statusMessage?: string;
@@ -38,13 +39,9 @@ interface PropertyPageBehavior {
   kindLabel: string;
   mediaMode: "gallery" | "map";
   mapTitle: string;
-  detailsTitle: string;
-  listingTitle: string;
   claimLabel: string;
   nonListedTitle: string;
   nonListedBody: string;
-  infoTitle: string;
-  infoBody: string;
 }
 
 const PROPERTY_KIND_LABELS: Record<PropertyKind, string> = {
@@ -103,6 +100,16 @@ function formatArea(value?: number) {
   return value ? formatAreaSqm(value) : "Unknown";
 }
 
+function buildWhatsappUrl(phone?: string) {
+  const normalizedPhone = phone?.replace(/\D/g, "");
+
+  if (!normalizedPhone) {
+    return undefined;
+  }
+
+  return `https://wa.me/${normalizedPhone}`;
+}
+
 function buildFactItems(property: Property, propertyKind: PropertyKind): FactItem[] {
   const typeLabel = property.facts.propertyType ?? formatPropertyKindLabel(propertyKind);
 
@@ -149,9 +156,10 @@ function buildFactItems(property: Property, propertyKind: PropertyKind): FactIte
 }
 
 function buildDetailItems(property: Property, propertyKind: PropertyKind): DetailItem[] {
-  const detailItems: DetailItem[] = [];
+  const factItems = buildFactItems(property, propertyKind);
+  const detailItems: DetailItem[] = factItems.map((fact) => ({ label: fact.label, value: fact.value }));
 
-  if (property.facts.zoningLabel) {
+  if (property.facts.zoningLabel && !detailItems.some((item) => item.label === "Use zone" || item.label === "Zone")) {
     detailItems.push({ label: propertyKind === "land" ? "Zone" : "Use zone", value: property.facts.zoningLabel });
   }
 
@@ -163,11 +171,9 @@ function buildDetailItems(property: Property, propertyKind: PropertyKind): Detai
     detailItems.push({ label: "Property code", value: property.code });
   }
 
-  if (property.facts.yearBuilt) {
-    detailItems.push({ label: "Year built", value: String(property.facts.yearBuilt) });
+  if (property.location.district && !detailItems.some((item) => item.label === "District")) {
+    detailItems.push({ label: "District", value: property.location.district });
   }
-
-  detailItems.push({ label: "District", value: property.location.district });
 
   if (property.location.sector) {
     detailItems.push({ label: "Sector", value: property.location.sector });
@@ -202,15 +208,9 @@ function buildPropertyPageBehavior(
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
         mapTitle: "Parcel map and land context",
-        detailsTitle: "Parcel details",
-        listingTitle: listing ? "Parcel listing" : "Parcel actions",
         claimLabel: "Claim this parcel",
         nonListedTitle: "This parcel is not currently listed.",
         nonListedBody: "You can claim the parcel or save it while it remains off-market.",
-        infoTitle: listing ? "Listing notes" : "About parcel claims",
-        infoBody: listing
-          ? "This page stays parcel-first even when listed so zoning and land footprint remain the primary decision signals."
-          : "Claiming is available on unlisted parcels while the downstream verification flow is still being defined.",
       };
     case "apartment_unit":
       return {
@@ -218,15 +218,9 @@ function buildPropertyPageBehavior(
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
         mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Building and parcel context",
-        detailsTitle: "Unit details",
-        listingTitle: listing ? "Unit listing" : "Unit actions",
         claimLabel: "Claim this unit",
         nonListedTitle: "This apartment unit is not currently listed.",
         nonListedBody: "You can claim the unit or save it while we wait for future listing activity.",
-        infoTitle: listing ? "Listing notes" : "About unit claims",
-        infoBody: listing
-          ? "Listing information appears here while the property page remains the canonical surface for the unit."
-          : "Claiming is available on unlisted units as the starting point for future verification and ownership workflows.",
       };
     case "building":
       return {
@@ -234,15 +228,9 @@ function buildPropertyPageBehavior(
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
         mapTitle: mediaMode === "map" ? "Parcel reference" : "Building footprint and parcel context",
-        detailsTitle: "Building details",
-        listingTitle: listing ? "Building listing" : "Building actions",
         claimLabel: "Claim this building",
         nonListedTitle: "This building is not currently listed.",
         nonListedBody: "You can claim the building or save it while it remains off-market.",
-        infoTitle: listing ? "Listing notes" : "About building claims",
-        infoBody: listing
-          ? "This building page is the canonical surface today and can later branch into child-unit inventory."
-          : "Claiming is available on unlisted buildings while the downstream verification flow is still being defined.",
       };
     case "commercial_unit":
       return {
@@ -250,15 +238,9 @@ function buildPropertyPageBehavior(
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
         mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Business location context",
-        detailsTitle: "Commercial details",
-        listingTitle: listing ? "Commercial listing" : "Commercial actions",
         claimLabel: "Claim this property",
         nonListedTitle: "This commercial property is not currently listed.",
         nonListedBody: "You can claim the property or save it while it remains off-market.",
-        infoTitle: listing ? "Listing notes" : "About commercial claims",
-        infoBody: listing
-          ? "This page keeps the commercial property canonical while the active listing contributes current pricing and contact details."
-          : "Claiming is available on unlisted commercial properties while the downstream verification flow is still being defined.",
       };
     case "house":
     case "mixed_use":
@@ -269,15 +251,9 @@ function buildPropertyPageBehavior(
         kindLabel: formatPropertyKindLabel(propertyKind),
         mediaMode,
         mapTitle: "Parcel context",
-        detailsTitle: "Property details",
-        listingTitle: listing ? "Active listing" : "Property actions",
         claimLabel: "Claim this home",
         nonListedTitle: "This property is not currently listed.",
         nonListedBody: "You can claim the home or save it while it remains off-market.",
-        infoTitle: listing ? "Listing notes" : "About claiming",
-        infoBody: listing
-          ? "This property page is canonical. Listing information appears here when the property has an active listing."
-          : "Claiming is available on non-listed properties. The downstream verification flow is still being defined, so this currently acts as the entry point into that process.",
       };
   }
 }
@@ -294,6 +270,7 @@ export function PropertyPage({
   property,
   listing,
   agency,
+  contactName,
   valuations,
   isSaved = false,
   statusMessage,
@@ -318,184 +295,183 @@ export function PropertyPage({
   const tertiaryImage = galleryImages[2];
   const propertyKind = inferPropertyKind(property);
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
-  const factItems = buildFactItems(property, propertyKind);
   const detailItems = buildDetailItems(property, propertyKind);
   const kindBadgeLabel = behavior.kindLabel;
   const listingStateLabel = buildListingStateLabel(listing);
   const listingMetaLabel = listing ? (listing.marketingType === "rent" ? "For rent" : "For sale") : undefined;
   const summaryDescription = property.description;
   const zoningLabel = property.facts.zoningLabel;
+  const whatsappUrl = buildWhatsappUrl(agency?.whatsappPhone);
+  const primaryPrice = listing
+    ? formatCurrency(listing.askingPrice, listing.currency)
+    : latestValuation
+      ? formatCurrency(latestValuation.estimatedValue, latestValuation.currency)
+      : "Price unavailable";
+  const contactRoleLabel = listing
+    ? agency
+      ? contactName && contactName !== agency.businessName
+        ? agency.businessName
+        : "Listing agency"
+      : "For sale by owner"
+    : undefined;
 
   return (
     <div className={`container ${styles.page}`}>
-      <div className={styles.hero}>
-        {behavior.mediaMode === "gallery" && primaryImage ? (
-          <div className={`${styles.panel} ${styles.mediaPanel}`}>
-            <div className={`${styles.gallery}${!secondaryImage ? ` ${styles.gallerySingle}` : ""}`}>
-              <div className={styles.galleryPrimary}>
-                <img alt={property.title} className={styles.galleryImage} src={primaryImage} />
-              </div>
-              {tertiaryImage ? (
-                <div className={styles.galleryStack}>
-                  <div className={styles.gallerySecondary}>
-                    <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+      <div className={styles.pageGrid}>
+        <div className={styles.leftRail}>
+          {behavior.mediaMode === "gallery" && primaryImage ? (
+            <div className={`${styles.panel} ${styles.mediaPanel}`}>
+              <div className={`${styles.gallery}${!secondaryImage ? ` ${styles.gallerySingle}` : ""}`}>
+                <div className={styles.galleryPrimary}>
+                  <img alt={property.title} className={styles.galleryImage} src={primaryImage} />
+                </div>
+                {tertiaryImage ? (
+                  <div className={styles.galleryStack}>
+                    <div className={styles.gallerySecondary}>
+                      <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+                    </div>
+                    <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
+                      <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
+                      <button className={styles.galleryCta} type="button">
+                        See all images
+                      </button>
+                    </div>
                   </div>
-                  <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
-                    <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
+                ) : secondaryImage ? (
+                  <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction} ${styles.gallerySecondaryFull}`}>
+                    <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
                     <button className={styles.galleryCta} type="button">
                       See all images
                     </button>
                   </div>
-                </div>
-              ) : secondaryImage ? (
-                <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction} ${styles.gallerySecondaryFull}`}>
-                  <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
-                  <button className={styles.galleryCta} type="button">
-                    See all images
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          <div className={`${styles.panel} ${styles.mapPanel}`}>
-            <div className={styles.mapGrid}>
-              <PropertyParcelMap property={property} />
-            </div>
-          </div>
-        )}
-        <div className={`${styles.panel} ${styles.summary}`}>
-          <div className={styles.eyebrow}>{locationLabel}</div>
-          <h1 className={styles.title}>{property.title}</h1>
-          <div className={styles.badgeRow}>
-            <div className={styles.status}>{listingStateLabel}</div>
-            <div className={styles.kindBadge}>{kindBadgeLabel}</div>
-            {listingMetaLabel ? <div className={styles.neutralBadge}>{listingMetaLabel}</div> : null}
-            {zoningLabel ? <div className={styles.neutralBadge}>{zoningLabel}</div> : null}
-          </div>
-          {statusMessage ? <div className={styles.description}>{statusMessage}</div> : null}
-          <div className={styles.statusRow}>
-            {listing ? (
-              <div className={styles.inlineMeta}>Listed at {formatCurrency(listing.askingPrice, listing.currency)}</div>
-            ) : latestValuation ? (
-              <div className={styles.inlineMeta}>
-                Market estimate based on {formatDate(latestValuation.effectiveDate)}:{" "}
-                {formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}
+                ) : null}
               </div>
-            ) : (
-              <div className={styles.inlineMeta}>No active listing is attached to this property right now.</div>
-            )}
+            </div>
+          ) : (
+            <div className={`${styles.panel} ${styles.mapPanel}`}>
+              <div className={styles.mapGrid}>
+                <PropertyParcelMap property={property} />
+              </div>
+            </div>
+          )}
+
+          <div className={`${styles.panel} ${styles.summary}`}>
+            <div className={styles.badgeRow}>
+              <div className={styles.status}>{listingStateLabel}</div>
+              <div className={styles.kindBadge}>{kindBadgeLabel}</div>
+              {listingMetaLabel ? <div className={styles.neutralBadge}>{listingMetaLabel}</div> : null}
+              {zoningLabel ? <div className={styles.neutralBadge}>{zoningLabel}</div> : null}
+            </div>
+            {statusMessage ? <div className={styles.description}>{statusMessage}</div> : null}
+            <div className={styles.statusRow}>
+              {listing ? (
+                <div className={styles.inlineMeta}>Listed at {formatCurrency(listing.askingPrice, listing.currency)}</div>
+              ) : latestValuation ? (
+                <div className={styles.inlineMeta}>
+                  Market estimate based on {formatDate(latestValuation.effectiveDate)}:{" "}
+                  {formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}
+                </div>
+              ) : (
+                <div className={styles.inlineMeta}>No active listing is attached to this property right now.</div>
+              )}
+            </div>
+            {!listing && latestValuation ? (
+              <div className={styles.estimateCard}>
+                <div className={styles.estimateLabel}>Market estimate</div>
+                <div className={styles.estimateValue}>{formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}</div>
+                <div className={styles.estimateBody}>
+                  This property is not currently listed. The estimate is based on the latest approved valuation recorded on{" "}
+                  {formatDate(latestValuation.effectiveDate)}.
+                </div>
+              </div>
+            ) : null}
+            {summaryDescription ? <div className={styles.description}>{summaryDescription}</div> : null}
+            <div className={styles.detailList}>
+              {detailItems.map((detailItem) => (
+                <div className={styles.detailRow} key={detailItem.label}>
+                  <span>{detailItem.label}</span>
+                  <span>{detailItem.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          {!listing && latestValuation ? (
-            <div className={styles.estimateCard}>
-              <div className={styles.estimateLabel}>Market estimate</div>
-              <div className={styles.estimateValue}>{formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}</div>
-              <div className={styles.estimateBody}>
-                This property is not currently listed. The estimate is based on the latest approved valuation recorded on{" "}
-                {formatDate(latestValuation.effectiveDate)}.
+
+          {behavior.mediaMode === "gallery" ? (
+            <div className={styles.mapSection}>
+              <div className={`${styles.panel} ${styles.section}`}>
+                <div className={styles.secondaryMapFrame}>
+                  <PropertyParcelMap property={property} />
+                </div>
               </div>
             </div>
           ) : null}
-          {summaryDescription ? <div className={styles.description}>{summaryDescription}</div> : null}
-          <div className={styles.facts}>
-            {factItems.map((fact) => (
-              <div className={styles.fact} key={fact.label}>
-                <div className={styles.factLabel}>{fact.label}</div>
-                <div className={styles.factValue}>{fact.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {behavior.mediaMode === "gallery" ? (
-        <div className={styles.mapSection}>
-          <div className={`${styles.panel} ${styles.section}`}>
-            <div className={styles.mapHeader}>
-              <div>
-                <div className={styles.panelEyebrow}>Map</div>
-                <div className={styles.mapTitle}>{behavior.mapTitle}</div>
-              </div>
-              <div className={styles.mapMeta}>{locationLabel}</div>
-            </div>
-            <div className={styles.secondaryMapFrame}>
-              <PropertyParcelMap property={property} />
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <div className={styles.tertiaryGrid}>
-        <div className={`${styles.panel} ${styles.section}`}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Valuation history</h2>
-            <div className={styles.sectionMeta}>{valuations.length} approved entries</div>
-          </div>
-          {valuations.length > 0 ? (
-            <table className={styles.historyTable}>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Value</th>
-                  <th>Valuator</th>
-                  <th>Recorded</th>
-                </tr>
-              </thead>
-              <tbody>
-                {valuations.map((valuation) => {
-                  const valuatorLabel = valuation.isAnonymous ? "Anonymous" : "Named valuator";
-
-                  return (
-                    <tr key={valuation.id}>
-                      <td>{formatDate(valuation.effectiveDate)}</td>
-                      <td>{formatCurrency(valuation.estimatedValue, valuation.currency)}</td>
-                      <td>{valuatorLabel}</td>
-                      <td>{formatDate(valuation.createdAt)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <div className={styles.emptyState}>No approved valuation history yet.</div>
-          )}
-        </div>
-
-        <div className={styles.sidebar}>
           <div className={`${styles.panel} ${styles.section}`}>
             <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>{behavior.listingTitle}</h2>
+              <h2 className={styles.sectionTitle}>Valuation history</h2>
+              <div className={styles.sectionMeta}>{valuations.length} approved entries</div>
             </div>
-            {listing ? (
-              <div className={styles.listingCard}>
-                <div className={styles.listingPrice}>{formatCurrency(listing.askingPrice, listing.currency)}</div>
-                <div className={styles.listingMeta}>
-                  {listing.marketingType === "rent" ? "For rent" : "For sale"}
-                  {agency ? ` · ${agency.businessName}` : ""}
-                </div>
-                <div className={styles.listingDescription}>{listing.description}</div>
-                {showWhatsapp && agency?.whatsappPhone ? (
-                  <div className={styles.contactCard}>
-                    <div className={styles.contactLabel}>WhatsApp</div>
-                    <div className={styles.contactValue}>{agency.whatsappPhone}</div>
+            {valuations.length > 0 ? (
+              <table className={styles.historyTable}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Value</th>
+                    <th>Valuator</th>
+                    <th>Recorded</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valuations.map((valuation) => {
+                    const valuatorLabel = valuation.isAnonymous ? "Anonymous" : "Named valuator";
+
+                    return (
+                      <tr key={valuation.id}>
+                        <td>{formatDate(valuation.effectiveDate)}</td>
+                        <td>{formatCurrency(valuation.estimatedValue, valuation.currency)}</td>
+                        <td>{valuatorLabel}</td>
+                        <td>{formatDate(valuation.createdAt)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className={styles.emptyState}>No approved valuation history yet.</div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.rightRail}>
+          <div className={`${styles.panel} ${styles.primaryInfoPanel}`}>
+            <div className={styles.eyebrow}>{locationLabel}</div>
+            <div className={styles.priceValue}>{primaryPrice}</div>
+            <h1 className={styles.primaryAddress}>{property.title}</h1>
+            <div className={styles.ctaGroup}>
+              {listing ? (
+                <>
+                  <div className={styles.contactSummary}>
+                    <div className={styles.contactSummaryLabel}>Contact</div>
+                    <div className={styles.contactSummaryName}>{contactName ?? agency?.businessName ?? "For sale by owner"}</div>
+                    {contactRoleLabel ? <div className={styles.contactSummaryMeta}>{contactRoleLabel}</div> : null}
                   </div>
-                ) : null}
-                <div className={styles.ctaGroup}>
-                  <Button onClick={() => setShowWhatsapp((current) => !current)}>
-                    {showWhatsapp ? "Hide WhatsApp" : "Show WhatsApp"}
-                  </Button>
+                  {showWhatsapp && whatsappUrl ? (
+                    <a className={styles.whatsappAction} href={whatsappUrl} rel="noreferrer" target="_blank">
+                      Message on WhatsApp
+                    </a>
+                  ) : (
+                    <Button disabled={!whatsappUrl} onClick={() => setShowWhatsapp(true)}>
+                      {whatsappUrl ? "Reveal WhatsApp" : "WhatsApp unavailable"}
+                    </Button>
+                  )}
                   <form action={toggleSavePropertyAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
-                </div>
-              </div>
-            ) : (
-              <div className={styles.nonListedState}>
-                <div className={styles.nonListedTitle}>{behavior.nonListedTitle}</div>
-                <div className={styles.nonListedBody}>{behavior.nonListedBody}</div>
-                <div className={styles.ctaGroup}>
+                </>
+              ) : (
+                <>
                   {claimState === "owned" ? (
                     <>
                       <Link className={styles.actionLinkPrimary} href={routes.app.portalProperties}>
@@ -532,28 +508,9 @@ export function PropertyPage({
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className={`${styles.panel} ${styles.section}`}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>{behavior.detailsTitle}</h2>
+                </>
+              )}
             </div>
-            <div className={styles.detailList}>
-              {detailItems.map((detailItem) => (
-                <div className={styles.detailRow} key={detailItem.label}>
-                  <span>{detailItem.label}</span>
-                  <span>{detailItem.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className={`${styles.panel} ${styles.section}`}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>{behavior.infoTitle}</h2>
-            </div>
-            <div className={styles.infoBlock}>{behavior.infoBody}</div>
           </div>
         </div>
       </div>

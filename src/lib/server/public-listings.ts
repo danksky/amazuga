@@ -41,6 +41,7 @@ interface ListingParcelRow {
   listing_id: string | null;
   agency_id: string | null;
   agent_user_id: string | null;
+  agent_full_name: string | null;
   listing_status: Listing["status"] | null;
   listing_visibility: Listing["visibility"] | null;
   marketing_type: Listing["marketingType"] | null;
@@ -96,6 +97,7 @@ export interface PublicPropertyPageData {
   property: Property;
   listing?: Listing;
   agency?: Agency;
+  contactName?: string;
   valuations: ValuationSubmission[];
 }
 
@@ -425,6 +427,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.id AS listing_id,
         l.agency_id,
         l.agent_user_id,
+        agent.full_name AS agent_full_name,
         l.status AS listing_status,
         l.visibility AS listing_visibility,
         l.marketing_type,
@@ -451,6 +454,8 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         pp.interior_area_sqm,
         pp.year_built
       FROM listing l
+      JOIN app_user agent
+        ON agent.id = l.agent_user_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
@@ -521,6 +526,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.id AS listing_id,
         l.agency_id,
         l.agent_user_id,
+        agent.full_name AS agent_full_name,
         l.status AS listing_status,
         l.visibility AS listing_visibility,
         l.marketing_type,
@@ -591,6 +597,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
            )
          )
        )
+      LEFT JOIN app_user agent
+        ON agent.id = l.agent_user_id
       LEFT JOIN property_profile pp
         ON pp.parcel_id = p.parcel_id
       LIMIT 1
@@ -607,6 +615,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
   const imageUrls = row.listing_id ? await getListingImages(row.listing_id) : [];
   const listing = buildListingFromRow(row, imageUrls);
   const agency = row.agency_id ? await getAgencyByIdFromDb(row.agency_id) : undefined;
+  const contactName = row.agent_full_name?.trim()
+    || (row.listing_id ? (row.agency_id ? agency?.businessName : "For sale by owner") : undefined);
   const valuations = await getApprovedValuationsForProperty({
     propertyInternalId: property.internalId,
     propertyId: property.id,
@@ -618,6 +628,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
     property,
     listing,
     agency,
+    contactName,
     valuations,
   };
 }

@@ -78,6 +78,7 @@ export default async function PropertySlugDetailsPage({ params, searchParams }: 
             ? "pending"
             : "claimable"
       }
+      contactName={propertyPageData.contactName}
       isSaved={isSaved}
       listing={propertyPageData.listing}
       property={propertyPageData.property}
