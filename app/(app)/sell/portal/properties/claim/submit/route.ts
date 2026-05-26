@@ -46,21 +46,8 @@ function needsInteriorArea(propertyType: ClaimPropertyType) {
   return propertyType !== "land";
 }
 
-function needsRepresentativeSize(propertyType: ClaimPropertyType) {
-  return propertyType !== "apartment_unit" && propertyType !== "commercial_unit";
-}
-
 function needsBedroomsAndBathrooms(propertyType: ClaimPropertyType) {
   return propertyType === "house" || propertyType === "apartment_unit";
-}
-
-function needsZoning(propertyType: ClaimPropertyType) {
-  return (
-    propertyType === "land" ||
-    propertyType === "apartment_building" ||
-    propertyType === "commercial_building" ||
-    propertyType === "commercial_unit"
-  );
 }
 
 function getRequiredMissingFacts(propertyType: ClaimPropertyType, propertyFacts: PropertyRecordFactsInput) {
@@ -70,10 +57,6 @@ function getRequiredMissingFacts(propertyType: ClaimPropertyType, propertyFacts:
     missing.push("interiorAreaSqm");
   }
 
-  if (needsRepresentativeSize(propertyType) && !propertyFacts.representativeSize) {
-    missing.push("representativeSize");
-  }
-
   if (needsBedroomsAndBathrooms(propertyType)) {
     if (propertyFacts.bedrooms === undefined) {
       missing.push("bedrooms");
@@ -81,10 +64,6 @@ function getRequiredMissingFacts(propertyType: ClaimPropertyType, propertyFacts:
     if (propertyFacts.bathrooms === undefined) {
       missing.push("bathrooms");
     }
-  }
-
-  if (needsZoning(propertyType) && !propertyFacts.zoning) {
-    missing.push("zoning");
   }
 
   return missing;
@@ -140,8 +119,6 @@ export async function POST(request: Request) {
   const propertyType = typeof rawPropertyType === "string" ? (rawPropertyType as ClaimPropertyType) : undefined;
   const declaredAssetType: PropertyKind | undefined = propertyType ? FORM_TYPE_TO_PROPERTY_KIND[propertyType] : undefined;
   const propertyFacts: PropertyRecordFactsInput = {
-    representativeSize: getOptionalNumber(formData, "representativeSize"),
-    zoning: getOptionalString(formData, "zoning"),
     bedrooms: getOptionalNumber(formData, "bedrooms"),
     bathrooms: getOptionalNumber(formData, "bathrooms"),
     interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),

@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+
 import Link from "next/link";
 
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -42,6 +47,70 @@ function getTenureLabel(tenureType: PortalPropertiesWorkspaceData["claimRequests
   }
 
   return "Unspecified";
+}
+
+function OwnedPropertyActionMenu({
+  buttonClassName,
+  children,
+  menuClassName,
+  triggerClassName,
+}: {
+  buttonClassName: string;
+  children: ReactNode;
+  menuClassName: string;
+  triggerClassName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className={triggerClassName} ref={menuRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={buttonClassName}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <span aria-hidden="true" className={styles.actionMenuDots}>
+          <span />
+          <span />
+          <span />
+        </span>
+      </button>
+      {open ? (
+        <div className={menuClassName} role="menu">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function PortalPropertiesPage({
@@ -325,46 +394,52 @@ export function PortalPropertiesPage({
                       </div>
                     ) : null}
                     <div className={styles.actions}>
-                      <Link className={styles.primaryAction} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
-                        Open property page
-                      </Link>
-                      <Link className={styles.secondaryAction} href={routes.app.portalPropertyEdit(property.propertyRouteId)}>
-                        {property.isListingReady ? "Edit property details" : "Complete property details"}
-                      </Link>
-                      {canCreateListing && property.listingId ? (
-                        <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(property.listingId)}>
-                          {property.listingStatus === "draft" ? "Continue draft" : "Edit listing"}
-                        </Link>
-                      ) : canCreateListing && property.isListingReady ? (
-                        <Link className={styles.secondaryAction} href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}>
-                          Create listing
-                        </Link>
-                      ) : null}
-                      {canManageListingLifecycle && property.listingId && property.listingStatus === "active" ? (
-                        <form action={setListingStatusAction}>
-                          <input name="listingId" type="hidden" value={property.listingId} />
-                          <input name="status" type="hidden" value="inactive" />
-                          <ListingStatusButton
-                            className={styles.secondaryAction}
-                            currentStatus="active"
-                            nextStatus="inactive"
-                          />
-                        </form>
-                      ) : canManageListingLifecycle && property.listingId && property.listingStatus === "inactive" ? (
-                        <form action={setListingStatusAction}>
-                          <input name="listingId" type="hidden" value={property.listingId} />
-                          <input name="status" type="hidden" value="active" />
-                          <ListingStatusButton
-                            className={styles.secondaryAction}
-                            currentStatus="inactive"
-                            disabled={!property.listingAskingPrice || !property.listingDescription || !property.firstImageUrl}
-                            nextStatus="active"
-                          />
-                        </form>
-                      ) : null}
-                      <Link className={styles.secondaryAction} href={routes.app.portalPropertyTransfer(property.propertyRouteId)}>
-                        Transfer / sell
-                      </Link>
+                      <OwnedPropertyActionMenu
+                        buttonClassName={`${styles.secondaryAction} ${styles.actionMenuButton}`}
+                        menuClassName={styles.actionMenuPopover}
+                        triggerClassName={styles.actionMenu}
+                      >
+                          <Link className={styles.actionMenuItem} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
+                            Open property page
+                          </Link>
+                          <Link className={styles.actionMenuItem} href={routes.app.portalPropertyEdit(property.propertyRouteId)}>
+                            {property.isListingReady ? "Edit property details" : "Complete property details"}
+                          </Link>
+                          {canCreateListing && property.listingId ? (
+                            <Link className={styles.actionMenuItem} href={routes.app.portalListingEdit(property.listingId)}>
+                              {property.listingStatus === "draft" ? "Continue draft" : "Edit listing"}
+                            </Link>
+                          ) : canCreateListing && property.isListingReady ? (
+                            <Link className={styles.actionMenuItem} href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}>
+                              Create listing
+                            </Link>
+                          ) : null}
+                          {canManageListingLifecycle && property.listingId && property.listingStatus === "active" ? (
+                            <form action={setListingStatusAction}>
+                              <input name="listingId" type="hidden" value={property.listingId} />
+                              <input name="status" type="hidden" value="inactive" />
+                              <ListingStatusButton
+                                className={styles.actionMenuButton}
+                                currentStatus="active"
+                                nextStatus="inactive"
+                              />
+                            </form>
+                          ) : canManageListingLifecycle && property.listingId && property.listingStatus === "inactive" ? (
+                            <form action={setListingStatusAction}>
+                              <input name="listingId" type="hidden" value={property.listingId} />
+                              <input name="status" type="hidden" value="active" />
+                              <ListingStatusButton
+                                className={styles.actionMenuButton}
+                                currentStatus="inactive"
+                                disabled={!property.listingAskingPrice || !property.listingDescription || !property.firstImageUrl}
+                                nextStatus="active"
+                              />
+                            </form>
+                          ) : null}
+                          <Link className={styles.actionMenuItem} href={routes.app.portalPropertyTransfer(property.propertyRouteId)}>
+                            Transfer / sell
+                          </Link>
+                      </OwnedPropertyActionMenu>
                     </div>
                     <div className={styles.propertyId}>Property ID: {property.propertyRouteId}</div>
                   </div>

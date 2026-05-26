@@ -181,6 +181,12 @@ export interface PortalEditablePropertyRecord {
   isListingReady: boolean;
 }
 
+export interface PortalClaimParcelContext {
+  existingAssetKind?: PropertyKind;
+  representativeSize?: number;
+  zoning?: string;
+}
+
 function normalizePropertyTitle(title: string | null | undefined, routeId: string) {
   return title?.trim() || routeId;
 }
@@ -519,26 +525,43 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
   };
 }
 
-export async function findPrimaryAssetKindByUpi(upi: string): Promise<PropertyKind | null> {
-  const result = await getPgPool().query<{ asset_type: PropertyKind | null }>(
+export async function getPortalClaimParcelContextByUpi(upi: string): Promise<PortalClaimParcelContext | null> {
+  const result = await getPgPool().query<{
+    asset_type: PropertyKind | null;
+    representative_size: number | string | null;
+    zoning: string | null;
+  }>(
     `
-      SELECT pa.asset_type
+      SELECT
+        pa.asset_type,
+        p.representative_size,
+        p.zoning
       FROM parcel_app_ready_seed_preview p
-      JOIN property_asset pa
+      LEFT JOIN property_asset pa
         ON pa.parcel_id = p.parcel_id
        AND pa.is_primary_for_parcel = TRUE
-      WHERE UPPER(REPLACE(p.upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
-        AND pa.seed_source NOT IN (
+       AND pa.seed_source NOT IN (
           'mock_import_listing_surface_v1',
           'preview_property_page_variants_v1',
           'preview_multi_unit_examples_v1',
           'preview_kigali_seed_v1'
         )
+      WHERE UPPER(REPLACE(p.upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
       LIMIT 1
     `,
     [upi],
   );
-  return result.rows[0]?.asset_type ?? null;
+
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    existingAssetKind: row.asset_type || undefined,
+    representativeSize: toNumber(row.representative_size),
+    zoning: normalizeZoningLabel(row.zoning),
+  };
 }
 
 export async function findPortalPropertyClaimTargetByUpi(input: {
@@ -772,8 +795,6 @@ export async function updatePortalPropertyRecordInDb(input: {
   userId: string;
   propertyRouteId: string;
   unitLabel?: string;
-  representativeSize?: number;
-  zoning?: string;
   description?: string;
   bedrooms?: number;
   bathrooms?: number;
@@ -787,12 +808,11 @@ export async function updatePortalPropertyRecordInDb(input: {
   }
 
   const normalizedUnitLabel = input.unitLabel?.trim().toUpperCase() || undefined;
-  const normalizedZoning = input.zoning?.trim() || undefined;
-  const representativeSize = input.representativeSize ?? property.representativeSize;
+  const representativeSize = property.representativeSize;
   const interiorAreaSqm = input.interiorAreaSqm ?? property.interiorAreaSqm;
   const bedrooms = input.bedrooms ?? property.bedrooms;
   const bathrooms = input.bathrooms ?? property.bathrooms;
-  const zoning = normalizedZoning ?? property.zoning;
+  const zoning = property.zoning;
   const unitLabel = normalizedUnitLabel ?? property.unitLabel;
   const description = input.description?.trim() || property.description || undefined;
   const yearBuilt = input.yearBuilt ?? property.yearBuilt;
@@ -824,17 +844,6 @@ export async function updatePortalPropertyRecordInDb(input: {
       WHERE id = $1
     `,
     [property.propertyInternalId, unitLabel ?? null],
-  );
-
-  await getPgPool().query(
-    `
-      UPDATE parcel_app_ready_seed_preview
-      SET
-        representative_size = COALESCE($2, representative_size),
-        zoning = COALESCE($3, zoning)
-      WHERE parcel_id = $1
-    `,
-    [property.parcelId, representativeSize ?? null, zoning ?? null],
   );
 
   await getPgPool().query(

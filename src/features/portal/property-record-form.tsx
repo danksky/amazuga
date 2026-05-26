@@ -37,6 +37,18 @@ function getRepresentativeSizeLabel(kind: PortalEditablePropertyRecord["property
   return kind === "land" ? "Parcel size (sqm)" : "Land / parcel size (sqm)";
 }
 
+function formatRepresentativeSize(value?: number) {
+  if (value === undefined) {
+    return "Missing from parcel record";
+  }
+
+  return `${value.toLocaleString()} sqm`;
+}
+
+function formatZoning(value?: string) {
+  return value?.trim() || "Missing from parcel record";
+}
+
 function getKindLabel(kind: PortalEditablePropertyRecord["propertyKind"]) {
   switch (kind) {
     case "house":
@@ -134,14 +146,7 @@ export function PropertyRecordForm({
           {needsRepresentativeSize(property.propertyKind) ? (
             <label className={styles.field}>
               <span className={styles.label}>{getRepresentativeSizeLabel(property.propertyKind)}</span>
-              <WheelSafeNumberInput
-                className={styles.input}
-                defaultValue={property.representativeSize}
-                min="1"
-                name="representativeSize"
-                required
-                step="0.01"
-              />
+              <div className={styles.readOnly}>{formatRepresentativeSize(property.representativeSize)}</div>
             </label>
           ) : null}
 
@@ -175,14 +180,7 @@ export function PropertyRecordForm({
           {needsZoning(property.propertyKind) ? (
             <label className={styles.field}>
               <span className={styles.label}>Use zone</span>
-              <input
-                className={styles.input}
-                defaultValue={property.zoning}
-                name="zoning"
-                placeholder="e.g. R4, mixed-use, commercial corridor"
-                required
-                type="text"
-              />
+              <div className={styles.readOnly}>{formatZoning(property.zoning)}</div>
             </label>
           ) : null}
 

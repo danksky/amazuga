@@ -413,8 +413,6 @@ export async function submitPropertyDetailsAction(formData: FormData) {
     userId: currentUser.id,
     propertyRouteId: getRequiredString(formData, "propertyRouteId"),
     unitLabel: getOptionalString(formData, "unitLabel"),
-    representativeSize: getOptionalNumber(formData, "representativeSize"),
-    zoning: getOptionalString(formData, "zoning"),
     description: getOptionalString(formData, "description"),
     bedrooms: getOptionalInteger(formData, "bedrooms"),
     bathrooms: getOptionalNumber(formData, "bathrooms"),

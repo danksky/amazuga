@@ -74,7 +74,29 @@ function getFactsIntro(propertyType: PropertyType) {
   }
 }
 
-export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; existingAssetKind?: PropertyKind }) {
+function formatRepresentativeSize(value?: number) {
+  if (value === undefined) {
+    return "Missing from parcel record";
+  }
+
+  return `${value.toLocaleString()} sqm`;
+}
+
+function formatZoning(value?: string) {
+  return value?.trim() || "Missing from parcel record";
+}
+
+export function ClaimDetailsForm({
+  upi,
+  existingAssetKind,
+  representativeSize,
+  zoning,
+}: {
+  upi: string;
+  existingAssetKind?: PropertyKind;
+  representativeSize?: number;
+  zoning?: string;
+}) {
   const [propertyType, setPropertyType] = useState<PropertyType>(() => kindToPropertyType(existingAssetKind));
   const claimScope = deriveClaimScope(propertyType);
 
@@ -168,17 +190,11 @@ export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; exis
 
           {needsRepresentativeSize(propertyType) ? (
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="claim-representative-size">
+              <label className={styles.label}>
                 {getRepresentativeSizeLabel(propertyType)}
               </label>
-              <WheelSafeNumberInput
-                className={styles.input}
-                id="claim-representative-size"
-                min="1"
-                name="representativeSize"
-                required
-                step="0.01"
-              />
+              <div className={styles.readOnly}>{formatRepresentativeSize(representativeSize)}</div>
+              <div className={styles.hint}>This comes from the parcel record for the selected UPI and cannot be edited here.</div>
             </div>
           ) : null}
 
@@ -208,17 +224,11 @@ export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; exis
 
           {needsZoning(propertyType) ? (
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="claim-zoning">
+              <label className={styles.label}>
                 Use zone
               </label>
-              <input
-                className={styles.input}
-                id="claim-zoning"
-                name="zoning"
-                placeholder="e.g. R4, mixed-use, commercial corridor"
-                required
-                type="text"
-              />
+              <div className={styles.readOnly}>{formatZoning(zoning)}</div>
+              <div className={styles.hint}>This comes from the parcel record for the selected UPI and cannot be edited here.</div>
             </div>
           ) : null}
 

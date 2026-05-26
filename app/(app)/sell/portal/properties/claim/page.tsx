@@ -5,7 +5,7 @@ import { PortalShell } from "@/features/portal/portal-shell";
 import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getPortalAccessState } from "@/lib/server/portal-access";
-import { findPrimaryAssetKindByUpi } from "@/lib/server/portal-properties";
+import { getPortalClaimParcelContextByUpi } from "@/lib/server/portal-properties";
 
 export const dynamic = "force-dynamic";
 
@@ -24,14 +24,19 @@ export default async function SellPortalPropertyClaimPage({
     redirect(routes.app.portalProperties);
   }
 
-  const [access, existingAssetKind] = await Promise.all([
+  const [access, claimParcelContext] = await Promise.all([
     getPortalAccessState(currentUser.id),
-    findPrimaryAssetKindByUpi(trimmedUpi),
+    getPortalClaimParcelContextByUpi(trimmedUpi),
   ]);
 
   return (
     <PortalShell access={access}>
-      <ClaimDetailsForm upi={trimmedUpi} existingAssetKind={existingAssetKind ?? undefined} />
+      <ClaimDetailsForm
+        upi={trimmedUpi}
+        existingAssetKind={claimParcelContext?.existingAssetKind}
+        representativeSize={claimParcelContext?.representativeSize}
+        zoning={claimParcelContext?.zoning}
+      />
     </PortalShell>
   );
 }
