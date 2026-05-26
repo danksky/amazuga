@@ -580,7 +580,6 @@ async function backfillPropertyRecordForAsset(input: {
   const claimBathrooms = toFiniteNumber(input.propertyFacts?.bathrooms);
   const claimInteriorAreaSqm = toFiniteNumber(input.propertyFacts?.interiorAreaSqm);
   const claimYearBuilt = toFiniteNumber(input.propertyFacts?.yearBuilt);
-  const claimZoning = input.propertyFacts?.zoning?.trim() || null;
   const claimDescription = input.propertyFacts?.description?.trim() || null;
 
   // These values are preview-only defaults that make approved claims listing-ready without overwriting real edits.
@@ -610,11 +609,10 @@ async function backfillPropertyRecordForAsset(input: {
     `
       UPDATE parcel_app_ready_seed_preview
       SET
-        representative_size = COALESCE(representative_size, $2),
-        zoning = COALESCE(NULLIF(BTRIM(zoning), ''), $3)
+        representative_size = COALESCE(representative_size, $2)
       WHERE parcel_id = $1
     `,
-    [row.parcel_id, claimRepresentativeSize, claimZoning],
+    [row.parcel_id, claimRepresentativeSize],
   );
 
   await getPgPool().query(
