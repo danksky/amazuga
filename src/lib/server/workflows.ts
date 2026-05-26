@@ -10,6 +10,7 @@ import type {
   PropertyClaimRequestKind,
   PropertyDataSource,
   PropertyClaimRequest,
+  PropertyRecordFactsInput,
   PropertyKind,
   PropertyOwnership,
   PropertyOwnershipScope,
@@ -81,6 +82,13 @@ interface PropertyClaimRequestRow {
   tenure_type: PropertyTenureType;
   tenure_source: PropertyDataSource;
   declared_asset_type: PropertyKind | null;
+  representative_size: number | string | null;
+  zoning: string | null;
+  bedrooms: number | string | null;
+  bathrooms: number | string | null;
+  interior_area_sqm: number | string | null;
+  year_built: number | string | null;
+  description: string | null;
   transfer_mode: PropertyTransferMode | null;
   transfer_from_user_id: string | null;
   transfer_initiated_by_user_id: string | null;
@@ -110,6 +118,7 @@ interface PropertyRecordBackfillRow {
   district: string | null;
   sector: string | null;
   representative_size: number | string | null;
+  zoning: string | null;
 }
 
 interface AdminPropertyClaimRequestRow extends PropertyClaimRequestRow {
@@ -251,6 +260,38 @@ function toValuatorApplication(row: ValuatorApplicationRow): ValuatorApplication
   };
 }
 
+function getPropertyClaimFactsFromRow(row: PropertyClaimRequestRow): PropertyRecordFactsInput | undefined {
+  const representativeSize = toFiniteNumber(row.representative_size);
+  const bedrooms = toFiniteNumber(row.bedrooms);
+  const bathrooms = toFiniteNumber(row.bathrooms);
+  const interiorAreaSqm = toFiniteNumber(row.interior_area_sqm);
+  const yearBuilt = toFiniteNumber(row.year_built);
+  const zoning = row.zoning?.trim() || undefined;
+  const description = row.description?.trim() || undefined;
+
+  if (
+    representativeSize === null &&
+    bedrooms === null &&
+    bathrooms === null &&
+    interiorAreaSqm === null &&
+    yearBuilt === null &&
+    !zoning &&
+    !description
+  ) {
+    return undefined;
+  }
+
+  return {
+    representativeSize: representativeSize ?? undefined,
+    zoning,
+    bedrooms: bedrooms ?? undefined,
+    bathrooms: bathrooms ?? undefined,
+    interiorAreaSqm: interiorAreaSqm ?? undefined,
+    yearBuilt: yearBuilt ?? undefined,
+    description,
+  };
+}
+
 function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequest {
   return {
     id: row.id,
@@ -265,6 +306,7 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
     declaredAssetType: row.declared_asset_type || undefined,
+    propertyFacts: getPropertyClaimFactsFromRow(row),
     transferMode: row.transfer_mode || undefined,
     transferFromUserId: row.transfer_from_user_id || undefined,
     transferInitiatedByUserId: row.transfer_initiated_by_user_id || undefined,
@@ -332,6 +374,7 @@ function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPr
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
     declaredAssetType: row.declared_asset_type || undefined,
+    propertyFacts: getPropertyClaimFactsFromRow(row),
     transferMode: row.transfer_mode || undefined,
     propertyRouteId: row.property_route_id || undefined,
     propertyTitle: row.property_title || row.property_route_id || row.property_id || row.upi || "Preview property",
@@ -504,6 +547,7 @@ async function backfillPropertyRecordForAsset(input: {
   propertyAssetId: string;
   userId: string;
   claimUnitLabel?: string;
+  propertyFacts?: PropertyRecordFactsInput;
 }) {
   const contextResult = await getPgPool().query<PropertyRecordBackfillRow>(
     `
@@ -515,7 +559,8 @@ async function backfillPropertyRecordForAsset(input: {
         parcel.public_id AS parcel_public_id,
         parcel.district,
         parcel.sector,
-        parcel.representative_size
+        parcel.representative_size,
+        parcel.zoning
       FROM property_asset pa
       JOIN parcel_app_ready_seed_preview parcel
         ON parcel.parcel_id = pa.parcel_id
@@ -530,6 +575,14 @@ async function backfillPropertyRecordForAsset(input: {
     return;
   }
 
+  const claimRepresentativeSize = toFiniteNumber(input.propertyFacts?.representativeSize);
+  const claimBedrooms = toFiniteNumber(input.propertyFacts?.bedrooms);
+  const claimBathrooms = toFiniteNumber(input.propertyFacts?.bathrooms);
+  const claimInteriorAreaSqm = toFiniteNumber(input.propertyFacts?.interiorAreaSqm);
+  const claimYearBuilt = toFiniteNumber(input.propertyFacts?.yearBuilt);
+  const claimZoning = input.propertyFacts?.zoning?.trim() || null;
+  const claimDescription = input.propertyFacts?.description?.trim() || null;
+
   // These values are preview-only defaults that make approved claims listing-ready without overwriting real edits.
   const inferred = inferClaimRecordBackfill({
     assetType: row.asset_type,
@@ -539,7 +592,7 @@ async function backfillPropertyRecordForAsset(input: {
     parcelPublicId: row.parcel_public_id,
     district: row.district,
     sector: row.sector,
-    representativeSize: row.representative_size,
+    representativeSize: claimRepresentativeSize ?? row.representative_size,
   });
 
   await getPgPool().query(
@@ -555,6 +608,17 @@ async function backfillPropertyRecordForAsset(input: {
 
   await getPgPool().query(
     `
+      UPDATE parcel_app_ready_seed_preview
+      SET
+        representative_size = COALESCE(representative_size, $2),
+        zoning = COALESCE(NULLIF(BTRIM(zoning), ''), $3)
+      WHERE parcel_id = $1
+    `,
+    [row.parcel_id, claimRepresentativeSize, claimZoning],
+  );
+
+  await getPgPool().query(
+    `
       INSERT INTO property_profile (
         parcel_id,
         created_by_user_id,
@@ -563,9 +627,10 @@ async function backfillPropertyRecordForAsset(input: {
         bedrooms,
         bathrooms,
         interior_area_sqm,
+        year_built,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'claim_record_backfill_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'claim_record_backfill_v1')
       ON CONFLICT (parcel_id) DO UPDATE
       SET
         created_by_user_id = COALESCE(property_profile.created_by_user_id, EXCLUDED.created_by_user_id),
@@ -576,16 +641,18 @@ async function backfillPropertyRecordForAsset(input: {
         bedrooms = COALESCE(property_profile.bedrooms, EXCLUDED.bedrooms),
         bathrooms = COALESCE(property_profile.bathrooms, EXCLUDED.bathrooms),
         interior_area_sqm = COALESCE(property_profile.interior_area_sqm, EXCLUDED.interior_area_sqm),
+        year_built = COALESCE(property_profile.year_built, EXCLUDED.year_built),
         updated_at = NOW()
     `,
     [
       row.parcel_id,
       input.userId,
-      inferred.propertyDescription,
+      claimDescription ?? inferred.propertyDescription,
       inferred.propertyType,
-      inferred.bedrooms,
-      inferred.bathrooms,
-      inferred.interiorAreaSqm,
+      claimBedrooms ?? inferred.bedrooms,
+      claimBathrooms ?? inferred.bathrooms,
+      claimInteriorAreaSqm ?? inferred.interiorAreaSqm,
+      claimYearBuilt,
     ],
   );
 }
@@ -891,6 +958,13 @@ export async function listPropertyClaimRequestsFromDb() {
         pcr.tenure_type,
         pcr.tenure_source,
         pcr.declared_asset_type,
+        pcr.representative_size,
+        pcr.zoning,
+        pcr.bedrooms,
+        pcr.bathrooms,
+        pcr.interior_area_sqm,
+        pcr.year_built,
+        pcr.description,
         pcr.transfer_mode,
         pcr.transfer_from_user_id,
         pcr.transfer_initiated_by_user_id,
@@ -1020,6 +1094,13 @@ export async function listPropertyClaimRequestsForUser(userId: string) {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1072,6 +1153,13 @@ export async function getUserPropertyRelationship(userId: string, propertyIntern
           tenure_type,
           tenure_source,
           declared_asset_type,
+          representative_size,
+          zoning,
+          bedrooms,
+          bathrooms,
+          interior_area_sqm,
+          year_built,
+          description,
           transfer_mode,
           transfer_from_user_id,
           transfer_initiated_by_user_id,
@@ -1598,6 +1686,7 @@ export async function createPropertyClaimRequestInDb(input: {
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
   declaredAssetType?: PropertyKind;
+  propertyFacts?: PropertyRecordFactsInput;
   propertyId?: string;
   propertyInternalId?: string;
 }) {
@@ -1655,6 +1744,13 @@ export async function createPropertyClaimRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1696,10 +1792,17 @@ export async function createPropertyClaimRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         status,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', 'manual_workflow_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'pending', 'manual_workflow_v1')
       RETURNING
         id,
         user_id,
@@ -1713,6 +1816,13 @@ export async function createPropertyClaimRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         NULL::TEXT AS transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1734,6 +1844,13 @@ export async function createPropertyClaimRequestInDb(input: {
       input.tenureType,
       input.tenureSource,
       input.declaredAssetType || null,
+      input.propertyFacts?.representativeSize ?? null,
+      input.propertyFacts?.zoning?.trim() || null,
+      input.propertyFacts?.bedrooms ?? null,
+      input.propertyFacts?.bathrooms ?? null,
+      input.propertyFacts?.interiorAreaSqm ?? null,
+      input.propertyFacts?.yearBuilt ?? null,
+      input.propertyFacts?.description?.trim() || null,
     ],
   );
 
@@ -1819,6 +1936,13 @@ export async function createOwnershipTransferRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1880,6 +2004,13 @@ export async function createOwnershipTransferRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1951,6 +2082,13 @@ export async function respondToOwnershipTransferRequestInDb(input: {
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1989,6 +2127,13 @@ export async function updatePropertyClaimRequestStatusInDb(
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2146,6 +2291,13 @@ export async function updatePropertyClaimRequestStatusInDb(
         tenure_type,
         tenure_source,
         declared_asset_type,
+        representative_size,
+        zoning,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2184,6 +2336,7 @@ export async function updatePropertyClaimRequestStatusInDb(
     propertyAssetId: claimRequest.propertyInternalId,
     userId: claimRequest.userId,
     claimUnitLabel: claimRequest.unitLabel,
+    propertyFacts: claimRequest.propertyFacts,
   });
 
   const ownershipScope =

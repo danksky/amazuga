@@ -227,6 +227,8 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         ON pa.id = po.property_internal_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = pa.parcel_id
+      LEFT JOIN property_profile pp
+        ON pp.parcel_id = pa.parcel_id
       LEFT JOIN listing open_listing
         ON open_listing.property_asset_id = pa.id
        AND open_listing.status IN ('draft', 'active', 'inactive')

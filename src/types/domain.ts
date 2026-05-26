@@ -193,6 +193,16 @@ export interface ValuationSubmission {
   createdAt: string;
 }
 
+export interface PropertyRecordFactsInput {
+  representativeSize?: number;
+  zoning?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  interiorAreaSqm?: number;
+  yearBuilt?: number;
+  description?: string;
+}
+
 export interface PropertyClaimRequest {
   id: string;
   userId: string;
@@ -206,6 +216,7 @@ export interface PropertyClaimRequest {
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
   declaredAssetType?: PropertyKind;
+  propertyFacts?: PropertyRecordFactsInput;
   transferMode?: PropertyTransferMode;
   transferFromUserId?: string;
   transferInitiatedByUserId?: string;

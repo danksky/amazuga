@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { findPortalPropertyClaimTargetByUpi } from "@/lib/server/portal-properties";
 import { createPropertyClaimRequestInDb } from "@/lib/server/workflows";
-import type { PropertyClaimScope, PropertyKind, PropertyTenureType } from "@/types/domain";
+import type { PropertyClaimScope, PropertyKind, PropertyRecordFactsInput, PropertyTenureType } from "@/types/domain";
 
 const FORM_TYPE_TO_PROPERTY_KIND: Record<string, PropertyKind> = {
   house: "house",
@@ -14,6 +14,81 @@ const FORM_TYPE_TO_PROPERTY_KIND: Record<string, PropertyKind> = {
   commercial_building: "building",
   commercial_unit: "commercial_unit",
 };
+
+type ClaimPropertyType = keyof typeof FORM_TYPE_TO_PROPERTY_KIND;
+
+function getOptionalNumber(formData: FormData, key: string) {
+  const rawValue = formData.get(key);
+  if (typeof rawValue !== "string") {
+    return undefined;
+  }
+
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const numeric = Number(trimmed);
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function getOptionalString(formData: FormData, key: string) {
+  const rawValue = formData.get(key);
+  if (typeof rawValue !== "string") {
+    return undefined;
+  }
+
+  const trimmed = rawValue.trim();
+  return trimmed || undefined;
+}
+
+function needsInteriorArea(propertyType: ClaimPropertyType) {
+  return propertyType !== "land";
+}
+
+function needsRepresentativeSize(propertyType: ClaimPropertyType) {
+  return propertyType !== "apartment_unit" && propertyType !== "commercial_unit";
+}
+
+function needsBedroomsAndBathrooms(propertyType: ClaimPropertyType) {
+  return propertyType === "house" || propertyType === "apartment_unit";
+}
+
+function needsZoning(propertyType: ClaimPropertyType) {
+  return (
+    propertyType === "land" ||
+    propertyType === "apartment_building" ||
+    propertyType === "commercial_building" ||
+    propertyType === "commercial_unit"
+  );
+}
+
+function getRequiredMissingFacts(propertyType: ClaimPropertyType, propertyFacts: PropertyRecordFactsInput) {
+  const missing: string[] = [];
+
+  if (needsInteriorArea(propertyType) && !propertyFacts.interiorAreaSqm) {
+    missing.push("interiorAreaSqm");
+  }
+
+  if (needsRepresentativeSize(propertyType) && !propertyFacts.representativeSize) {
+    missing.push("representativeSize");
+  }
+
+  if (needsBedroomsAndBathrooms(propertyType)) {
+    if (propertyFacts.bedrooms === undefined) {
+      missing.push("bedrooms");
+    }
+    if (propertyFacts.bathrooms === undefined) {
+      missing.push("bathrooms");
+    }
+  }
+
+  if (needsZoning(propertyType) && !propertyFacts.zoning) {
+    missing.push("zoning");
+  }
+
+  return missing;
+}
 
 function buildPortalPropertiesStatusHref(input: {
   status: "created" | "pending" | "owned" | "no_match" | "unit_required";
@@ -62,8 +137,17 @@ export async function POST(request: Request) {
   const tenureType: PropertyTenureType =
     rawTenureType === "freehold" || rawTenureType === "emphyteutic_lease" ? rawTenureType : "unspecified";
   const rawPropertyType = formData.get("propertyType");
-  const declaredAssetType: PropertyKind | undefined =
-    typeof rawPropertyType === "string" ? FORM_TYPE_TO_PROPERTY_KIND[rawPropertyType] : undefined;
+  const propertyType = typeof rawPropertyType === "string" ? (rawPropertyType as ClaimPropertyType) : undefined;
+  const declaredAssetType: PropertyKind | undefined = propertyType ? FORM_TYPE_TO_PROPERTY_KIND[propertyType] : undefined;
+  const propertyFacts: PropertyRecordFactsInput = {
+    representativeSize: getOptionalNumber(formData, "representativeSize"),
+    zoning: getOptionalString(formData, "zoning"),
+    bedrooms: getOptionalNumber(formData, "bedrooms"),
+    bathrooms: getOptionalNumber(formData, "bathrooms"),
+    interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+    yearBuilt: getOptionalNumber(formData, "yearBuilt"),
+    description: getOptionalString(formData, "description"),
+  };
 
   if (!upi) {
     const nextUrl = new URL(buildPortalPropertiesStatusHref({ status: "no_match", upi: "", claimScope, unitLabel }), request.url);
@@ -76,6 +160,16 @@ export async function POST(request: Request) {
       request.url,
     );
     return NextResponse.redirect(nextUrl, { status: 303 });
+  }
+
+  if (!propertyType || !declaredAssetType) {
+    const nextUrl = new URL(buildPortalPropertiesStatusHref({ status: "no_match", upi, claimScope, unitLabel }), request.url);
+    return NextResponse.redirect(nextUrl, { status: 303 });
+  }
+
+  const missingPropertyFacts = getRequiredMissingFacts(propertyType, propertyFacts);
+  if (missingPropertyFacts.length > 0) {
+    throw new Error(`Missing required property facts for selected asset type: ${missingPropertyFacts.join(", ")}`);
   }
 
   const target = await findPortalPropertyClaimTargetByUpi({
@@ -98,6 +192,7 @@ export async function POST(request: Request) {
     tenureType,
     tenureSource: tenureType === "unspecified" ? "unspecified" : "user_provided",
     declaredAssetType,
+    propertyFacts,
     propertyId: target.status === "resolved" ? target.propertyRouteId : undefined,
     propertyInternalId: target.status === "resolved" ? target.propertyInternalId : undefined,
   });

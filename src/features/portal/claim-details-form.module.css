@@ -64,9 +64,34 @@
   gap: 18px;
 }
 
+.section {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-alt) 70%, white);
+}
+
+.sectionTitle {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sectionBody {
+  color: var(--foreground-muted);
+  line-height: 1.55;
+}
+
 .field {
   display: grid;
   gap: 8px;
+}
+
+.fieldGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .label {
@@ -75,7 +100,8 @@
 }
 
 .select,
-.input {
+.input,
+.textarea {
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
@@ -96,9 +122,15 @@
 }
 
 .select:focus-visible,
-.input:focus-visible {
+.input:focus-visible,
+.textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent);
   outline-offset: 2px;
+}
+
+.textarea {
+  min-height: 140px;
+  resize: vertical;
 }
 
 .hint {
@@ -169,5 +201,9 @@
 @media (max-width: 700px) {
   .card {
     padding: 22px;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
   }
 }

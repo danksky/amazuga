@@ -20,6 +20,7 @@ import {
 } from "./actions";
 import { ListingPhotoManager } from "./listing-photo-manager";
 import { ListingStatusButton } from "./listing-status-button";
+import { WheelSafeNumberInput } from "./wheel-safe-number-input";
 import styles from "./listing-form.module.css";
 
 function getPropertyKindLabel(kind?: string) {
@@ -164,19 +165,19 @@ export function ListingForm({
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
         <div className={styles.eyebrow}>Portal</div>
-        <h1 className={styles.title}>{mode === "create" ? "Start a draft listing" : "Manage listing"}</h1>
+        <h1 className={styles.title}>{mode === "create" ? "Create listing" : "Manage listing"}</h1>
         <div className={styles.body}>
           {mode === "create"
             ? isPrivateListerMode
-              ? "Start a draft listing for one of your owned, listing-ready properties, then add the market-facing details before publishing."
-              : "Start a draft listing for one of your owned, listing-ready properties, attach it to the right agency and agent, and then finish the publish details in the editor."
+              ? "Create a listing for one of your owned, listing-ready properties, then add the market-facing details before publishing."
+              : "Create a listing for one of your owned, listing-ready properties, attach it to the right agency and agent, and then finish the publish details in the editor."
             : listing?.status === "draft"
               ? "Manage this draft by adding the market-facing details and photos needed before publishing."
               : "Manage this listing's market-facing details, assignment, and lifecycle while keeping the property record attachment intact."}
         </div>
         {listing ? (
           <div className={styles.submeta}>
-            {isManageMode ? "Manage listing mode" : "Start draft mode"}{listing ? ` · Status: ${listing.status}` : ""}
+            {isManageMode ? "Manage listing mode" : "Create listing mode"}{listing ? ` · Status: ${listing.status}` : ""}
           </div>
         ) : null}
         {showCreateEmptyState ? (
@@ -334,17 +335,15 @@ export function ListingForm({
                   <label className={styles.label} htmlFor="asking-price">
                     Asking price (RWF)
                   </label>
-                  <input
+                  <WheelSafeNumberInput
                     className={`${styles.input}${publishAttempted && !askingPriceHasValue ? ` ${styles.inputError}` : ""}`}
                     defaultValue={listing?.askingPrice}
                     id="asking-price"
                     inputMode="numeric"
                     name="askingPrice"
                     onChange={(e) => setAskingPriceHasValue(Boolean(e.target.value))}
-                    onWheel={(e) => e.currentTarget.blur()}
                     placeholder="Example: 185000000"
                     step="1"
-                    type="number"
                   />
                 </div>
               ) : null}
@@ -418,7 +417,7 @@ export function ListingForm({
             </section>
           ) : mode === "create" ? (
             <div className={styles.notice}>
-              Photos come next. This first step creates a draft listing, then sends you to the full editor to add and
+              Photos come next. This first step creates the listing, then sends you to the full editor to add and
               manage gallery images before publishing.
             </div>
           ) : null}
@@ -456,7 +455,7 @@ export function ListingForm({
 
           <div className={styles.actions}>
             <Button name="intent" type="submit" value="save">
-              {mode === "create" ? "Create draft" : listing?.status === "draft" ? "Save draft" : "Save changes"}
+              {mode === "create" ? "Create listing" : listing?.status === "draft" ? "Save draft" : "Save changes"}
             </Button>
             {mode === "edit" && listing?.status === "draft" ? (
               <>

@@ -32,6 +32,19 @@ export default async function AdminPropertiesPage() {
         { label: "Declared asset type", value: claim.declaredAssetType ?? "Not provided" },
         { label: "Scope", value: claim.claimScope === "unit_partial" ? "Unit or apartment" : "Whole parcel" },
         { label: "Unit label", value: claim.unitLabel ?? "Not provided" },
+        ...(claim.propertyFacts?.interiorAreaSqm !== undefined
+          ? [{ label: "Interior / built area", value: `${claim.propertyFacts.interiorAreaSqm} sqm` }]
+          : []),
+        ...(claim.propertyFacts?.representativeSize !== undefined
+          ? [{ label: "Parcel size", value: `${claim.propertyFacts.representativeSize} sqm` }]
+          : []),
+        ...(claim.propertyFacts?.bedrooms !== undefined ? [{ label: "Bedrooms", value: String(claim.propertyFacts.bedrooms) }] : []),
+        ...(claim.propertyFacts?.bathrooms !== undefined
+          ? [{ label: "Bathrooms", value: String(claim.propertyFacts.bathrooms) }]
+          : []),
+        ...(claim.propertyFacts?.zoning ? [{ label: "Use zone", value: claim.propertyFacts.zoning }] : []),
+        ...(claim.propertyFacts?.yearBuilt !== undefined ? [{ label: "Year built", value: String(claim.propertyFacts.yearBuilt) }] : []),
+        ...(claim.propertyFacts?.description ? [{ label: "Property description", value: claim.propertyFacts.description }] : []),
         {
           label: "Land tenure",
           value:

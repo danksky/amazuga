@@ -321,12 +321,15 @@ export function PortalPropertiesPage({
                     {!property.listingId && !property.isListingReady ? (
                       <div className={styles.readinessNote}>
                         This owned property still needs required property-record details before you can start a draft
-                        listing from it.
+                        listing from it. Complete the property details first, then come back here to create the draft.
                       </div>
                     ) : null}
                     <div className={styles.actions}>
                       <Link className={styles.primaryAction} href={routes.public.property(property.propertyRouteId, property.propertyTitle)}>
                         Open property page
+                      </Link>
+                      <Link className={styles.secondaryAction} href={routes.app.portalPropertyEdit(property.propertyRouteId)}>
+                        {property.isListingReady ? "Edit property details" : "Complete property details"}
                       </Link>
                       {canCreateListing && property.listingId ? (
                         <Link className={styles.secondaryAction} href={routes.app.portalListingEdit(property.listingId)}>
@@ -334,7 +337,7 @@ export function PortalPropertiesPage({
                         </Link>
                       ) : canCreateListing && property.isListingReady ? (
                         <Link className={styles.secondaryAction} href={`${routes.app.portalListingNew}?property=${encodeURIComponent(property.propertyRouteId)}`}>
-                          Create draft
+                          Create listing
                         </Link>
                       ) : null}
                       {canManageListingLifecycle && property.listingId && property.listingStatus === "active" ? (

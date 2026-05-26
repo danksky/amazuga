@@ -67,7 +67,7 @@ export function PortalListingsPage({
                 View owned properties
               </Link>
               <Link className={styles.primaryAction} href={routes.app.portalListingNew}>
-                Create draft
+                Create listing
               </Link>
             </div>
           ) : null}

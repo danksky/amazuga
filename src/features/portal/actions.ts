@@ -13,6 +13,7 @@ import {
   setPortalListingStatusInDb,
   updatePortalListingInDb,
 } from "@/lib/server/portal-listing-editor";
+import { updatePortalPropertyRecordInDb } from "@/lib/server/portal-properties";
 import {
   createOwnershipTransferRequestInDb,
   createValuationSubmissionInDb,
@@ -54,6 +55,13 @@ function getOptionalNumber(formData: FormData, key: string) {
   if (str === undefined) return undefined;
   const value = Number(str);
   return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function getOptionalInteger(formData: FormData, key: string) {
+  const str = getOptionalString(formData, key);
+  if (str === undefined) return undefined;
+  const value = Number(str);
+  return Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
 function getOptionalString(formData: FormData, key: string) {
@@ -396,6 +404,33 @@ export async function createOwnershipTransferAction(formData: FormData) {
       }),
     );
   }
+}
+
+export async function submitPropertyDetailsAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalProperties);
+
+  const property = await updatePortalPropertyRecordInDb({
+    userId: currentUser.id,
+    propertyRouteId: getRequiredString(formData, "propertyRouteId"),
+    unitLabel: getOptionalString(formData, "unitLabel"),
+    representativeSize: getOptionalNumber(formData, "representativeSize"),
+    zoning: getOptionalString(formData, "zoning"),
+    description: getOptionalString(formData, "description"),
+    bedrooms: getOptionalInteger(formData, "bedrooms"),
+    bathrooms: getOptionalNumber(formData, "bathrooms"),
+    interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+    yearBuilt: getOptionalInteger(formData, "yearBuilt"),
+  });
+
+  revalidatePath(routes.app.portalProperties);
+  revalidatePath(routes.app.portalListingNew);
+
+  if (property?.propertyRouteId) {
+    revalidatePath(routes.public.property(property.propertyRouteId));
+    revalidatePath(routes.app.portalPropertyEdit(property.propertyRouteId));
+  }
+
+  redirect(routes.app.portalProperties);
 }
 
 export async function respondToOwnershipTransferAction(formData: FormData) {

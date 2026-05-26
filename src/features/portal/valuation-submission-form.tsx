@@ -7,6 +7,7 @@ import { routes } from "@/lib/routes";
 import type { PortalValuationPropertyOption } from "@/lib/server/portal-valuations";
 
 import styles from "./valuation-submission-form.module.css";
+import { WheelSafeNumberInput } from "./wheel-safe-number-input";
 
 function getPropertyKindLabel(kind: PortalValuationPropertyOption["propertyKind"]) {
   switch (kind) {
@@ -115,7 +116,7 @@ export function ValuationSubmissionForm({
               <label className={styles.label} htmlFor="estimated-value">
                 Estimated value (RWF)
               </label>
-              <input
+              <WheelSafeNumberInput
                 className={styles.input}
                 id="estimated-value"
                 inputMode="numeric"
@@ -123,7 +124,6 @@ export function ValuationSubmissionForm({
                 name="estimatedValue"
                 placeholder="Example: 176000000"
                 step="1"
-                type="number"
               />
               <div className={styles.hint}>Whole-number RWF only for the current v1 workflow.</div>
             </div>

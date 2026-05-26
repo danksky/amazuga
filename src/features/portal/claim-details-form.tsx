@@ -7,6 +7,7 @@ import type { PropertyKind } from "@/types/domain";
 import { routes } from "@/lib/routes";
 
 import styles from "./claim-details-form.module.css";
+import { WheelSafeNumberInput } from "./wheel-safe-number-input";
 
 type PropertyType = "house" | "apartment_building" | "land" | "apartment_unit" | "commercial_building" | "commercial_unit";
 
@@ -28,6 +29,51 @@ function kindToPropertyType(kind: PropertyKind | undefined): PropertyType {
   return map[kind] ?? "house";
 }
 
+function needsInteriorArea(propertyType: PropertyType) {
+  return propertyType !== "land";
+}
+
+function needsRepresentativeSize(propertyType: PropertyType) {
+  return propertyType !== "apartment_unit" && propertyType !== "commercial_unit";
+}
+
+function needsBedroomsAndBathrooms(propertyType: PropertyType) {
+  return propertyType === "house" || propertyType === "apartment_unit";
+}
+
+function needsZoning(propertyType: PropertyType) {
+  return propertyType === "land" || propertyType === "apartment_building" || propertyType === "commercial_building" || propertyType === "commercial_unit";
+}
+
+function getAreaLabel(propertyType: PropertyType) {
+  if (propertyType === "apartment_building" || propertyType === "commercial_building") return "Built area (sqm)";
+  if (propertyType === "commercial_unit") return "Floor area (sqm)";
+  return "Interior area (sqm)";
+}
+
+function getRepresentativeSizeLabel(propertyType: PropertyType) {
+  return propertyType === "land" ? "Parcel size (sqm)" : "Land / parcel size (sqm)";
+}
+
+function getFactsIntro(propertyType: PropertyType) {
+  switch (propertyType) {
+    case "house":
+      return "Add the core home facts now so the claim can create a listing-ready property record once it is approved.";
+    case "apartment_building":
+      return "Add the building-level facts that should carry into the property record after claim approval.";
+    case "land":
+      return "Add the parcel facts that should be saved to the property record for this land claim.";
+    case "apartment_unit":
+      return "Add the unit-level facts that distinguish this apartment from the rest of the building.";
+    case "commercial_building":
+      return "Add the building-level facts that should define this commercial property record.";
+    case "commercial_unit":
+      return "Add the unit-level facts that define this commercial space.";
+    default:
+      return "Add the core property facts now so the claim can produce a complete property record.";
+  }
+}
+
 export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; existingAssetKind?: PropertyKind }) {
   const [propertyType, setPropertyType] = useState<PropertyType>(() => kindToPropertyType(existingAssetKind));
   const claimScope = deriveClaimScope(propertyType);
@@ -38,8 +84,8 @@ export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; exis
         <div className={styles.eyebrow}>Portal</div>
         <h1 className={styles.title}>Claim a property</h1>
         <div className={styles.body}>
-          Confirm the property type and land tenure for the parcel below. For apartment or commercial units, include
-          your unit identifier so the claim is attached to the right record.
+          Confirm the property type and land tenure for the parcel below. When you choose an asset type, we’ll also ask
+          for the minimum structural facts needed to turn this claim into a usable property record.
         </div>
 
         <div className={styles.upiDisplay}>
@@ -97,6 +143,112 @@ export function ClaimDetailsForm({ upi, existingAssetKind }: { upi: string; exis
               <option value="emphyteutic_lease">Emphyteutic lease</option>
             </select>
             <span className={styles.hint}>Optional — your answer stays separate from any future dataset enrichment.</span>
+          </div>
+
+          <section className={styles.section}>
+            <div className={styles.sectionTitle}>Property facts</div>
+            <div className={styles.sectionBody}>{getFactsIntro(propertyType)}</div>
+          </section>
+
+          {needsInteriorArea(propertyType) ? (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="claim-interior-area">
+                {getAreaLabel(propertyType)}
+              </label>
+              <WheelSafeNumberInput
+                className={styles.input}
+                id="claim-interior-area"
+                min="1"
+                name="interiorAreaSqm"
+                required
+                step="0.01"
+              />
+            </div>
+          ) : null}
+
+          {needsRepresentativeSize(propertyType) ? (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="claim-representative-size">
+                {getRepresentativeSizeLabel(propertyType)}
+              </label>
+              <WheelSafeNumberInput
+                className={styles.input}
+                id="claim-representative-size"
+                min="1"
+                name="representativeSize"
+                required
+                step="0.01"
+              />
+            </div>
+          ) : null}
+
+          {needsBedroomsAndBathrooms(propertyType) ? (
+            <div className={styles.fieldGrid}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="claim-bedrooms">
+                  Bedrooms
+                </label>
+                <WheelSafeNumberInput className={styles.input} id="claim-bedrooms" min="0" name="bedrooms" required step="1" />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="claim-bathrooms">
+                  Bathrooms
+                </label>
+                <WheelSafeNumberInput
+                  className={styles.input}
+                  id="claim-bathrooms"
+                  min="0.5"
+                  name="bathrooms"
+                  required
+                  step="0.5"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {needsZoning(propertyType) ? (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="claim-zoning">
+                Use zone
+              </label>
+              <input
+                className={styles.input}
+                id="claim-zoning"
+                name="zoning"
+                placeholder="e.g. R4, mixed-use, commercial corridor"
+                required
+                type="text"
+              />
+            </div>
+          ) : null}
+
+          <div className={styles.fieldGrid}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="claim-year-built">
+                Year built
+              </label>
+              <WheelSafeNumberInput
+                className={styles.input}
+                id="claim-year-built"
+                min="1800"
+                name="yearBuilt"
+                placeholder="Optional"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="claim-description">
+              Property description
+            </label>
+            <textarea
+              className={styles.textarea}
+              id="claim-description"
+              name="description"
+              placeholder="Optional notes about the property record you want created from this claim."
+              rows={5}
+            />
           </div>
 
           <div className={styles.actions}>

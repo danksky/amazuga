@@ -74,6 +74,28 @@ interface PortalClaimableParcelRow {
   ownership_conflict_count: string | number;
 }
 
+interface PortalEditablePropertyRow {
+  property_internal_id: string;
+  property_route_id: string;
+  property_title: string | null;
+  property_kind: PropertyKind | null;
+  property_unit_label: string | null;
+  parcel_id: string;
+  upi: string;
+  district: string | null;
+  sector: string | null;
+  cell: string | null;
+  village: string | null;
+  representative_size: number | string | null;
+  zoning: string | null;
+  property_type: string | null;
+  description: string | null;
+  bedrooms: number | string | null;
+  bathrooms: number | string | null;
+  interior_area_sqm: number | string | null;
+  year_built: number | string | null;
+}
+
 export interface PortalOwnedPropertySummary {
   ownershipId: string;
   ownershipScope: "full" | "unit";
@@ -136,6 +158,29 @@ export interface PortalPropertiesWorkspaceData {
   claimExamples: PortalClaimableParcelSummary[];
 }
 
+export interface PortalEditablePropertyRecord {
+  propertyInternalId: string;
+  propertyRouteId: string;
+  propertyTitle: string;
+  propertyKind?: PropertyKind;
+  unitLabel?: string;
+  parcelId: string;
+  upi: string;
+  district: string;
+  sector?: string;
+  cell?: string;
+  village?: string;
+  representativeSize?: number;
+  zoning?: string;
+  propertyType: string;
+  description?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  interiorAreaSqm?: number;
+  yearBuilt?: number;
+  isListingReady: boolean;
+}
+
 function normalizePropertyTitle(title: string | null | undefined, routeId: string) {
   return title?.trim() || routeId;
 }
@@ -149,7 +194,31 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
-function isListingReadyForAsset(input: {
+function normalizeZoningLabel(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function getDefaultPropertyType(propertyKind?: PropertyKind | null) {
+  switch (propertyKind) {
+    case "house":
+      return "House";
+    case "land":
+      return "Parcel";
+    case "building":
+      return "Building";
+    case "apartment_unit":
+      return "Apartment";
+    case "commercial_unit":
+      return "Commercial";
+    case "mixed_use":
+      return "Mixed use";
+    default:
+      return "Property";
+  }
+}
+
+function getRequiredPropertyFacts(input: {
   propertyKind?: PropertyKind | null;
   propertyTitle?: string | null;
   propertyUnitLabel?: string | null;
@@ -159,6 +228,7 @@ function isListingReadyForAsset(input: {
   representativeSize?: number | string | null;
   zoning?: string | null;
 }) {
+  const requiredFacts: string[] = [];
   const hasTitle = Boolean(input.propertyTitle?.trim());
   const hasUnitLabel = Boolean(input.propertyUnitLabel?.trim()) || hasTitle;
   const hasBedrooms = toNumber(input.bedrooms) != null;
@@ -169,21 +239,60 @@ function isListingReadyForAsset(input: {
 
   switch (input.propertyKind) {
     case "house":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasBedrooms && hasBathrooms;
+      if (!hasTitle) requiredFacts.push("display label");
+      if (!hasInteriorArea) requiredFacts.push("interior area");
+      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (!hasBedrooms) requiredFacts.push("bedrooms");
+      if (!hasBathrooms) requiredFacts.push("bathrooms");
+      break;
     case "apartment_unit":
-      return hasUnitLabel && hasInteriorArea && hasBedrooms && hasBathrooms;
+      if (!hasUnitLabel) requiredFacts.push("unit label");
+      if (!hasInteriorArea) requiredFacts.push("interior area");
+      if (!hasBedrooms) requiredFacts.push("bedrooms");
+      if (!hasBathrooms) requiredFacts.push("bathrooms");
+      break;
     case "building":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+      if (!hasTitle) requiredFacts.push("display label");
+      if (!hasInteriorArea) requiredFacts.push("built area");
+      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (!hasZoning) requiredFacts.push("use zone");
+      break;
     case "commercial_unit":
-      return hasUnitLabel && hasInteriorArea && hasZoning;
+      if (!hasUnitLabel) requiredFacts.push("unit label");
+      if (!hasInteriorArea) requiredFacts.push("floor area");
+      if (!hasZoning) requiredFacts.push("use zone");
+      break;
     case "land":
-      return hasTitle && hasRepresentativeSize && hasZoning;
+      if (!hasTitle) requiredFacts.push("display label");
+      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (!hasZoning) requiredFacts.push("use zone");
+      break;
     case "mixed_use":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+      if (!hasTitle) requiredFacts.push("display label");
+      if (!hasInteriorArea) requiredFacts.push("interior area");
+      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (!hasZoning) requiredFacts.push("use zone");
+      break;
     case "other":
     default:
-      return hasTitle;
+      if (!hasTitle) requiredFacts.push("display label");
+      break;
   }
+
+  return requiredFacts;
+}
+
+function isListingReadyForAsset(input: {
+  propertyKind?: PropertyKind | null;
+  propertyTitle?: string | null;
+  propertyUnitLabel?: string | null;
+  bedrooms?: number | string | null;
+  bathrooms?: number | string | null;
+  interiorAreaSqm?: number | string | null;
+  representativeSize?: number | string | null;
+  zoning?: string | null;
+}) {
+  return getRequiredPropertyFacts(input).length === 0;
 }
 
 export async function getPortalPropertiesWorkspaceData(userId: string): Promise<PortalPropertiesWorkspaceData> {
@@ -571,4 +680,200 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
     propertyTitle: normalizePropertyTitle(resolved.property_title, resolved.property_route_id),
     propertyKind: resolved.property_kind || undefined,
   };
+}
+
+export async function getPortalEditablePropertyRecord(
+  userId: string,
+  propertyRouteId: string,
+): Promise<PortalEditablePropertyRecord | null> {
+  const result = await getPgPool().query<PortalEditablePropertyRow>(
+    `
+      SELECT
+        pa.id AS property_internal_id,
+        COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+        END AS property_title,
+        pa.asset_type AS property_kind,
+        pa.unit_label AS property_unit_label,
+        p.parcel_id,
+        p.upi,
+        p.district,
+        p.sector,
+        p.cell,
+        p.village,
+        p.representative_size,
+        p.zoning,
+        pp.property_type,
+        pp.description,
+        pp.bedrooms,
+        pp.bathrooms,
+        pp.interior_area_sqm,
+        pp.year_built
+      FROM property_ownership po
+      JOIN property_asset pa
+        ON pa.id = po.property_internal_id
+      JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = po.parcel_id
+      LEFT JOIN property_profile pp
+        ON pp.parcel_id = po.parcel_id
+      WHERE po.user_id = $1
+        AND (pa.public_id = $2 OR p.public_id = $2)
+      ORDER BY po.created_at DESC, po.id DESC
+      LIMIT 1
+    `,
+    [userId, propertyRouteId],
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  const propertyTitle = normalizePropertyTitle(row.property_title, row.property_route_id);
+  const zoning = normalizeZoningLabel(row.zoning);
+
+  return {
+    propertyInternalId: row.property_internal_id,
+    propertyRouteId: row.property_route_id,
+    propertyTitle,
+    propertyKind: row.property_kind || undefined,
+    unitLabel: row.property_unit_label || undefined,
+    parcelId: row.parcel_id,
+    upi: row.upi,
+    district: row.district || "Unknown district",
+    sector: row.sector || undefined,
+    cell: row.cell || undefined,
+    village: row.village || undefined,
+    representativeSize: toNumber(row.representative_size),
+    zoning,
+    propertyType: row.property_type || getDefaultPropertyType(row.property_kind),
+    description: row.description || undefined,
+    bedrooms: toNumber(row.bedrooms),
+    bathrooms: toNumber(row.bathrooms),
+    interiorAreaSqm: toNumber(row.interior_area_sqm),
+    yearBuilt: toNumber(row.year_built),
+    isListingReady: isListingReadyForAsset({
+      propertyKind: row.property_kind,
+      propertyTitle,
+      propertyUnitLabel: row.property_unit_label,
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      interiorAreaSqm: row.interior_area_sqm,
+      representativeSize: row.representative_size,
+      zoning,
+    }),
+  };
+}
+
+export async function updatePortalPropertyRecordInDb(input: {
+  userId: string;
+  propertyRouteId: string;
+  unitLabel?: string;
+  representativeSize?: number;
+  zoning?: string;
+  description?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  interiorAreaSqm?: number;
+  yearBuilt?: number;
+}) {
+  const property = await getPortalEditablePropertyRecord(input.userId, input.propertyRouteId);
+
+  if (!property) {
+    throw new Error("Owned property not found");
+  }
+
+  const normalizedUnitLabel = input.unitLabel?.trim().toUpperCase() || undefined;
+  const normalizedZoning = input.zoning?.trim() || undefined;
+  const representativeSize = input.representativeSize ?? property.representativeSize;
+  const interiorAreaSqm = input.interiorAreaSqm ?? property.interiorAreaSqm;
+  const bedrooms = input.bedrooms ?? property.bedrooms;
+  const bathrooms = input.bathrooms ?? property.bathrooms;
+  const zoning = normalizedZoning ?? property.zoning;
+  const unitLabel = normalizedUnitLabel ?? property.unitLabel;
+  const description = input.description?.trim() || property.description || undefined;
+  const yearBuilt = input.yearBuilt ?? property.yearBuilt;
+
+  const missingFacts = getRequiredPropertyFacts({
+    propertyKind: property.propertyKind,
+    propertyTitle: property.propertyTitle,
+    propertyUnitLabel: unitLabel,
+    bedrooms,
+    bathrooms,
+    interiorAreaSqm,
+    representativeSize,
+    zoning,
+  });
+
+  if (missingFacts.length > 0) {
+    throw new Error(`Missing property facts: ${missingFacts.join(", ")}`);
+  }
+
+  await getPgPool().query(
+    `
+      UPDATE property_asset
+      SET
+        unit_label = CASE
+          WHEN asset_type IN ('apartment_unit', 'commercial_unit') THEN $2
+          ELSE unit_label
+        END,
+        updated_at = NOW()
+      WHERE id = $1
+    `,
+    [property.propertyInternalId, unitLabel ?? null],
+  );
+
+  await getPgPool().query(
+    `
+      UPDATE parcel_app_ready_seed_preview
+      SET
+        representative_size = COALESCE($2, representative_size),
+        zoning = COALESCE($3, zoning)
+      WHERE parcel_id = $1
+    `,
+    [property.parcelId, representativeSize ?? null, zoning ?? null],
+  );
+
+  await getPgPool().query(
+    `
+      INSERT INTO property_profile (
+        parcel_id,
+        created_by_user_id,
+        description,
+        property_type,
+        bedrooms,
+        bathrooms,
+        interior_area_sqm,
+        year_built,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'manual_portal_property_details_v1')
+      ON CONFLICT (parcel_id) DO UPDATE
+      SET
+        created_by_user_id = EXCLUDED.created_by_user_id,
+        description = EXCLUDED.description,
+        property_type = EXCLUDED.property_type,
+        bedrooms = EXCLUDED.bedrooms,
+        bathrooms = EXCLUDED.bathrooms,
+        interior_area_sqm = EXCLUDED.interior_area_sqm,
+        year_built = EXCLUDED.year_built,
+        seed_source = EXCLUDED.seed_source,
+        updated_at = NOW()
+    `,
+    [
+      property.parcelId,
+      input.userId,
+      description ?? null,
+      property.propertyType,
+      bedrooms ?? null,
+      bathrooms ?? null,
+      interiorAreaSqm ?? null,
+      yearBuilt ?? null,
+    ],
+  );
+
+  return getPortalEditablePropertyRecord(input.userId, input.propertyRouteId);
 }
