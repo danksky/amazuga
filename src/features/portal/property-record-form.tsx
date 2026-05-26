@@ -56,7 +56,7 @@ function getKindLabel(kind: PortalEditablePropertyRecord["propertyKind"]) {
     case "land":
       return "Land";
     case "building":
-      return "Building";
+      return "Apartment building";
     case "apartment_unit":
       return "Apartment unit";
     case "commercial_unit":
