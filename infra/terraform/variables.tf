@@ -103,7 +103,9 @@ variable "cloudflare_tiles_worker_public_allowed_origins" {
 variable "cloudflare_tiles_worker_preview_allowed_origins" {
   description = "Explicit preview origins allowed to fetch PMTiles through the Worker."
   type        = list(string)
-  default     = []
+  default = [
+    "https://amazuga.vercel.app",
+  ]
 }
 
 variable "cloudflare_tiles_worker_max_range_bytes" {
