@@ -163,7 +163,7 @@ export default {
     }
 
     if (request.method === "HEAD") {
-      const object = await env.PARCEL_BUCKET.head(env.OBJECT_KEY);
+      const object = await env.TILE_BUCKET.head(env.OBJECT_KEY);
       if (!object) {
         return respond(404, "Not found.");
       }
@@ -182,7 +182,7 @@ export default {
       return respond(416, parsedRange.error, { "Content-Range": "bytes */*" });
     }
 
-    const object = await env.PARCEL_BUCKET.get(env.OBJECT_KEY, {
+    const object = await env.TILE_BUCKET.get(env.OBJECT_KEY, {
       range: request.headers,
     });
 

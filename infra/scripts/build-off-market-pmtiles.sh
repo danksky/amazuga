@@ -1,86 +1,101 @@
 #!/bin/zsh
-# Build off-market parcel discoverability point tiles from the preview DB.
+# Build off-market parcel discoverability point tiles from anchor point CSVs.
+#
+# Reads deduped anchor point CSVs directly — no database connection needed.
 #
 # Prerequisites:
-#   - psql available
 #   - tippecanoe available (https://github.com/felt/tippecanoe)
-#   - AWS CLI available (for upload to R2)
-#   - DATABASE_URL_PREVIEW or DATABASE_URL set in environment
-#
-# Reads: preview_public_off_market_discoverability_surface_v1
-# Outputs: off-market-preview-v1.pmtiles (local) and uploads to R2
+#   - python3 available
+#   - npx wrangler available (for R2 upload)
 #
 # Usage:
-#   DATABASE_URL_PREVIEW="postgres://..." \
+#   ANCHOR_POINTS_DIR="/path/to/anchor-point-csv-batches-deduped" \
+#   CLOUDFLARE_API_TOKEN="..." \
 #   CLOUDFLARE_ACCOUNT_ID="..." \
-#   CLOUDFLARE_R2_ACCESS_KEY_ID="..." \
-#   CLOUDFLARE_R2_SECRET_ACCESS_KEY="..." \
 #   infra/scripts/build-off-market-pmtiles.sh
-#
-# Preview and prod tile artifacts use separate R2 object keys so they never
-# overwrite each other. Pass TILE_ENV=prod to build the prod artifact.
 
 set -euo pipefail
 
 # ---- Config --------------------------------------------------------------
 
-TILE_ENV="${TILE_ENV:-preview}"
-OBJECT_KEY="off-market-${TILE_ENV}-v1.pmtiles"
-LOCAL_GEOJSON="/tmp/off-market-${TILE_ENV}.geojson"
+OBJECT_KEY="off-market-v1.pmtiles"
+LOCAL_GEOJSON="/tmp/off-market.geojson"
 LOCAL_PMTILES="/tmp/${OBJECT_KEY}"
+R2_BUCKET_NAME="amazuga-off-market-tiles"
 
-# Off-market dots are meaningful at neighbourhood and closer zooms only.
-# minzoom=10 keeps the file small; maxzoom=14 is enough for parcel density.
 TIPPECANOE_MINZOOM=10
 TIPPECANOE_MAXZOOM=14
 
 # ---- Dependency checks ---------------------------------------------------
 
-for cmd in psql tippecanoe; do
+for cmd in tippecanoe python3; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "Error: $cmd is required." >&2
     exit 1
   fi
 done
 
-DB_URL="${DATABASE_URL_PREVIEW:-${DATABASE_URL:-}}"
-if [ -z "$DB_URL" ]; then
-  echo "Error: DATABASE_URL_PREVIEW or DATABASE_URL must be set." >&2
+if [ -z "${ANCHOR_POINTS_DIR:-}" ]; then
+  echo "Error: ANCHOR_POINTS_DIR must be set to the deduped anchor point CSV directory." >&2
   exit 1
 fi
 
-# ---- Export GeoJSON from DB ---------------------------------------------
+if [ ! -d "$ANCHOR_POINTS_DIR" ]; then
+  echo "Error: directory not found: $ANCHOR_POINTS_DIR" >&2
+  exit 1
+fi
 
-echo "Exporting off-market discoverability surface from DB…"
+# ---- Convert CSVs to GeoJSON --------------------------------------------
 
-psql "$DB_URL" -c "
-  COPY (
-    SELECT json_build_object(
-      'type', 'FeatureCollection',
-      'features', COALESCE(json_agg(
-        json_build_object(
-          'type', 'Feature',
-          'geometry', json_build_object(
-            'type', 'Point',
-            'coordinates', json_build_array(anchor_lon, anchor_lat)
-          ),
-          'properties', json_build_object(
-            'parcel_public_id', parcel_public_id,
-            'route_id',         route_id,
-            'display_id',       display_id,
-            'district',         district,
-            'sector',           sector,
-            'anchor_source',    anchor_source,
-            'entity_kind',      'parcel'
-          )
-        )
-      ), '[]'::json)
-    )
-    FROM preview_public_off_market_discoverability_surface_v1
-  ) TO STDOUT;
-" > "$LOCAL_GEOJSON"
+echo "Converting anchor point CSVs to GeoJSON…"
 
-echo "Exported GeoJSON to $LOCAL_GEOJSON"
+python3 - "$ANCHOR_POINTS_DIR" "$LOCAL_GEOJSON" <<'PYEOF'
+import csv, json, sys, glob, os
+
+src_dir = sys.argv[1]
+out_path = sys.argv[2]
+
+files = sorted(glob.glob(os.path.join(src_dir, "*.csv")))
+if not files:
+    print(f"Error: no CSV files found in {src_dir}", file=sys.stderr)
+    sys.exit(1)
+
+print(f"  Found {len(files)} CSV files…")
+
+with open(out_path, "w") as out:
+    out.write('{"type":"FeatureCollection","features":[\n')
+    first = True
+    total = 0
+    for path in files:
+        with open(path, newline="") as f:
+            for row in csv.DictReader(f):
+                try:
+                    lon = float(row["anchor_lon"])
+                    lat = float(row["anchor_lat"])
+                except (ValueError, KeyError):
+                    continue
+                feature = json.dumps({
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                    "properties": {
+                        "parcel_public_id": row["public_id"],
+                        "route_id": row["public_id"],
+                        "display_id": row.get("display_id", ""),
+                    },
+                }, separators=(",", ":"))
+                if not first:
+                    out.write(",\n")
+                out.write(feature)
+                first = False
+                total += 1
+                if total % 500_000 == 0:
+                    print(f"  {total:,} features written…")
+    out.write("\n]}")
+
+print(f"  Done — {total:,} features → {out_path}")
+PYEOF
+
+echo "GeoJSON written to $LOCAL_GEOJSON"
 
 # ---- Build PMTiles -------------------------------------------------------
 
@@ -101,17 +116,16 @@ echo "Built PMTiles at $LOCAL_PMTILES"
 
 # ---- Upload to R2 --------------------------------------------------------
 
-if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && \
-   [ -n "${CLOUDFLARE_R2_ACCESS_KEY_ID:-}" ] && \
-   [ -n "${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}" ]; then
-
-  echo "Uploading $OBJECT_KEY to R2…"
-  "$(dirname "$0")/upload-pmtiles-to-r2.sh" "$LOCAL_PMTILES" "$OBJECT_KEY"
+if [ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+  echo "Uploading $OBJECT_KEY to R2 bucket $R2_BUCKET_NAME…"
+  R2_BUCKET_NAME="$R2_BUCKET_NAME" \
+    "$(dirname "$0")/upload-pmtiles-to-r2.sh" "$LOCAL_PMTILES" "$OBJECT_KEY"
   echo "Done."
 else
-  echo "R2 credentials not set — skipping upload."
-  echo "Local file available at: $LOCAL_PMTILES"
+  echo "Cloudflare credentials not set — skipping upload."
+  echo "Local file: $LOCAL_PMTILES"
   echo ""
   echo "To upload manually:"
+  echo "  R2_BUCKET_NAME=$R2_BUCKET_NAME \\"
   echo "  infra/scripts/upload-pmtiles-to-r2.sh $LOCAL_PMTILES $OBJECT_KEY"
 fi

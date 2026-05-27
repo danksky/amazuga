@@ -35,7 +35,7 @@ provider "vercel" {
 }
 
 locals {
-  parcel_tiles_worker_file = "${path.module}/../workers/parcel-tiles/index.js"
+  parcel_tiles_worker_file  = "${path.module}/../workers/parcel-tiles/index.js"
   listing_media_worker_file = "${path.module}/../workers/listing-media/index.js"
   cloudflare_tiles_worker_allowed_origins = distinct(
     concat(
@@ -58,6 +58,11 @@ locals {
       cloudflare_workers_custom_domain.parcel_tiles.hostname,
       var.cloudflare_tiles_worker_public_path
     )
+  )
+  vercel_off_market_pmtiles_url = format(
+    "https://%s%s",
+    cloudflare_workers_custom_domain.off_market_tiles.hostname,
+    var.cloudflare_off_market_tiles_worker_public_path
   )
   listing_media_public_base_url = format(
     "https://%s",
@@ -130,7 +135,7 @@ resource "cloudflare_workers_script" "parcel_tiles" {
 
   bindings = [
     {
-      name        = "PARCEL_BUCKET"
+      name        = "TILE_BUCKET"
       type        = "r2_bucket"
       bucket_name = cloudflare_r2_bucket.parcel_tiles.name
     },
@@ -191,6 +196,114 @@ resource "cloudflare_workers_custom_domain" "parcel_tiles" {
   hostname   = var.cloudflare_tiles_worker_hostname
   service    = cloudflare_workers_script.parcel_tiles.script_name
   zone_id    = data.cloudflare_zone.amazuga.id
+}
+
+resource "cloudflare_r2_bucket" "off_market_tiles" {
+  account_id    = var.cloudflare_account_id
+  name          = var.cloudflare_off_market_tiles_r2_bucket_name
+  location      = var.cloudflare_r2_bucket_location
+  storage_class = "Standard"
+}
+
+resource "cloudflare_r2_bucket_cors" "off_market_tiles" {
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.off_market_tiles.name
+
+  rules = [
+    {
+      id = "Allow Off-Market Map Browser Reads"
+      allowed = {
+        methods = ["GET", "HEAD"]
+        origins = var.cloudflare_r2_cors_allowed_origins
+        headers = ["Range"]
+      }
+      expose_headers  = ["Accept-Ranges", "Content-Length", "Content-Range", "ETag"]
+      max_age_seconds = 3600
+    }
+  ]
+}
+
+resource "cloudflare_workers_script" "off_market_tiles" {
+  account_id         = var.cloudflare_account_id
+  script_name        = var.cloudflare_off_market_tiles_worker_name
+  content_file       = local.parcel_tiles_worker_file
+  content_sha256     = filesha256(local.parcel_tiles_worker_file)
+  main_module        = "index.js"
+  compatibility_date = "2026-05-09"
+
+  bindings = [
+    {
+      name        = "TILE_BUCKET"
+      type        = "r2_bucket"
+      bucket_name = cloudflare_r2_bucket.off_market_tiles.name
+    },
+    {
+      name = "OBJECT_KEY"
+      type = "plain_text"
+      text = var.cloudflare_off_market_tiles_worker_object_key
+    },
+    {
+      name = "ALLOWED_ORIGINS"
+      type = "plain_text"
+      text = jsonencode(local.cloudflare_tiles_worker_allowed_origins)
+    },
+    {
+      name = "PUBLIC_PATH"
+      type = "plain_text"
+      text = var.cloudflare_off_market_tiles_worker_public_path
+    },
+    {
+      name = "MAX_RANGE_BYTES"
+      type = "plain_text"
+      text = tostring(var.cloudflare_tiles_worker_max_range_bytes)
+    },
+    {
+      name         = "TILE_RATE_LIMITER"
+      type         = "ratelimit"
+      namespace_id = var.cloudflare_off_market_tiles_worker_rate_limit_namespace_id
+      simple = {
+        limit  = var.cloudflare_tiles_worker_rate_limit_requests
+        period = var.cloudflare_tiles_worker_rate_limit_period_seconds
+      }
+    },
+    {
+      name = "RATE_LIMIT_PERIOD_SECONDS"
+      type = "plain_text"
+      text = tostring(var.cloudflare_tiles_worker_rate_limit_period_seconds)
+    },
+  ]
+
+  observability = {
+    enabled = true
+    logs = {
+      enabled            = true
+      invocation_logs    = true
+      head_sampling_rate = 1
+    }
+  }
+}
+
+resource "cloudflare_workers_script_subdomain" "off_market_tiles" {
+  account_id  = var.cloudflare_account_id
+  script_name = cloudflare_workers_script.off_market_tiles.script_name
+  enabled     = true
+}
+
+resource "cloudflare_workers_custom_domain" "off_market_tiles" {
+  account_id = var.cloudflare_account_id
+  hostname   = var.cloudflare_off_market_tiles_worker_hostname
+  service    = cloudflare_workers_script.off_market_tiles.script_name
+  zone_id    = data.cloudflare_zone.amazuga.id
+}
+
+resource "vercel_project_environment_variable" "off_market_pmtiles_url" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_OFF_MARKET_PMTILES_URL"
+  value      = local.vercel_off_market_pmtiles_url
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "Public Worker-backed PMTiles URL for off-market parcel discoverability dots."
 }
 
 resource "cloudflare_r2_bucket" "listing_media" {

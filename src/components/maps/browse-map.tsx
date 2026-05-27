@@ -15,7 +15,9 @@ const PARCEL_PMTILES_URL =
   process.env.NEXT_PUBLIC_PARCEL_PMTILES_URL ||
   (process.env.NODE_ENV === "development" ? "/tiles/approved-provisional-parcels.pmtiles" : "");
 
-const OFF_MARKET_PMTILES_URL = process.env.NEXT_PUBLIC_OFF_MARKET_PMTILES_URL || "";
+const OFF_MARKET_PMTILES_URL =
+  process.env.NEXT_PUBLIC_OFF_MARKET_PMTILES_URL ||
+  (process.env.NODE_ENV === "development" ? "/tiles/off-market-preview-v1.pmtiles" : "");
 
 const OFF_MARKET_MIN_ZOOM = 13;
 const ZOOM_REFETCH_THRESHOLD = 1;

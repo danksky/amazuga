@@ -40,6 +40,14 @@ output "cloudflare_tiles_worker_public_url" {
   value = format("https://%s%s", cloudflare_workers_custom_domain.parcel_tiles.hostname, var.cloudflare_tiles_worker_public_path)
 }
 
+output "cloudflare_off_market_tiles_r2_bucket_name" {
+  value = cloudflare_r2_bucket.off_market_tiles.name
+}
+
+output "cloudflare_off_market_tiles_worker_public_url" {
+  value = local.vercel_off_market_pmtiles_url
+}
+
 output "cloudflare_listing_media_bucket_name" {
   value = cloudflare_r2_bucket.listing_media.name
 }

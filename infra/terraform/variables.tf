@@ -132,6 +132,42 @@ variable "cloudflare_tiles_worker_rate_limit_period_seconds" {
   default     = 60
 }
 
+variable "cloudflare_off_market_tiles_r2_bucket_name" {
+  description = "Bucket name for off-market parcel discoverability PMTiles."
+  type        = string
+  default     = "amazuga-off-market-tiles"
+}
+
+variable "cloudflare_off_market_tiles_worker_name" {
+  description = "Worker name used to front off-market discoverability PMTiles."
+  type        = string
+  default     = "amazuga-off-market-tiles"
+}
+
+variable "cloudflare_off_market_tiles_worker_hostname" {
+  description = "Custom hostname for the off-market tile Worker."
+  type        = string
+  default     = "discovery.amazuga.com"
+}
+
+variable "cloudflare_off_market_tiles_worker_public_path" {
+  description = "Public request path served by the off-market tile Worker."
+  type        = string
+  default     = "/catalog/off-market"
+}
+
+variable "cloudflare_off_market_tiles_worker_object_key" {
+  description = "R2 object key for the off-market PMTiles archive."
+  type        = string
+  default     = "off-market-v1.pmtiles"
+}
+
+variable "cloudflare_off_market_tiles_worker_rate_limit_namespace_id" {
+  description = "Unique Cloudflare rate limit namespace ID for the off-market tile Worker."
+  type        = string
+  default     = "41002"
+}
+
 variable "cloudflare_listing_media_bucket_name" {
   description = "Bucket name for listing photos."
   type        = string
