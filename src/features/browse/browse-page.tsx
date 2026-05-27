@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/search/search-bar";
-import { PropertyCard } from "@/components/property/property-card";
-import type { PublicListingCardData } from "@/lib/server/public-listings";
+import { BrowseMap } from "@/components/maps/browse-map";
+import type { BrowseMapCard } from "@/components/maps/browse-map";
+import { BrowseListingCard } from "@/components/property/browse-listing-card";
 
 import styles from "./browse-page.module.css";
 
+const MIN_DISPLAY_CARDS = 6;
+
 interface BrowsePageProps {
   mode: "buy" | "rent";
-  listings: PublicListingCardData[];
 }
 
-export function BrowsePage({ mode, listings }: BrowsePageProps) {
+export function BrowsePage({ mode }: BrowsePageProps) {
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [cards, setCards] = useState<BrowseMapCard[]>([]);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  // Holds the last rich batch so we can fill in when the current view is sparse.
+  const fallbackRef = useRef<BrowseMapCard[]>([]);
+
   const title = mode === "buy" ? "Homes for sale in Rwanda" : "Homes for rent in Rwanda";
   const filters = ["Price", "Beds & baths", "Property type", "More filters"];
 
@@ -29,7 +36,7 @@ export function BrowsePage({ mode, listings }: BrowsePageProps) {
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
-    
+
     function syncScrollLock() {
       const shouldLockScroll = window.innerWidth > 1100;
       document.body.style.overflow = shouldLockScroll ? "hidden" : previousBodyOverflow;
@@ -46,6 +53,34 @@ export function BrowsePage({ mode, listings }: BrowsePageProps) {
     };
   }, []);
 
+  // Scroll the selected card into view whenever selection changes.
+  useEffect(() => {
+    if (!selectedListingId) return;
+    const el = document.querySelector(`[data-listing-id="${selectedListingId}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedListingId]);
+
+  const handleResultsChange = useCallback((incoming: BrowseMapCard[]) => {
+    if (incoming.length >= MIN_DISPLAY_CARDS) {
+      fallbackRef.current = incoming;
+    }
+    setCards(incoming);
+  }, []);
+
+  // Build the displayed list: always at least MIN_DISPLAY_CARDS entries by
+  // padding with the most-recently-seen cards that aren't already visible.
+  const visibleIds = new Set(cards.map((c) => c.listingId));
+  const fillers = fallbackRef.current.filter((c) => !visibleIds.has(c.listingId));
+  const displayCards =
+    cards.length >= MIN_DISPLAY_CARDS
+      ? cards
+      : [...cards, ...fillers].slice(0, Math.max(cards.length, MIN_DISPLAY_CARDS));
+
+  const countLabel =
+    cards.length === 0
+      ? "Searching current view…"
+      : `${cards.length} listing${cards.length === 1 ? "" : "s"} in the current view`;
+
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
@@ -55,28 +90,26 @@ export function BrowsePage({ mode, listings }: BrowsePageProps) {
         />
         <div className={`${styles.layout} ${showMobileMap ? styles.mobileMapVisible : ""}`}>
           <div className={styles.mapCard}>
-            <div className={styles.mapCanvas}>
-              <div className={styles.boundary} />
-              <div className={styles.pin} style={{ left: "21%", top: "34%" }}>
-                185M
-              </div>
-              <div className={styles.pin} style={{ left: "56%", top: "56%" }}>
-                950k
-              </div>
-              <div className={styles.pin} style={{ left: "65%", top: "28%" }}>
-                Parcel
-              </div>
-            </div>
+            <BrowseMap
+              mode={mode}
+              onResultsChange={handleResultsChange}
+              selectedListingId={selectedListingId}
+              onSelectListing={setSelectedListingId}
+            />
           </div>
           <div className={styles.resultsCard}>
             <div className={styles.resultsHead}>
               <div className={styles.eyebrow}>{mode === "buy" ? "Buy" : "Rent"}</div>
               <h1 className={styles.title}>{title}</h1>
-              <div className={styles.subtitle}>{listings.length} live listings in the current view</div>
+              <div className={styles.subtitle}>{countLabel}</div>
             </div>
             <div className={styles.grid}>
-              {listings.map(({ property, listing }) => (
-                <PropertyCard key={listing.id} listing={listing} property={property} />
+              {displayCards.map((card) => (
+                <BrowseListingCard
+                  key={card.listingId}
+                  card={card}
+                  selected={card.listingId === selectedListingId}
+                />
               ))}
             </div>
           </div>

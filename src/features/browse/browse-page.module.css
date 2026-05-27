@@ -7,8 +7,8 @@
 }
 
 .stack {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 18px;
   height: 100%;
 }
@@ -18,7 +18,7 @@
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.95fr);
   gap: 18px;
   align-items: stretch;
-  height: 100%;
+  flex: 1 1 0;
   min-height: 0;
 }
 
@@ -139,11 +139,12 @@
   .stack {
     gap: 14px;
     height: auto;
-    grid-template-rows: auto auto auto;
+    flex: none;
   }
 
   .layout {
     grid-template-columns: 1fr;
+    flex: none;
     height: auto;
   }
 

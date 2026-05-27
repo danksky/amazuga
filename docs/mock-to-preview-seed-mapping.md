@@ -23,6 +23,19 @@ The preview DB should treat imported mock records as intentional seed cohorts, n
 
 Current cohorts:
 
+- `preview_browse_validation_v1`
+  - Purpose: validate the map-first browse experience — clustering, rail rendering, off-market dot suppression, and mixed property types.
+  - Backing scripts:
+    - [infra/sql/preview_browse_validation_seed.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_browse_validation_seed.sql)
+    - [infra/sql/preview_browse_validation_seed_cleanup.sql](/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/amazuga/infra/sql/preview_browse_validation_seed_cleanup.sql)
+  - Current live shape: up to 75 active `public` listings across Gasabo, Kicukiro, and Nyarugenge. 15 cycling templates: 10 sale (houses, 1 land, 1 commercial building) + 5 rent (houses). Uses `usr_preview_manager` / `usr_preview_agent` and the Kigali Homes Group agency.
+  - Rule: keep this cohort separate and explicitly named. Runs after `preview_kigali_seed_v1` — the eligible-parcel filter skips any parcel already taken by another seed.
+  - QA checklist:
+    - `/buy` rail shows sale listings only; `/rent` rail shows rent listings only
+    - Off-market dots for parcels with active listings in the current mode do not appear
+    - Fast panning does not duplicate API calls (hysteresis / padded envelope)
+    - "Search this area" button appears on mobile after pan; disappears after fetch
+
 - `mock_import_listing_surface_v1`
   - Purpose: import the older app mock catalog onto real parcel-backed preview records.
   - Backing scripts:

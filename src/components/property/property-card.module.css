@@ -8,6 +8,13 @@
   box-shadow: var(--shadow);
   min-height: 292px;
   max-height: 320px;
+  transition: border-color 0.15s ease;
+}
+
+.cardSelected {
+  border-color: #16a34a;
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18), var(--shadow);
 }
 
 .media {
