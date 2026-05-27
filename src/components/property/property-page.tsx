@@ -454,9 +454,14 @@ export function PropertyPage({
             {listing ? (
               <div className={styles.contactSummary}>
                 <div className={styles.contactIdentity}>
-                  <div className={styles.contactSummaryLabel}>Contact</div>
-                  <div className={styles.contactSummaryName}>{contactName ?? agency?.businessName ?? "For sale by owner"}</div>
-                  {contactRoleLabel ? <div className={styles.contactSummaryMeta}>{contactRoleLabel}</div> : null}
+                  <div className={styles.contactDetailRow}>
+                    <div className={styles.contactDetailLabel}>Agent:</div>
+                    <div className={styles.contactDetailValue}>{contactName ?? agency?.businessName ?? "Owner"}</div>
+                  </div>
+                  <div className={styles.contactDetailRow}>
+                    <div className={styles.contactDetailLabel}>Agency:</div>
+                    <div className={styles.contactDetailValue}>{contactRoleLabel ?? "For sale by owner"}</div>
+                  </div>
                 </div>
                 <div className={styles.ctaGroup}>
                   {showWhatsapp && whatsappUrl ? (
