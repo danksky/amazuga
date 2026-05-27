@@ -351,7 +351,11 @@ function toAdminPropertyClaimRequest(row: AdminPropertyClaimRequestRow): AdminPr
             : undefined
     : !row.property_internal_id
     ? row.claim_scope === "unit_partial"
-      ? "This claim still needs to be matched to a specific unit in Preview before it can be approved."
+      ? !row.unit_label
+        ? "This unit claim is missing its unit label and cannot be approved."
+        : !row.declared_asset_type
+          ? "This unit claim is missing its declared unit type and cannot be approved."
+          : undefined
       : !row.declared_asset_type
         ? "This parcel-first claim still needs to be resolved to a specific property record before it can be approved."
         : undefined
@@ -475,7 +479,7 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "House",
-        propertyDescription: "Preview house record auto-backfilled from parcel context after claim approval.",
+        propertyDescription: "Claimed house record created from the parcel details on file.",
         bedrooms: representativeSize !== null && representativeSize >= 650 ? 5 : representativeSize !== null && representativeSize >= 420 ? 4 : representativeSize !== null && representativeSize >= 250 ? 3 : 2,
         bathrooms: representativeSize !== null && representativeSize >= 650 ? 4 : representativeSize !== null && representativeSize >= 420 ? 3 : 2,
         interiorAreaSqm: fallbackArea(0.42, 90, 420, 180),
@@ -484,7 +488,7 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: normalizedUnitLabel,
         propertyType: "Apartment unit",
-        propertyDescription: "Preview apartment-unit record auto-backfilled from parcel context after claim approval.",
+        propertyDescription: "Claimed apartment unit record created from the parcel details on file.",
         bedrooms: representativeSize !== null && representativeSize >= 900 ? 3 : representativeSize !== null && representativeSize >= 450 ? 2 : 1,
         bathrooms: representativeSize !== null && representativeSize < 300 ? 1 : 2,
         interiorAreaSqm: fallbackArea(0.18, 55, 160, 96),
@@ -493,7 +497,7 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "Apartment building",
-        propertyDescription: "Preview apartment-building record auto-backfilled from parcel context after claim approval.",
+        propertyDescription: "Claimed apartment building record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
@@ -502,7 +506,7 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "Commercial building",
-        propertyDescription: "Preview commercial-building record auto-backfilled from parcel context after claim approval.",
+        propertyDescription: "Claimed commercial building record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
@@ -511,7 +515,7 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: normalizedUnitLabel,
         propertyType: "Commercial unit",
-        propertyDescription: "Preview commercial-unit record auto-backfilled from parcel context after claim approval.",
+        propertyDescription: "Claimed commercial unit record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(0.35, 80, 420, 148),
@@ -520,7 +524,7 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "Land",
-        propertyDescription: "Preview land record auto-backfilled from parcel context after claim approval.",
+        propertyDescription: "Claimed land record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: null,
@@ -542,8 +546,206 @@ function normalizeClaimUnitLabel(value: string | null | undefined) {
   return normalized ? normalized.toUpperCase() : null;
 }
 
+function getParentBuildingKindForUnit(propertyKind?: PropertyKind | null) {
+  switch (propertyKind) {
+    case "apartment_unit":
+      return "apartment_building" as const;
+    case "commercial_unit":
+      return "commercial_building" as const;
+    default:
+      return undefined;
+  }
+}
+
+function createClaimRootAssetId(parcelId: string) {
+  return "ast_" + createHash("md5").update("claim-root:" + parcelId).digest("hex").slice(0, 20);
+}
+
+function createClaimUnitAssetId(parcelId: string, unitLabel: string) {
+  return "ast_" + createHash("md5").update(`claim-unit:${parcelId}:${unitLabel}`).digest("hex").slice(0, 20);
+}
+
+function createClaimRootDisplayCode(parcelId: string) {
+  return "AST-" + createHash("md5").update("claim-root-display:" + parcelId).digest("hex").slice(0, 10).toUpperCase();
+}
+
+function createClaimUnitDisplayCode(parcelId: string, unitLabel: string) {
+  return "AST-" + createHash("md5").update(`claim-unit-display:${parcelId}:${unitLabel}`).digest("hex").slice(0, 10).toUpperCase();
+}
+
+function createClaimUnitPublicId(parcelId: string, unitLabel: string) {
+  return createHash("md5").update(`claim-unit-public:${parcelId}:${unitLabel}`).digest("hex").slice(0, 10).toUpperCase();
+}
+
 function getOwnershipScopeForClaimScope(claimScope: PropertyClaimScope): PropertyOwnershipScope {
   return claimScope === "unit_partial" ? "unit" : "full";
+}
+
+async function ensureClaimApprovalTarget(input: {
+  claimRequestId: string;
+  parcelId: string;
+  claimScope: PropertyClaimScope;
+  declaredAssetType?: PropertyKind;
+  unitLabel?: string;
+}) {
+  const parcelRow = await getPgPool().query<{ public_id: string | null }>(
+    `SELECT public_id FROM parcel_app_ready_seed_preview WHERE parcel_id = $1 LIMIT 1`,
+    [input.parcelId],
+  );
+  const parcelPublicId = parcelRow.rows[0]?.public_id || input.parcelId;
+
+  if (input.claimScope === "full_parcel") {
+    if (!input.declaredAssetType) {
+      throw new Error("This parcel-first claim still needs a declared property type before approval.");
+    }
+
+    const existingPrimaryRow = await getPgPool().query<{ id: string; public_id: string }>(
+      `SELECT id, COALESCE(public_id, $2) AS public_id FROM property_asset WHERE parcel_id = $1 AND is_primary_for_parcel = TRUE LIMIT 1`,
+      [input.parcelId, parcelPublicId],
+    );
+
+    let assetId: string;
+    let resolvedPublicId: string;
+
+    if (existingPrimaryRow.rows[0]) {
+      assetId = existingPrimaryRow.rows[0].id;
+      resolvedPublicId = existingPrimaryRow.rows[0].public_id;
+      await getPgPool().query(
+        `UPDATE property_asset SET asset_type = $2, seed_source = 'claim_approval_v1', updated_at = NOW() WHERE id = $1`,
+        [assetId, input.declaredAssetType],
+      );
+    } else {
+      assetId = "ast_" + createHash("md5").update("claim-primary:" + input.parcelId).digest("hex").slice(0, 20);
+      resolvedPublicId = parcelPublicId;
+      await getPgPool().query(
+        `
+          INSERT INTO property_asset (id, parcel_id, asset_type, public_id, display_code, is_primary_for_parcel, seed_source)
+          VALUES ($1, $2, $3, $4, $5, TRUE, 'claim_approval_v1')
+          ON CONFLICT (id) DO UPDATE SET asset_type = EXCLUDED.asset_type, updated_at = NOW()
+        `,
+        [assetId, input.parcelId, input.declaredAssetType, resolvedPublicId, "AST-" + createHash("md5").update("claim-display:" + input.parcelId).digest("hex").slice(0, 10).toUpperCase()],
+      );
+    }
+
+    await getPgPool().query(
+      `UPDATE property_claim_request SET property_internal_id = $2, property_id = $3, updated_at = NOW() WHERE id = $1`,
+      [input.claimRequestId, assetId, resolvedPublicId],
+    );
+
+    return {
+      propertyInternalId: assetId,
+      propertyId: resolvedPublicId,
+    };
+  }
+
+  const normalizedUnitLabel = normalizeClaimUnitLabel(input.unitLabel);
+  const declaredUnitType = input.declaredAssetType;
+  const parentBuildingKind = getParentBuildingKindForUnit(declaredUnitType);
+
+  if (!normalizedUnitLabel || !declaredUnitType || !parentBuildingKind) {
+    throw new Error("This unit claim still needs a unit label and a valid unit type before approval.");
+  }
+
+  const existingRootRow = await getPgPool().query<{ id: string; public_id: string | null }>(
+    `
+      SELECT id, public_id
+      FROM property_asset
+      WHERE parcel_id = $1
+        AND parent_asset_id IS NULL
+      ORDER BY
+        CASE WHEN is_primary_for_parcel THEN 0 ELSE 1 END,
+        created_at ASC,
+        id ASC
+      LIMIT 1
+    `,
+    [input.parcelId],
+  );
+
+  const rootAssetId = existingRootRow.rows[0]?.id || createClaimRootAssetId(input.parcelId);
+  const rootPublicId = existingRootRow.rows[0]?.public_id || parcelPublicId;
+
+  await getPgPool().query(
+    `
+      INSERT INTO property_asset (
+        id,
+        parcel_id,
+        asset_type,
+        public_id,
+        display_code,
+        is_primary_for_parcel,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, TRUE, 'claim_approval_v1')
+      ON CONFLICT (id) DO UPDATE
+      SET
+        asset_type = EXCLUDED.asset_type,
+        public_id = COALESCE(property_asset.public_id, EXCLUDED.public_id),
+        is_primary_for_parcel = TRUE,
+        seed_source = 'claim_approval_v1',
+        updated_at = NOW()
+    `,
+    [rootAssetId, input.parcelId, parentBuildingKind, rootPublicId, createClaimRootDisplayCode(input.parcelId)],
+  );
+
+  const existingUnitRow = await getPgPool().query<{ id: string; public_id: string | null }>(
+    `
+      SELECT id, public_id
+      FROM property_asset
+      WHERE parcel_id = $1
+        AND UPPER(COALESCE(unit_label, '')) = $2
+      ORDER BY created_at ASC, id ASC
+      LIMIT 1
+    `,
+    [input.parcelId, normalizedUnitLabel],
+  );
+
+  const unitAssetId = existingUnitRow.rows[0]?.id || createClaimUnitAssetId(input.parcelId, normalizedUnitLabel);
+  const unitPublicId = existingUnitRow.rows[0]?.public_id || createClaimUnitPublicId(input.parcelId, normalizedUnitLabel);
+
+  await getPgPool().query(
+    `
+      INSERT INTO property_asset (
+        id,
+        parcel_id,
+        parent_asset_id,
+        asset_type,
+        public_id,
+        display_code,
+        unit_label,
+        is_primary_for_parcel,
+        seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, 'claim_approval_v1')
+      ON CONFLICT (id) DO UPDATE
+      SET
+        parent_asset_id = EXCLUDED.parent_asset_id,
+        asset_type = EXCLUDED.asset_type,
+        public_id = COALESCE(property_asset.public_id, EXCLUDED.public_id),
+        unit_label = EXCLUDED.unit_label,
+        is_primary_for_parcel = FALSE,
+        seed_source = 'claim_approval_v1',
+        updated_at = NOW()
+    `,
+    [
+      unitAssetId,
+      input.parcelId,
+      rootAssetId,
+      declaredUnitType,
+      unitPublicId,
+      createClaimUnitDisplayCode(input.parcelId, normalizedUnitLabel),
+      normalizedUnitLabel,
+    ],
+  );
+
+  await getPgPool().query(
+    `UPDATE property_claim_request SET property_internal_id = $2, property_id = $3, updated_at = NOW() WHERE id = $1`,
+    [input.claimRequestId, unitAssetId, unitPublicId],
+  );
+
+  return {
+    propertyInternalId: unitAssetId,
+    propertyId: unitPublicId,
+  };
 }
 
 async function backfillPropertyRecordForAsset(input: {
@@ -1797,6 +1999,7 @@ export async function createPropertyClaimRequestInDb(input: {
         upi,
         claim_scope,
         unit_label,
+        declared_property_type,
         tenure_type,
         tenure_source,
         declared_asset_type,
@@ -2183,53 +2386,16 @@ export async function updatePropertyClaimRequestStatusInDb(
         throw new Error("This transfer request is missing its property target.");
       }
 
-      if (existingClaimRequest.claimScope !== "full_parcel" || !existingClaimRequest.declaredAssetType) {
-        throw new Error("This claim still needs to be resolved to a specific property or unit before approval.");
-      }
+      const resolvedTarget = await ensureClaimApprovalTarget({
+        claimRequestId,
+        parcelId: existingClaimRequest.parcelId,
+        claimScope: existingClaimRequest.claimScope,
+        declaredAssetType: existingClaimRequest.declaredAssetType,
+        unitLabel: existingClaimRequest.unitLabel,
+      });
 
-      const parcelRow = await getPgPool().query<{ public_id: string | null }>(
-        `SELECT public_id FROM parcel_app_ready_seed_preview WHERE parcel_id = $1 LIMIT 1`,
-        [existingClaimRequest.parcelId],
-      );
-      const parcelPublicId = parcelRow.rows[0]?.public_id || existingClaimRequest.parcelId;
-
-      // If a primary asset already exists (e.g. from mock seed data), update its type rather than inserting.
-      const existingPrimaryRow = await getPgPool().query<{ id: string; public_id: string }>(
-        `SELECT id, COALESCE(public_id, $2) AS public_id FROM property_asset WHERE parcel_id = $1 AND is_primary_for_parcel = TRUE LIMIT 1`,
-        [existingClaimRequest.parcelId, parcelPublicId],
-      );
-
-      let assetId: string;
-      let resolvedPublicId: string;
-
-      if (existingPrimaryRow.rows[0]) {
-        assetId = existingPrimaryRow.rows[0].id;
-        resolvedPublicId = existingPrimaryRow.rows[0].public_id;
-        await getPgPool().query(
-          `UPDATE property_asset SET asset_type = $2, seed_source = 'claim_approval_v1', updated_at = NOW() WHERE id = $1`,
-          [assetId, existingClaimRequest.declaredAssetType],
-        );
-      } else {
-        assetId = "ast_" + createHash("md5").update("claim-primary:" + existingClaimRequest.parcelId).digest("hex").slice(0, 20);
-        const displayCode = "AST-" + createHash("md5").update("claim-display:" + existingClaimRequest.parcelId).digest("hex").slice(0, 10).toUpperCase();
-        resolvedPublicId = parcelPublicId;
-        await getPgPool().query(
-          `
-            INSERT INTO property_asset (id, parcel_id, asset_type, public_id, display_code, is_primary_for_parcel, seed_source)
-            VALUES ($1, $2, $3, $4, $5, TRUE, 'claim_approval_v1')
-            ON CONFLICT (id) DO UPDATE SET asset_type = EXCLUDED.asset_type, updated_at = NOW()
-          `,
-          [assetId, existingClaimRequest.parcelId, existingClaimRequest.declaredAssetType, resolvedPublicId, displayCode],
-        );
-      }
-
-      await getPgPool().query(
-        `UPDATE property_claim_request SET property_internal_id = $2, property_id = $3, updated_at = NOW() WHERE id = $1`,
-        [claimRequestId, assetId, resolvedPublicId],
-      );
-
-      existingClaimRequest.propertyInternalId = assetId;
-      existingClaimRequest.propertyId = resolvedPublicId;
+      existingClaimRequest.propertyInternalId = resolvedTarget.propertyInternalId;
+      existingClaimRequest.propertyId = resolvedTarget.propertyId;
     }
 
     const targetResult = await getPgPool().query<{

@@ -273,7 +273,7 @@ function buildPropertyPageBehavior(
 
 function buildListingStateLabel(listing?: Listing) {
   if (!listing) {
-    return "Unlisted";
+    return "Off market";
   }
 
   return listing.marketingType === "rent" ? "For rent" : "For sale";
@@ -310,7 +310,7 @@ export function PropertyPage({
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
   const detailItems = buildDetailItems(property, propertyKind);
   const listingStateLabel = buildListingStateLabel(listing);
-  const primaryInfoMetaLabel = `${behavior.kindLabel} | ${listingStateLabel}`;
+  const primaryInfoMetaLabel = `${listingStateLabel} | ${behavior.kindLabel}`;
   const summaryDescription = property.description;
   const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
   const whatsappUrl = buildWhatsappUrl(agency?.whatsappPhone);

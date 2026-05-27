@@ -87,6 +87,20 @@
   gap: 16px;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
 .propertyTitle {
   margin: 0;
   font-size: 1.4rem;
@@ -172,9 +186,46 @@
   background: color-mix(in srgb, var(--surface) 82%, #dcefd5);
 }
 
+.unitList {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.unitCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-muted);
+}
+
+.unitCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.unitTitle {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.unitFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+}
+
 @media (max-width: 720px) {
   .fieldGrid,
-  .cardTop {
+  .cardTop,
+  .sectionHeader,
+  .unitCardTop {
     grid-template-columns: 1fr;
     display: grid;
   }

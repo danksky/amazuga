@@ -29,6 +29,14 @@ export default async function SellPortalPropertyClaimPage({
     getPortalClaimParcelContextByUpi(trimmedUpi),
   ]);
 
+  if (!claimParcelContext) {
+    const params = new URLSearchParams({
+      claimStatus: "no_match",
+      claimUpi: trimmedUpi,
+    });
+    redirect(`${routes.app.portalProperties}?${params.toString()}`);
+  }
+
   return (
     <PortalShell access={access}>
       <ClaimDetailsForm

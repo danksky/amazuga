@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "crypto";
+
 import type {
   PropertyClaimRequestKind,
   PropertyTransferMode,
@@ -96,6 +98,22 @@ interface PortalEditablePropertyRow {
   year_built: number | string | null;
 }
 
+interface PortalBuildingUnitRow {
+  property_internal_id: string;
+  property_route_id: string;
+  property_title: string | null;
+  property_kind: PropertyKind | null;
+  property_unit_label: string | null;
+  property_type: string | null;
+  bedrooms: number | string | null;
+  bathrooms: number | string | null;
+  interior_area_sqm: number | string | null;
+  year_built: number | string | null;
+  owner_user_id: string | null;
+  listing_id: string | null;
+  listing_status: "draft" | "active" | "inactive" | null;
+}
+
 export interface PortalOwnedPropertySummary {
   ownershipId: string;
   ownershipScope: "full" | "unit";
@@ -179,12 +197,30 @@ export interface PortalEditablePropertyRecord {
   interiorAreaSqm?: number;
   yearBuilt?: number;
   isListingReady: boolean;
+  childUnits: PortalBuildingUnitSummary[];
 }
 
 export interface PortalClaimParcelContext {
   existingAssetKind?: PropertyKind;
   representativeSize?: number;
   zoning?: string;
+}
+
+export interface PortalBuildingUnitSummary {
+  propertyInternalId: string;
+  propertyRouteId: string;
+  propertyTitle: string;
+  propertyKind?: PropertyKind;
+  unitLabel?: string;
+  propertyType: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  interiorAreaSqm?: number;
+  yearBuilt?: number;
+  isOwnedByCurrentUser: boolean;
+  isClaimed: boolean;
+  listingId?: string;
+  listingStatus?: "draft" | "active" | "inactive";
 }
 
 function normalizePropertyTitle(title: string | null | undefined, routeId: string) {
@@ -203,6 +239,11 @@ function toNumber(value: number | string | null | undefined) {
 function normalizeZoningLabel(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed || undefined;
+}
+
+function normalizeClaimUnitLabel(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.toUpperCase() : undefined;
 }
 
 function getDefaultPropertyType(propertyKind?: PropertyKind | null) {
@@ -224,6 +265,94 @@ function getDefaultPropertyType(propertyKind?: PropertyKind | null) {
   }
 }
 
+function getChildUnitKindForBuilding(propertyKind?: PropertyKind | null) {
+  switch (propertyKind) {
+    case "apartment_building":
+      return "apartment_unit" as const;
+    case "commercial_building":
+      return "commercial_unit" as const;
+    default:
+      return undefined;
+  }
+}
+
+function createBuildingUnitAssetId(buildingInternalId: string, unitLabel: string) {
+  return "ast_" + createHash("md5").update(`portal-building-unit:${buildingInternalId}:${unitLabel}`).digest("hex").slice(0, 20);
+}
+
+function createBuildingUnitPublicId(parcelId: string, unitLabel: string) {
+  return createHash("md5").update(`portal-building-unit-public:${parcelId}:${unitLabel}`).digest("hex").slice(0, 10).toUpperCase();
+}
+
+function createBuildingUnitDisplayCode(parcelId: string, unitLabel: string) {
+  return "AST-" + createHash("md5").update(`portal-building-unit-display:${parcelId}:${unitLabel}`).digest("hex").slice(0, 10).toUpperCase();
+}
+
+async function listChildUnitsForBuilding(buildingInternalId: string, userId: string): Promise<PortalBuildingUnitSummary[]> {
+  const result = await getPgPool().query<PortalBuildingUnitRow>(
+    `
+      SELECT
+        child.id AS property_internal_id,
+        child.public_id AS property_route_id,
+        CASE
+          WHEN COALESCE(NULLIF(BTRIM(child.unit_label), ''), NULL) IS NOT NULL
+            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id), ' · ', child.unit_label)
+          ELSE COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id)
+        END AS property_title,
+        child.asset_type AS property_kind,
+        child.unit_label AS property_unit_label,
+        pap.property_type,
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
+        pap.year_built,
+        owner.user_id AS owner_user_id,
+        listing.id AS listing_id,
+        listing.status AS listing_status
+      FROM property_asset child
+      JOIN parcel_app_ready_seed_preview parcel
+        ON parcel.parcel_id = child.parcel_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = child.id
+      LEFT JOIN property_ownership owner
+        ON owner.property_internal_id = child.id
+      LEFT JOIN LATERAL (
+        SELECT l.id, l.status
+        FROM listing l
+        WHERE l.property_asset_id = child.id
+          AND l.status IN ('draft', 'active', 'inactive')
+        ORDER BY
+          CASE WHEN l.status = 'active' THEN 0 WHEN l.status = 'inactive' THEN 1 ELSE 2 END,
+          l.updated_at DESC,
+          l.created_at DESC,
+          l.id DESC
+        LIMIT 1
+      ) listing
+        ON TRUE
+      WHERE child.parent_asset_id = $1
+      ORDER BY child.unit_label ASC NULLS LAST, child.created_at ASC, child.id ASC
+    `,
+    [buildingInternalId],
+  );
+
+  return result.rows.map((row) => ({
+    propertyInternalId: row.property_internal_id,
+    propertyRouteId: row.property_route_id,
+    propertyTitle: normalizePropertyTitle(row.property_title, row.property_route_id),
+    propertyKind: row.property_kind || undefined,
+    unitLabel: row.property_unit_label || undefined,
+    propertyType: row.property_type || getDefaultPropertyType(row.property_kind),
+    bedrooms: toNumber(row.bedrooms),
+    bathrooms: toNumber(row.bathrooms),
+    interiorAreaSqm: toNumber(row.interior_area_sqm),
+    yearBuilt: toNumber(row.year_built),
+    isOwnedByCurrentUser: row.owner_user_id === userId,
+    isClaimed: Boolean(row.owner_user_id),
+    listingId: row.listing_id || undefined,
+    listingStatus: row.listing_status || undefined,
+  }));
+}
+
 function getRequiredPropertyFacts(input: {
   propertyKind?: PropertyKind | null;
   propertyTitle?: string | null;
@@ -241,7 +370,6 @@ function getRequiredPropertyFacts(input: {
   const hasBathrooms = toNumber(input.bathrooms) != null;
   const hasInteriorArea = toNumber(input.interiorAreaSqm) != null;
   const hasRepresentativeSize = toNumber(input.representativeSize) != null;
-  const hasZoning = Boolean(input.zoning?.trim());
 
   switch (input.propertyKind) {
     case "house":
@@ -262,17 +390,14 @@ function getRequiredPropertyFacts(input: {
       if (!hasTitle) requiredFacts.push("display label");
       if (!hasInteriorArea) requiredFacts.push("built area");
       if (!hasRepresentativeSize) requiredFacts.push("parcel size");
-      if (!hasZoning) requiredFacts.push("use zone");
       break;
     case "commercial_unit":
       if (!hasUnitLabel) requiredFacts.push("unit label");
       if (!hasInteriorArea) requiredFacts.push("floor area");
-      if (!hasZoning) requiredFacts.push("use zone");
       break;
     case "land":
       if (!hasTitle) requiredFacts.push("display label");
       if (!hasRepresentativeSize) requiredFacts.push("parcel size");
-      if (!hasZoning) requiredFacts.push("use zone");
       break;
     default:
       if (!hasTitle) requiredFacts.push("display label");
@@ -751,7 +876,15 @@ export async function getPortalEditablePropertyRecord(
         ON pap.property_asset_id = pa.id
       WHERE po.user_id = $1
         AND (pa.public_id = $2 OR p.public_id = $2)
-      ORDER BY po.created_at DESC, po.id DESC
+      ORDER BY
+        CASE
+          WHEN pa.public_id = $2 THEN 0
+          WHEN p.public_id = $2 AND pa.parent_asset_id IS NULL AND pa.is_primary_for_parcel THEN 1
+          WHEN p.public_id = $2 AND pa.parent_asset_id IS NULL THEN 2
+          ELSE 3
+        END,
+        po.created_at DESC,
+        po.id DESC
       LIMIT 1
     `,
     [userId, propertyRouteId],
@@ -761,6 +894,11 @@ export async function getPortalEditablePropertyRecord(
   if (!row) {
     return null;
   }
+
+  const childUnits =
+    row.property_kind === "apartment_building" || row.property_kind === "commercial_building"
+      ? await listChildUnitsForBuilding(row.property_internal_id, userId)
+      : [];
 
   const propertyTitle = normalizePropertyTitle(row.property_title, row.property_route_id);
   const zoning = normalizeZoningLabel(row.zoning);
@@ -785,6 +923,7 @@ export async function getPortalEditablePropertyRecord(
     bathrooms: toNumber(row.bathrooms),
     interiorAreaSqm: toNumber(row.interior_area_sqm),
     yearBuilt: toNumber(row.year_built),
+    childUnits,
     isListingReady: isListingReadyForAsset({
       propertyKind: row.property_kind,
       propertyTitle,
@@ -892,4 +1031,158 @@ export async function updatePortalPropertyRecordInDb(input: {
   );
 
   return getPortalEditablePropertyRecord(input.userId, input.propertyRouteId);
+}
+
+export async function registerPortalBuildingUnitInDb(input: {
+  userId: string;
+  buildingRouteId: string;
+  unitLabel: string;
+  interiorAreaSqm?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  yearBuilt?: number;
+  description?: string;
+}) {
+  const building = await getPortalEditablePropertyRecord(input.userId, input.buildingRouteId);
+
+  if (!building) {
+    throw new Error("Owned building not found");
+  }
+
+  const unitKind = getChildUnitKindForBuilding(building.propertyKind);
+  if (!unitKind) {
+    throw new Error("Units can only be registered under apartment or commercial buildings");
+  }
+
+  const normalizedUnitLabel = normalizeClaimUnitLabel(input.unitLabel);
+  if (!normalizedUnitLabel) {
+    throw new Error("Unit label is required");
+  }
+
+  const description = input.description?.trim() || undefined;
+  const propertyType = getDefaultPropertyType(unitKind);
+  const missingFacts = getRequiredPropertyFacts({
+    propertyKind: unitKind,
+    propertyTitle: building.propertyTitle,
+    propertyUnitLabel: normalizedUnitLabel,
+    bedrooms: input.bedrooms ?? null,
+    bathrooms: input.bathrooms ?? null,
+    interiorAreaSqm: input.interiorAreaSqm ?? null,
+    zoning: building.zoning,
+  });
+
+  if (missingFacts.length > 0) {
+    throw new Error(`Missing unit facts: ${missingFacts.join(", ")}`);
+  }
+
+  const existingResult = await getPgPool().query<{ owner_user_id: string | null }>(
+    `
+      SELECT owner.user_id AS owner_user_id
+      FROM property_asset child
+      LEFT JOIN property_ownership owner
+        ON owner.property_internal_id = child.id
+      WHERE child.parcel_id = $1
+        AND UPPER(COALESCE(child.unit_label, '')) = $2
+      LIMIT 1
+    `,
+    [building.parcelId, normalizedUnitLabel],
+  );
+
+  if (existingResult.rows[0]) {
+    throw new Error(
+      existingResult.rows[0].owner_user_id
+        ? "A claimed unit with that label already exists on this parcel"
+        : "A unit with that label already exists on this parcel",
+    );
+  }
+
+  const propertyInternalId = createBuildingUnitAssetId(building.propertyInternalId, normalizedUnitLabel);
+  const propertyRouteId = createBuildingUnitPublicId(building.parcelId, normalizedUnitLabel);
+  const displayCode = createBuildingUnitDisplayCode(building.parcelId, normalizedUnitLabel);
+
+  const client = await getPgPool().connect();
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      `
+        INSERT INTO property_asset (
+          id,
+          parcel_id,
+          parent_asset_id,
+          asset_type,
+          public_id,
+          display_code,
+          unit_label,
+          description,
+          is_primary_for_parcel,
+          seed_source
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, 'manual_building_unit_registration_v1')
+      `,
+      [
+        propertyInternalId,
+        building.parcelId,
+        building.propertyInternalId,
+        unitKind,
+        propertyRouteId,
+        displayCode,
+        normalizedUnitLabel,
+        description ?? null,
+      ],
+    );
+
+    await client.query(
+      `
+        INSERT INTO property_asset_profile (
+          property_asset_id,
+          created_by_user_id,
+          description,
+          property_type,
+          bedrooms,
+          bathrooms,
+          interior_area_sqm,
+          year_built,
+          seed_source
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'manual_building_unit_registration_v1')
+      `,
+      [
+        propertyInternalId,
+        input.userId,
+        description ?? null,
+        propertyType,
+        input.bedrooms ?? null,
+        input.bathrooms ?? null,
+        input.interiorAreaSqm ?? null,
+        input.yearBuilt ?? null,
+      ],
+    );
+
+    await client.query(
+      `
+        INSERT INTO property_ownership (
+          id,
+          user_id,
+          property_id,
+          property_internal_id,
+          parcel_id,
+          ownership_scope,
+          seed_source
+        )
+        VALUES ($1, $2, $3, $4, $5, 'unit', 'manual_building_unit_registration_v1')
+      `,
+      [`property-ownership-${propertyInternalId}`, input.userId, propertyRouteId, propertyInternalId, building.parcelId],
+    );
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  return getPortalEditablePropertyRecord(input.userId, input.buildingRouteId);
 }

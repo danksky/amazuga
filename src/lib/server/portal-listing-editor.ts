@@ -169,7 +169,6 @@ function isListingReadyForAsset(input: {
   const hasBathrooms = toNumber(input.bathrooms) != null;
   const hasInteriorArea = toNumber(input.interiorAreaSqm) != null;
   const hasRepresentativeSize = toNumber(input.representativeSize) != null;
-  const hasZoning = Boolean(input.zoning?.trim());
 
   switch (input.propertyKind) {
     case "house":
@@ -178,11 +177,11 @@ function isListingReadyForAsset(input: {
       return hasUnitLabel && hasInteriorArea && hasBedrooms && hasBathrooms;
     case "apartment_building":
     case "commercial_building":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
+      return hasTitle && hasInteriorArea && hasRepresentativeSize;
     case "commercial_unit":
-      return hasUnitLabel && hasInteriorArea && hasZoning;
+      return hasUnitLabel && hasInteriorArea;
     case "land":
-      return hasTitle && hasRepresentativeSize && hasZoning;
+      return hasTitle && hasRepresentativeSize;
     default:
       return hasTitle;
   }

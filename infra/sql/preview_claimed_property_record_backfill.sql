@@ -38,13 +38,13 @@ backfill AS (
       ELSE 'Property'
     END AS inferred_property_type,
     CASE owned.asset_type
-      WHEN 'house' THEN 'Preview house record auto-backfilled from parcel context after claim approval.'
-      WHEN 'apartment_unit' THEN 'Preview apartment-unit record auto-backfilled from parcel context after claim approval.'
-      WHEN 'apartment_building' THEN 'Preview apartment-building record auto-backfilled from parcel context after claim approval.'
-      WHEN 'commercial_building' THEN 'Preview commercial-building record auto-backfilled from parcel context after claim approval.'
-      WHEN 'commercial_unit' THEN 'Preview commercial-unit record auto-backfilled from parcel context after claim approval.'
-      WHEN 'land' THEN 'Preview land record auto-backfilled from parcel context after claim approval.'
-      ELSE 'Preview property record auto-backfilled from parcel context after claim approval.'
+      WHEN 'house' THEN 'Claimed house record created from the parcel details on file.'
+      WHEN 'apartment_unit' THEN 'Claimed apartment unit record created from the parcel details on file.'
+      WHEN 'apartment_building' THEN 'Claimed apartment building record created from the parcel details on file.'
+      WHEN 'commercial_building' THEN 'Claimed commercial building record created from the parcel details on file.'
+      WHEN 'commercial_unit' THEN 'Claimed commercial unit record created from the parcel details on file.'
+      WHEN 'land' THEN 'Claimed land record created from the parcel details on file.'
+      ELSE 'Claimed property record created from the parcel details on file.'
     END AS inferred_description,
     CASE owned.asset_type
       WHEN 'house' THEN

@@ -13,7 +13,7 @@ import {
   setPortalListingStatusInDb,
   updatePortalListingInDb,
 } from "@/lib/server/portal-listing-editor";
-import { updatePortalPropertyRecordInDb } from "@/lib/server/portal-properties";
+import { registerPortalBuildingUnitInDb, updatePortalPropertyRecordInDb } from "@/lib/server/portal-properties";
 import {
   createOwnershipTransferRequestInDb,
   createValuationSubmissionInDb,
@@ -429,6 +429,32 @@ export async function submitPropertyDetailsAction(formData: FormData) {
   }
 
   redirect(routes.app.portalProperties);
+}
+
+export async function registerBuildingUnitAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalProperties);
+  const buildingRouteId = getRequiredString(formData, "buildingRouteId");
+
+  const property = await registerPortalBuildingUnitInDb({
+    userId: currentUser.id,
+    buildingRouteId,
+    unitLabel: getRequiredString(formData, "unitLabel"),
+    description: getOptionalString(formData, "description"),
+    bedrooms: getOptionalInteger(formData, "bedrooms"),
+    bathrooms: getOptionalNumber(formData, "bathrooms"),
+    interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+    yearBuilt: getOptionalInteger(formData, "yearBuilt"),
+  });
+
+  revalidatePath(routes.app.portalProperties);
+  revalidatePath(routes.app.portalListingNew);
+
+  if (property?.propertyRouteId) {
+    revalidatePath(routes.public.property(property.propertyRouteId));
+    revalidatePath(routes.app.portalPropertyEdit(property.propertyRouteId));
+  }
+
+  redirect(routes.app.portalPropertyEdit(buildingRouteId));
 }
 
 export async function respondToOwnershipTransferAction(formData: FormData) {
