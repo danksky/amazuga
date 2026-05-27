@@ -16,11 +16,10 @@ CREATE TABLE IF NOT EXISTS property_asset (
     asset_type IN (
       'house',
       'land',
-      'building',
+      'apartment_building',
+      'commercial_building',
       'apartment_unit',
-      'commercial_unit',
-      'mixed_use',
-      'other'
+      'commercial_unit'
     )
   ),
   public_id TEXT UNIQUE,
@@ -61,10 +60,11 @@ WITH parcel_asset_source AS (
       WHEN LOWER(COALESCE(pp.property_type, '')) = 'house' THEN 'house'
       WHEN LOWER(COALESCE(pp.property_type, '')) IN ('parcel', 'land', 'lot') THEN 'land'
       WHEN LOWER(COALESCE(pp.property_type, '')) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
+      WHEN LOWER(COALESCE(pp.property_type, '')) LIKE 'commercial building%' THEN 'commercial_building'
       WHEN LOWER(COALESCE(pp.property_type, '')) LIKE 'commercial%' THEN 'commercial_unit'
-      WHEN LOWER(COALESCE(pp.property_type, '')) LIKE 'building%' THEN 'building'
-      WHEN LOWER(COALESCE(pp.property_type, '')) = 'mixed use' THEN 'mixed_use'
-      ELSE 'other'
+      WHEN LOWER(COALESCE(pp.property_type, '')) LIKE 'apartment building%' THEN 'apartment_building'
+      WHEN LOWER(COALESCE(pp.property_type, '')) LIKE 'building%' THEN 'apartment_building'
+      ELSE NULL
     END AS asset_type,
     COALESCE(pp.seed_source, l.seed_source, 'migration_property_asset_v1') AS seed_source,
     COALESCE(pp.created_at, l.created_at, NOW()) AS created_at,
@@ -210,10 +210,10 @@ SELECT
     CASE pa.asset_type
       WHEN 'house' THEN 'House'
       WHEN 'land' THEN 'Parcel'
-      WHEN 'building' THEN 'Building'
+      WHEN 'apartment_building' THEN 'Apartment building'
+      WHEN 'commercial_building' THEN 'Commercial building'
       WHEN 'apartment_unit' THEN 'Apartment'
       WHEN 'commercial_unit' THEN 'Commercial'
-      WHEN 'mixed_use' THEN 'Mixed Use'
       ELSE 'Property'
     END,
     pp.property_type

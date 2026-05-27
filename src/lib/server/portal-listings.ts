@@ -141,11 +141,11 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         COALESCE(
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
-            WHEN 'land' THEN 'Parcel'
-            WHEN 'building' THEN 'Building'
-            WHEN 'apartment_unit' THEN 'Apartment'
-            WHEN 'commercial_unit' THEN 'Commercial'
-            WHEN 'mixed_use' THEN 'Mixed Use'
+            WHEN 'land' THEN 'Land'
+            WHEN 'apartment_building' THEN 'Apartment building'
+            WHEN 'commercial_building' THEN 'Commercial building'
+            WHEN 'apartment_unit' THEN 'Apartment Unit'
+            WHEN 'commercial_unit' THEN 'Commercial Unit'
             ELSE NULL
           END,
           pp.property_type

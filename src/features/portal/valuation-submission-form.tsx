@@ -9,22 +9,27 @@ import type { PortalValuationPropertyOption } from "@/lib/server/portal-valuatio
 import styles from "./valuation-submission-form.module.css";
 import { WheelSafeNumberInput } from "./wheel-safe-number-input";
 
-function getPropertyKindLabel(kind: PortalValuationPropertyOption["propertyKind"]) {
+function getPropertyKindLabel(
+  kind: PortalValuationPropertyOption["propertyKind"],
+  propertyType?: PortalValuationPropertyOption["propertyType"],
+) {
+  if (propertyType?.trim()) {
+    return propertyType.trim();
+  }
+
   switch (kind) {
     case "house":
       return "House";
     case "land":
-      return "Parcel";
-    case "building":
-      return "Building";
+      return "Land";
+    case "apartment_building":
+      return "Apartment building";
+    case "commercial_building":
+      return "Commercial building";
     case "apartment_unit":
-      return "Apartment";
+      return "Apartment unit";
     case "commercial_unit":
-      return "Commercial";
-    case "mixed_use":
-      return "Mixed use";
-    case "other":
-      return "Other";
+      return "Commercial unit";
     default:
       return "Property";
   }
@@ -80,7 +85,7 @@ export function ValuationSubmissionForm({
                 {selectedProperty.district}. Public page ID: {selectedProperty.routeId}
               </div>
               <div className={styles.propertyMetaFacts}>
-                <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind)}</div>
+                <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind, selectedProperty.propertyType)}</div>
                 <div className={styles.pill}>
                   {selectedProperty.listingMarketingType
                     ? selectedProperty.listingMarketingType === "rent"

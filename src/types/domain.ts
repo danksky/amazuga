@@ -4,6 +4,13 @@ export type ListingStatus = "draft" | "active" | "inactive" | "archived";
 export type ListingVisibility = "public" | "unlisted" | "private";
 export type PropertyClaimRequestKind = "claim" | "transfer";
 export type PropertyTransferMode = "sale" | "transfer";
+export type PropertyClaimPropertyType =
+  | "house"
+  | "apartment_building"
+  | "land"
+  | "apartment_unit"
+  | "commercial_building"
+  | "commercial_unit";
 
 export type SubmissionStatus = "pending" | "approved" | "denied";
 
@@ -18,11 +25,10 @@ export type PropertyDataSource = "user_provided" | "auto_populated" | "unspecifi
 export type PropertyKind =
   | "house"
   | "land"
-  | "building"
+  | "apartment_building"
+  | "commercial_building"
   | "apartment_unit"
-  | "commercial_unit"
-  | "mixed_use"
-  | "other";
+  | "commercial_unit";
 
 export interface User {
   id: string;
@@ -213,6 +219,7 @@ export interface PropertyClaimRequest {
   upi: string;
   claimScope: PropertyClaimScope;
   unitLabel?: string;
+  declaredPropertyType?: PropertyClaimPropertyType;
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
   declaredAssetType?: PropertyKind;

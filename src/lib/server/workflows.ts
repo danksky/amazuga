@@ -8,6 +8,7 @@ import type {
   AgentApplication,
   PropertyClaimScope,
   PropertyClaimRequestKind,
+  PropertyClaimPropertyType,
   PropertyDataSource,
   PropertyClaimRequest,
   PropertyRecordFactsInput,
@@ -79,6 +80,7 @@ interface PropertyClaimRequestRow {
   upi: string;
   claim_scope: PropertyClaimScope;
   unit_label: string | null;
+  declared_property_type?: PropertyClaimPropertyType | null;
   tenure_type: PropertyTenureType;
   tenure_source: PropertyDataSource;
   declared_asset_type: PropertyKind | null;
@@ -303,6 +305,7 @@ function toPropertyClaimRequest(row: PropertyClaimRequestRow): PropertyClaimRequ
     upi: row.upi,
     claimScope: row.claim_scope,
     unitLabel: row.unit_label || undefined,
+    declaredPropertyType: row.declared_property_type || undefined,
     tenureType: row.tenure_type,
     tenureSource: row.tenure_source,
     declaredAssetType: row.declared_asset_type || undefined,
@@ -454,6 +457,7 @@ function inferClaimRecordBackfill(input: {
   parcelPublicId?: string | null;
   district?: string | null;
   sector?: string | null;
+  zoning?: string | null;
   representativeSize?: number | string | null;
 }) {
   const normalizedUnitLabel = normalizeClaimUnitLabel(input.unitLabel);
@@ -479,17 +483,26 @@ function inferClaimRecordBackfill(input: {
     case "apartment_unit":
       return {
         assetUnitLabel: normalizedUnitLabel,
-        propertyType: "Apartment",
+        propertyType: "Apartment unit",
         propertyDescription: "Preview apartment-unit record auto-backfilled from parcel context after claim approval.",
         bedrooms: representativeSize !== null && representativeSize >= 900 ? 3 : representativeSize !== null && representativeSize >= 450 ? 2 : 1,
         bathrooms: representativeSize !== null && representativeSize < 300 ? 1 : 2,
         interiorAreaSqm: fallbackArea(0.18, 55, 160, 96),
       };
-    case "building":
+    case "apartment_building":
       return {
         assetUnitLabel: null,
-        propertyType: "Building",
-        propertyDescription: "Preview building record auto-backfilled from parcel context after claim approval.",
+        propertyType: "Apartment building",
+        propertyDescription: "Preview apartment-building record auto-backfilled from parcel context after claim approval.",
+        bedrooms: null,
+        bathrooms: null,
+        interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
+      };
+    case "commercial_building":
+      return {
+        assetUnitLabel: null,
+        propertyType: "Commercial building",
+        propertyDescription: "Preview commercial-building record auto-backfilled from parcel context after claim approval.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
@@ -497,7 +510,7 @@ function inferClaimRecordBackfill(input: {
     case "commercial_unit":
       return {
         assetUnitLabel: normalizedUnitLabel,
-        propertyType: "Commercial",
+        propertyType: "Commercial unit",
         propertyDescription: "Preview commercial-unit record auto-backfilled from parcel context after claim approval.",
         bedrooms: null,
         bathrooms: null,
@@ -506,22 +519,12 @@ function inferClaimRecordBackfill(input: {
     case "land":
       return {
         assetUnitLabel: null,
-        propertyType: "Parcel",
+        propertyType: "Land",
         propertyDescription: "Preview land record auto-backfilled from parcel context after claim approval.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: null,
       };
-    case "mixed_use":
-      return {
-        assetUnitLabel: null,
-        propertyType: "Mixed use",
-        propertyDescription: "Preview mixed-use record auto-backfilled from parcel context after claim approval.",
-        bedrooms: null,
-        bathrooms: null,
-        interiorAreaSqm: fallbackArea(0.58, 140, 980, 260),
-      };
-    case "other":
     default:
       return {
         assetUnitLabel: normalizedUnitLabel,
@@ -591,6 +594,7 @@ async function backfillPropertyRecordForAsset(input: {
     parcelPublicId: row.parcel_public_id,
     district: row.district,
     sector: row.sector,
+    zoning: row.zoning,
     representativeSize: claimRepresentativeSize ?? row.representative_size,
   });
 
@@ -635,6 +639,10 @@ async function backfillPropertyRecordForAsset(input: {
         description = CASE
           WHEN COALESCE(NULLIF(BTRIM(property_profile.description), ''), NULL) IS NULL THEN EXCLUDED.description
           ELSE property_profile.description
+        END,
+        property_type = CASE
+          WHEN COALESCE(NULLIF(BTRIM(property_profile.property_type), ''), NULL) IS NULL THEN EXCLUDED.property_type
+          ELSE property_profile.property_type
         END,
         bedrooms = COALESCE(property_profile.bedrooms, EXCLUDED.bedrooms),
         bathrooms = COALESCE(property_profile.bathrooms, EXCLUDED.bathrooms),
@@ -1681,6 +1689,7 @@ export async function createPropertyClaimRequestInDb(input: {
   upi: string;
   claimScope: PropertyClaimScope;
   unitLabel?: string;
+  declaredPropertyType?: PropertyClaimPropertyType;
   tenureType: PropertyTenureType;
   tenureSource: PropertyDataSource;
   declaredAssetType?: PropertyKind;
@@ -1739,6 +1748,7 @@ export async function createPropertyClaimRequestInDb(input: {
         upi,
         claim_scope,
         unit_label,
+        declared_property_type,
         tenure_type,
         tenure_source,
         declared_asset_type,
@@ -1800,7 +1810,7 @@ export async function createPropertyClaimRequestInDb(input: {
         status,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'pending', 'manual_workflow_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'pending', 'manual_workflow_v1')
       RETURNING
         id,
         user_id,
@@ -1811,6 +1821,7 @@ export async function createPropertyClaimRequestInDb(input: {
         upi,
         claim_scope,
         unit_label,
+        declared_property_type,
         tenure_type,
         tenure_source,
         declared_asset_type,
@@ -1839,6 +1850,7 @@ export async function createPropertyClaimRequestInDb(input: {
       input.upi,
       input.claimScope,
       normalizedUnitLabel,
+      input.declaredPropertyType || null,
       input.tenureType,
       input.tenureSource,
       input.declaredAssetType || null,

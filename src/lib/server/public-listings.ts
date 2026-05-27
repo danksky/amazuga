@@ -115,15 +115,15 @@ function propertyKindToPropertyType(propertyKind: PropertyKind | null | undefine
     case "house":
       return "House";
     case "land":
-      return "Parcel";
-    case "building":
-      return "Building";
+      return "Land";
+    case "apartment_building":
+      return "Apartment building";
+    case "commercial_building":
+      return "Commercial building";
     case "apartment_unit":
-      return "Apartment";
+      return "Apartment Unit";
     case "commercial_unit":
-      return "Commercial";
-    case "mixed_use":
-      return "Mixed Use";
+      return "Commercial Unit";
     default:
       return undefined;
   }
@@ -440,11 +440,11 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         COALESCE(
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
-            WHEN 'land' THEN 'Parcel'
-            WHEN 'building' THEN 'Building'
-            WHEN 'apartment_unit' THEN 'Apartment'
-            WHEN 'commercial_unit' THEN 'Commercial'
-            WHEN 'mixed_use' THEN 'Mixed Use'
+            WHEN 'land' THEN 'Land'
+            WHEN 'apartment_building' THEN 'Apartment building'
+            WHEN 'commercial_building' THEN 'Commercial building'
+            WHEN 'apartment_unit' THEN 'Apartment Unit'
+            WHEN 'commercial_unit' THEN 'Commercial Unit'
             ELSE NULL
           END,
           pp.property_type
@@ -470,18 +470,21 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
     [marketingType],
   );
 
-  return result.rows
-    .map((row) => {
+  const browseEntries = await Promise.all(
+    result.rows.map(async (row) => {
       const property = buildPropertyFromRow(row);
-      const listing = buildListingFromRow(row);
+      const imageUrls = row.listing_id ? await getListingImages(row.listing_id) : [];
+      const listing = buildListingFromRow(row, imageUrls);
 
       if (!listing) {
         return undefined;
       }
 
       return { property, listing };
-    })
-    .filter((entry): entry is PublicListingCardData => Boolean(entry));
+    }),
+  );
+
+  return browseEntries.filter((entry): entry is PublicListingCardData => Boolean(entry));
 }
 
 export async function getPublicPropertyPageData(propertyId: string, viewerUserId?: string): Promise<PublicPropertyPageData | undefined> {
@@ -539,11 +542,11 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         COALESCE(
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
-            WHEN 'land' THEN 'Parcel'
-            WHEN 'building' THEN 'Building'
-            WHEN 'apartment_unit' THEN 'Apartment'
-            WHEN 'commercial_unit' THEN 'Commercial'
-            WHEN 'mixed_use' THEN 'Mixed Use'
+            WHEN 'land' THEN 'Land'
+            WHEN 'apartment_building' THEN 'Apartment building'
+            WHEN 'commercial_building' THEN 'Commercial building'
+            WHEN 'apartment_unit' THEN 'Apartment Unit'
+            WHEN 'commercial_unit' THEN 'Commercial Unit'
             ELSE NULL
           END,
           pp.property_type

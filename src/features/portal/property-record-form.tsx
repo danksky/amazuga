@@ -12,11 +12,11 @@ function isUnitProperty(kind: PortalEditablePropertyRecord["propertyKind"]) {
 }
 
 function needsInteriorArea(kind: PortalEditablePropertyRecord["propertyKind"]) {
-  return kind === "house" || kind === "apartment_unit" || kind === "building" || kind === "commercial_unit" || kind === "mixed_use";
+  return kind === "house" || kind === "apartment_unit" || kind === "apartment_building" || kind === "commercial_building" || kind === "commercial_unit";
 }
 
 function needsRepresentativeSize(kind: PortalEditablePropertyRecord["propertyKind"]) {
-  return kind === "house" || kind === "building" || kind === "land" || kind === "mixed_use";
+  return kind === "house" || kind === "apartment_building" || kind === "commercial_building" || kind === "land";
 }
 
 function needsBedroomsAndBathrooms(kind: PortalEditablePropertyRecord["propertyKind"]) {
@@ -24,11 +24,11 @@ function needsBedroomsAndBathrooms(kind: PortalEditablePropertyRecord["propertyK
 }
 
 function needsZoning(kind: PortalEditablePropertyRecord["propertyKind"]) {
-  return kind === "building" || kind === "commercial_unit" || kind === "land" || kind === "mixed_use";
+  return kind === "apartment_building" || kind === "commercial_building" || kind === "commercial_unit" || kind === "land";
 }
 
 function getAreaLabel(kind: PortalEditablePropertyRecord["propertyKind"]) {
-  if (kind === "building") return "Built area (sqm)";
+  if (kind === "apartment_building" || kind === "commercial_building") return "Built area (sqm)";
   if (kind === "commercial_unit") return "Floor area (sqm)";
   return "Interior area (sqm)";
 }
@@ -55,14 +55,14 @@ function getKindLabel(kind: PortalEditablePropertyRecord["propertyKind"]) {
       return "House";
     case "land":
       return "Land";
-    case "building":
+    case "apartment_building":
       return "Apartment building";
+    case "commercial_building":
+      return "Commercial building";
     case "apartment_unit":
       return "Apartment unit";
     case "commercial_unit":
       return "Commercial unit";
-    case "mixed_use":
-      return "Mixed-use property";
     default:
       return "Property";
   }

@@ -51,14 +51,17 @@ interface PropertyPageBehavior {
 const PROPERTY_KIND_LABELS: Record<PropertyKind, string> = {
   house: "House",
   land: "Land",
-  building: "Building",
+  apartment_building: "Apartment building",
+  commercial_building: "Commercial building",
   apartment_unit: "Apartment Unit",
   commercial_unit: "Commercial Unit",
-  mixed_use: "Mixed Use",
-  other: "Property",
 };
 
-function formatPropertyKindLabel(propertyKind?: PropertyKind) {
+function formatPropertyKindLabel(propertyKind?: PropertyKind, propertyType?: string) {
+  if (propertyType?.trim()) {
+    return propertyType.trim();
+  }
+
   if (!propertyKind) {
     return "Property";
   }
@@ -66,12 +69,20 @@ function formatPropertyKindLabel(propertyKind?: PropertyKind) {
   return PROPERTY_KIND_LABELS[propertyKind] ?? "Property";
 }
 
-function inferPropertyKind(property: Property): PropertyKind {
+function inferPropertyKind(property: Property): PropertyKind | undefined {
   if (property.facts.propertyKind) {
     return property.facts.propertyKind;
   }
 
   const propertyType = property.facts.propertyType?.toLowerCase();
+
+  if (propertyType?.includes("commercial building")) {
+    return "commercial_building";
+  }
+
+  if (propertyType?.includes("apartment building")) {
+    return "apartment_building";
+  }
 
   if (propertyType?.includes("apartment")) {
     return "apartment_unit";
@@ -82,7 +93,7 @@ function inferPropertyKind(property: Property): PropertyKind {
   }
 
   if (propertyType?.includes("building")) {
-    return "building";
+    return "apartment_building";
   }
 
   if (propertyType?.includes("parcel") || propertyType?.includes("land") || propertyType?.includes("lot")) {
@@ -93,7 +104,7 @@ function inferPropertyKind(property: Property): PropertyKind {
     return "house";
   }
 
-  return "other";
+  return undefined;
 }
 
 function formatBedsBaths(property: Property) {
@@ -114,7 +125,7 @@ function buildWhatsappUrl(phone?: string) {
   return `https://wa.me/${normalizedPhone}`;
 }
 
-function buildFactItems(property: Property, propertyKind: PropertyKind): FactItem[] {
+function buildFactItems(property: Property, propertyKind?: PropertyKind): FactItem[] {
   switch (propertyKind) {
     case "land":
       return [
@@ -124,7 +135,8 @@ function buildFactItems(property: Property, propertyKind: PropertyKind): FactIte
       return [
         { label: "Year built", value: property.facts.yearBuilt ? String(property.facts.yearBuilt) : "Unknown" },
       ];
-    case "building":
+    case "apartment_building":
+    case "commercial_building":
       return [
         { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
       ];
@@ -133,8 +145,6 @@ function buildFactItems(property: Property, propertyKind: PropertyKind): FactIte
         { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
       ];
     case "house":
-    case "mixed_use":
-    case "other":
     default:
       return [
         { label: "Parcel", value: formatArea(property.facts.landAreaSqm) },
@@ -143,7 +153,7 @@ function buildFactItems(property: Property, propertyKind: PropertyKind): FactIte
   }
 }
 
-function buildDetailItems(property: Property, propertyKind: PropertyKind): DetailItem[] {
+function buildDetailItems(property: Property, propertyKind?: PropertyKind): DetailItem[] {
   const factItems = buildFactItems(property, propertyKind);
   const detailItems: DetailItem[] = factItems.map((fact) => ({ label: fact.label, value: fact.value }));
 
@@ -156,7 +166,7 @@ function buildDetailItems(property: Property, propertyKind: PropertyKind): Detai
   return detailItems;
 }
 
-function buildPrimaryInfoStats(property: Property, propertyKind: PropertyKind): PrimaryInfoStat[] {
+function buildPrimaryInfoStats(property: Property, propertyKind?: PropertyKind): PrimaryInfoStat[] {
   const bedroomValue = property.facts.bedrooms !== undefined ? `${property.facts.bedrooms} bd` : undefined;
   const bathroomValue = property.facts.bathrooms !== undefined ? `${property.facts.bathrooms} ba` : undefined;
   const interiorValue = property.facts.areaSqm ? formatAreaSqm(property.facts.areaSqm) : undefined;
@@ -172,7 +182,8 @@ function buildPrimaryInfoStats(property: Property, propertyKind: PropertyKind): 
         { value: bathroomValue },
         { value: interiorValue },
       ];
-    case "building":
+    case "apartment_building":
+    case "commercial_building":
       return [
         { value: interiorValue },
         { value: parcelValue },
@@ -184,8 +195,6 @@ function buildPrimaryInfoStats(property: Property, propertyKind: PropertyKind): 
         { value: bathroomValue },
         { value: parcelValue },
       ];
-    case "mixed_use":
-    case "other":
     case "house":
     default:
       return [
@@ -198,17 +207,19 @@ function buildPrimaryInfoStats(property: Property, propertyKind: PropertyKind): 
 
 function buildPropertyPageBehavior(
   property: Property,
-  propertyKind: PropertyKind,
+  propertyKind: PropertyKind | undefined,
   listing: Listing | undefined,
   hasGallery: boolean,
 ): PropertyPageBehavior {
   const mediaMode = !listing || propertyKind === "land" || !hasGallery ? "map" : "gallery";
+  const resolvedKindLabel = formatPropertyKindLabel(propertyKind, property.facts.propertyType);
+  const resolvedKindLabelLower = resolvedKindLabel.toLowerCase();
 
   switch (propertyKind) {
     case "land":
       return {
-        kind: propertyKind,
-        kindLabel: formatPropertyKindLabel(propertyKind),
+        kind: propertyKind ?? "house",
+        kindLabel: formatPropertyKindLabel(propertyKind, property.facts.propertyType),
         mediaMode,
         mapTitle: "Parcel map and land context",
         claimLabel: "Claim this parcel",
@@ -218,27 +229,28 @@ function buildPropertyPageBehavior(
     case "apartment_unit":
       return {
         kind: propertyKind,
-        kindLabel: formatPropertyKindLabel(propertyKind),
+        kindLabel: formatPropertyKindLabel(propertyKind, property.facts.propertyType),
         mediaMode,
         mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Building and parcel context",
         claimLabel: "Claim this unit",
         nonListedTitle: "This apartment unit is not currently listed.",
         nonListedBody: "You can claim the unit or save it while we wait for future listing activity.",
       };
-    case "building":
+    case "apartment_building":
+    case "commercial_building":
       return {
         kind: propertyKind,
-        kindLabel: formatPropertyKindLabel(propertyKind),
+        kindLabel: resolvedKindLabel,
         mediaMode,
         mapTitle: mediaMode === "map" ? "Parcel reference" : "Building footprint and parcel context",
-        claimLabel: "Claim this building",
-        nonListedTitle: "This building is not currently listed.",
-        nonListedBody: "You can claim the building or save it while it remains off-market.",
+        claimLabel: `Claim this ${resolvedKindLabelLower}`,
+        nonListedTitle: `This ${resolvedKindLabelLower} is not currently listed.`,
+        nonListedBody: `You can claim the ${resolvedKindLabelLower} or save it while it remains off-market.`,
       };
     case "commercial_unit":
       return {
         kind: propertyKind,
-        kindLabel: formatPropertyKindLabel(propertyKind),
+        kindLabel: formatPropertyKindLabel(propertyKind, property.facts.propertyType),
         mediaMode,
         mapTitle: mediaMode === "map" ? "Shared parcel reference" : "Business location context",
         claimLabel: "Claim this property",
@@ -246,12 +258,10 @@ function buildPropertyPageBehavior(
         nonListedBody: "You can claim the property or save it while it remains off-market.",
       };
     case "house":
-    case "mixed_use":
-    case "other":
     default:
       return {
-        kind: propertyKind,
-        kindLabel: formatPropertyKindLabel(propertyKind),
+        kind: propertyKind ?? "house",
+        kindLabel: formatPropertyKindLabel(propertyKind, property.facts.propertyType),
         mediaMode,
         mapTitle: "Parcel context",
         claimLabel: "Claim this home",

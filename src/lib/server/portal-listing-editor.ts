@@ -13,6 +13,7 @@ interface PropertyOptionRow {
   property_route_id: string;
   property_title: string | null;
   property_kind: string | null;
+  property_type: string | null;
   property_unit_label: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
@@ -30,6 +31,7 @@ interface EditableListingRow {
   property_route_id: string;
   property_title: string | null;
   property_kind: string | null;
+  property_type: string | null;
   district: string | null;
   sector: string | null;
   agency_id: string | null;
@@ -78,6 +80,7 @@ export interface PortalListingPropertyOption {
   propertyRouteId: string;
   propertyTitle: string;
   propertyKind?: string;
+  propertyType?: string;
   district: string;
   sector?: string;
 }
@@ -103,6 +106,7 @@ export interface PortalEditableListing {
   propertyRouteId: string;
   propertyTitle: string;
   propertyKind?: string;
+  propertyType?: string;
   district: string;
   sector?: string;
   agencyId?: string;
@@ -172,15 +176,13 @@ function isListingReadyForAsset(input: {
       return hasTitle && hasInteriorArea && hasRepresentativeSize && hasBedrooms && hasBathrooms;
     case "apartment_unit":
       return hasUnitLabel && hasInteriorArea && hasBedrooms && hasBathrooms;
-    case "building":
+    case "apartment_building":
+    case "commercial_building":
       return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
     case "commercial_unit":
       return hasUnitLabel && hasInteriorArea && hasZoning;
     case "land":
       return hasTitle && hasRepresentativeSize && hasZoning;
-    case "mixed_use":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasZoning;
-    case "other":
     default:
       return hasTitle;
   }
@@ -213,6 +215,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
           ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
         END AS property_title,
         pa.asset_type AS property_kind,
+        pp.property_type,
         pa.unit_label AS property_unit_label,
         pp.bedrooms,
         pp.bathrooms,
@@ -262,6 +265,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         propertyRouteId: row.property_route_id,
       }),
       propertyKind: row.property_kind || undefined,
+      propertyType: row.property_type || undefined,
       district: row.district || "Unknown district",
       sector: row.sector || undefined,
     }));
@@ -334,6 +338,7 @@ async function getEditableListingRow(userId: string, listingId: string) {
           ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
         END AS property_title,
         pa.asset_type AS property_kind,
+        pp.property_type,
         p.district,
         p.sector,
         l.agency_id,
@@ -611,6 +616,7 @@ export async function getEditablePortalListingData(userId: string, listingId: st
       propertyRouteId: row.property_route_id,
     }),
     propertyKind: row.property_kind || undefined,
+    propertyType: row.property_type || undefined,
     district: row.district || "Unknown district",
     sector: row.sector || undefined,
     agencyId: row.agency_id ?? undefined,

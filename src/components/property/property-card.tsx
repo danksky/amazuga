@@ -21,6 +21,8 @@ export function PropertyCard({ property, listing, latestValuation }: PropertyCar
   const priceLabel = listing ? null : latestValuation ? "Market estimate" : null;
   const mediaVariant = listing?.marketingType ?? "sale";
   const mediaLabel = property.facts.propertyType ?? "Property";
+  const factsLabel = property.facts.propertyKind === "land" ? "Land" : "Property";
+  const primaryImage = listing?.imageUrls[0];
 
   return (
     <Link
@@ -38,16 +40,27 @@ export function PropertyCard({ property, listing, latestValuation }: PropertyCar
           property.facts.propertyType === "Parcel" ? styles.mediaParcel : ""
         }`}
       >
+        {primaryImage ? (
+          <img
+            alt=""
+            className={styles.mediaImage}
+            src={primaryImage}
+          />
+        ) : null}
         <div className={styles.mediaBadge}>{mediaLabel}</div>
-        <div className={styles.mediaShapePrimary} />
-        <div className={styles.mediaShapeSecondary} />
-        <div className={styles.mediaShapeTertiary} />
+        {!primaryImage ? (
+          <>
+            <div className={styles.mediaShapePrimary} />
+            <div className={styles.mediaShapeSecondary} />
+            <div className={styles.mediaShapeTertiary} />
+          </>
+        ) : null}
       </div>
       <div className={styles.body}>
         {priceLabel ? <div className={styles.priceLabel}>{priceLabel}</div> : null}
         <div className={styles.price}>{price}</div>
         <div className={styles.facts}>
-          {property.facts.bedrooms ? `${property.facts.bedrooms} bd` : "Parcel"}
+          {property.facts.bedrooms ? `${property.facts.bedrooms} bd` : factsLabel}
           {property.facts.bathrooms ? ` | ${property.facts.bathrooms} ba` : ""}
           {property.facts.areaSqm ? ` | ${formatAreaSqm(property.facts.areaSqm)}` : ""}
         </div>

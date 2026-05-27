@@ -4,18 +4,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { findPortalPropertyClaimTargetByUpi } from "@/lib/server/portal-properties";
 import { createPropertyClaimRequestInDb } from "@/lib/server/workflows";
-import type { PropertyClaimScope, PropertyKind, PropertyRecordFactsInput, PropertyTenureType } from "@/types/domain";
+import type { PropertyClaimPropertyType, PropertyClaimScope, PropertyKind, PropertyRecordFactsInput, PropertyTenureType } from "@/types/domain";
 
 const FORM_TYPE_TO_PROPERTY_KIND: Record<string, PropertyKind> = {
   house: "house",
-  apartment_building: "building",
+  apartment_building: "apartment_building",
   land: "land",
   apartment_unit: "apartment_unit",
-  commercial_building: "building",
+  commercial_building: "commercial_building",
   commercial_unit: "commercial_unit",
 };
 
-type ClaimPropertyType = keyof typeof FORM_TYPE_TO_PROPERTY_KIND;
+type ClaimPropertyType = PropertyClaimPropertyType;
 
 function getOptionalNumber(formData: FormData, key: string) {
   const rawValue = formData.get(key);
@@ -166,6 +166,7 @@ export async function POST(request: Request) {
     upi: target.upi,
     claimScope,
     unitLabel: unitLabel || undefined,
+    declaredPropertyType: propertyType,
     tenureType,
     tenureSource: tenureType === "unspecified" ? "unspecified" : "user_provided",
     declaredAssetType,

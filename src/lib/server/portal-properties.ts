@@ -210,15 +210,15 @@ function getDefaultPropertyType(propertyKind?: PropertyKind | null) {
     case "house":
       return "House";
     case "land":
-      return "Parcel";
-    case "building":
-      return "Building";
+      return "Land";
+    case "apartment_building":
+      return "Apartment building";
+    case "commercial_building":
+      return "Commercial building";
     case "apartment_unit":
-      return "Apartment";
+      return "Apartment unit";
     case "commercial_unit":
-      return "Commercial";
-    case "mixed_use":
-      return "Mixed use";
+      return "Commercial unit";
     default:
       return "Property";
   }
@@ -257,7 +257,8 @@ function getRequiredPropertyFacts(input: {
       if (!hasBedrooms) requiredFacts.push("bedrooms");
       if (!hasBathrooms) requiredFacts.push("bathrooms");
       break;
-    case "building":
+    case "apartment_building":
+    case "commercial_building":
       if (!hasTitle) requiredFacts.push("display label");
       if (!hasInteriorArea) requiredFacts.push("built area");
       if (!hasRepresentativeSize) requiredFacts.push("parcel size");
@@ -273,13 +274,6 @@ function getRequiredPropertyFacts(input: {
       if (!hasRepresentativeSize) requiredFacts.push("parcel size");
       if (!hasZoning) requiredFacts.push("use zone");
       break;
-    case "mixed_use":
-      if (!hasTitle) requiredFacts.push("display label");
-      if (!hasInteriorArea) requiredFacts.push("interior area");
-      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
-      if (!hasZoning) requiredFacts.push("use zone");
-      break;
-    case "other":
     default:
       if (!hasTitle) requiredFacts.push("display label");
       break;

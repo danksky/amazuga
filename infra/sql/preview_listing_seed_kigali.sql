@@ -245,10 +245,11 @@ upsert_assets AS (
       WHEN LOWER(ssr.property_type) = 'house' THEN 'house'
       WHEN LOWER(ssr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
       WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
       WHEN LOWER(ssr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
-      WHEN LOWER(ssr.property_type) LIKE 'building%' THEN 'building'
-      WHEN LOWER(ssr.property_type) = 'mixed use' THEN 'mixed_use'
-      ELSE 'other'
+      WHEN LOWER(ssr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
+      WHEN LOWER(ssr.property_type) LIKE 'building%' THEN 'apartment_building'
+      ELSE NULL
     END,
     UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)),

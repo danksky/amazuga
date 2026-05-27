@@ -22,7 +22,8 @@ function kindToPropertyType(kind: PropertyKind | undefined): PropertyType {
   const map: Partial<Record<PropertyKind, PropertyType>> = {
     house: "house",
     land: "land",
-    building: "apartment_building",
+    apartment_building: "apartment_building",
+    commercial_building: "commercial_building",
     apartment_unit: "apartment_unit",
     commercial_unit: "commercial_unit",
   };

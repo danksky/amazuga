@@ -37,10 +37,10 @@ SELECT
     CASE pa.asset_type
       WHEN 'house' THEN 'House'
       WHEN 'land' THEN 'Parcel'
-      WHEN 'building' THEN 'Building'
+      WHEN 'apartment_building' THEN 'Apartment building'
+      WHEN 'commercial_building' THEN 'Commercial building'
       WHEN 'apartment_unit' THEN 'Apartment'
       WHEN 'commercial_unit' THEN 'Commercial'
-      WHEN 'mixed_use' THEN 'Mixed Use'
       ELSE 'Property'
     END,
     pp.property_type

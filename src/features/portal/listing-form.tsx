@@ -23,35 +23,43 @@ import { ListingStatusButton } from "./listing-status-button";
 import { WheelSafeNumberInput } from "./wheel-safe-number-input";
 import styles from "./listing-form.module.css";
 
-function getPropertyKindLabel(kind?: string) {
+function getPropertyKindLabel(kind?: string, propertyType?: string) {
+  if (propertyType?.trim()) {
+    return propertyType.trim();
+  }
+
   switch (kind) {
     case "house":
       return "House";
     case "land":
-      return "Parcel";
-    case "building":
-      return "Building";
+      return "Land";
+    case "apartment_building":
+      return "Apartment building";
+    case "commercial_building":
+      return "Commercial building";
     case "apartment_unit":
-      return "Apartment";
+      return "Apartment unit";
     case "commercial_unit":
-      return "Commercial";
-    case "mixed_use":
-      return "Mixed use";
-    case "other":
-      return "Other";
+      return "Commercial unit";
     default:
       return "Property";
   }
 }
 
-function getPropertyDetailsTitle(kind?: string) {
+function getPropertyDetailsTitle(kind?: string, propertyType?: string) {
+  if (propertyType?.trim()) {
+    return `${propertyType.trim()} details`;
+  }
+
   switch (kind) {
     case "house":
       return "Home details";
     case "land":
-      return "Parcel details";
-    case "building":
-      return "Building details";
+      return "Land details";
+    case "apartment_building":
+      return "Apartment building details";
+    case "commercial_building":
+      return "Commercial building details";
     case "apartment_unit":
       return "Unit details";
     case "commercial_unit":
@@ -370,7 +378,7 @@ export function ListingForm({
           {selectedProperty ? (
             <section className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>{getPropertyDetailsTitle(selectedProperty.propertyKind)}</h2>
+                <h2 className={styles.sectionTitle}>{getPropertyDetailsTitle(selectedProperty.propertyKind, selectedProperty.propertyType)}</h2>
                 <div className={styles.sectionBody}>
                   These details come from the property record and are used in this listing. They are intentionally
                   separate from the market-facing edits you make here.
@@ -383,7 +391,7 @@ export function ListingForm({
                   {selectedProperty.district}. Public route: {selectedProperty.propertyRouteId}
                 </div>
                 <div className={styles.propertyMetaFacts}>
-                  <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind)}</div>
+                  <div className={styles.pill}>{getPropertyKindLabel(selectedProperty.propertyKind, selectedProperty.propertyType)}</div>
                   <div className={styles.pill}>{selectedProperty.propertyRouteId}</div>
                 </div>
                 <div className={styles.propertyMetaFooter}>

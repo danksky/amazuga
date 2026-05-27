@@ -18,11 +18,10 @@ function getKindLabel(kind: PortalPropertiesWorkspaceData["ownedProperties"][num
   const labels: Record<NonNullable<typeof kind>, string> = {
     house: "House",
     land: "Land",
-    building: "Apartment building",
+    apartment_building: "Apartment building",
+    commercial_building: "Commercial building",
     apartment_unit: "Apartment unit",
     commercial_unit: "Commercial unit",
-    mixed_use: "Mixed use",
-    other: "Property",
   };
   return labels[kind];
 }

@@ -106,7 +106,10 @@ upsert_profiles AS (
     sb.parcel_id,
     'user-5',
     NULL,
-    'Building',
+    CASE
+      WHEN sb.example_kind = 'apartment_building' THEN 'Apartment building'
+      ELSE 'Commercial building'
+    END,
     NULL,
     NULL,
     CASE
@@ -135,7 +138,10 @@ upsert_primary_assets AS (
   SELECT
     'ast_' || SUBSTR(MD5('preview_multi_unit_examples_v1:building:' || sb.parcel_id), 1, 20) AS id,
     sb.parcel_id,
-    'building',
+    CASE
+      WHEN sb.example_kind = 'apartment_building' THEN 'apartment_building'
+      ELSE 'commercial_building'
+    END,
     UPPER(SUBSTR(MD5('preview_multi_unit_examples_v1:building-public:' || sb.parcel_id), 1, 10)),
     'AST-' || UPPER(SUBSTR(MD5('preview_multi_unit_examples_v1:building-display:' || sb.parcel_id), 1, 10)),
     NULL,

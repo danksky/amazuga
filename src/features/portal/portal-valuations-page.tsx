@@ -6,22 +6,27 @@ import { routes } from "@/lib/routes";
 
 import styles from "./portal-valuations-page.module.css";
 
-function getPropertyKindLabel(kind: PortalValuationsWorkspaceData["properties"][number]["propertyKind"]) {
+function getPropertyKindLabel(
+  kind: PortalValuationsWorkspaceData["properties"][number]["propertyKind"],
+  propertyType?: PortalValuationsWorkspaceData["properties"][number]["propertyType"],
+) {
+  if (propertyType?.trim()) {
+    return propertyType.trim();
+  }
+
   switch (kind) {
     case "house":
       return "House";
     case "land":
-      return "Parcel";
-    case "building":
-      return "Building";
+      return "Land";
+    case "apartment_building":
+      return "Apartment building";
+    case "commercial_building":
+      return "Commercial building";
     case "apartment_unit":
-      return "Apartment";
+      return "Apartment unit";
     case "commercial_unit":
-      return "Commercial";
-    case "mixed_use":
-      return "Mixed use";
-    case "other":
-      return "Other";
+      return "Commercial unit";
     default:
       return "Property";
   }
@@ -98,7 +103,7 @@ export function PortalValuationsPage({ data }: { data: PortalValuationsWorkspace
                   </div>
                 </div>
                 <div className={styles.propertyPills}>
-                  <div className={styles.pill}>{getPropertyKindLabel(property.propertyKind)}</div>
+                  <div className={styles.pill}>{getPropertyKindLabel(property.propertyKind, property.propertyType)}</div>
                   <div className={styles.pill}>
                     {property.listingId
                       ? property.listingMarketingType === "rent"

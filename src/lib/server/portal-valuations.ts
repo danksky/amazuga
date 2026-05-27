@@ -5,7 +5,13 @@ import { getPgPool } from "./postgres";
 type ValuationStatus = "pending" | "approved" | "denied";
 type MarketingType = "sale" | "rent";
 type Currency = "RWF";
-type PropertyKind = "house" | "land" | "building" | "apartment_unit" | "commercial_unit" | "mixed_use" | "other";
+type PropertyKind =
+  | "house"
+  | "land"
+  | "apartment_building"
+  | "commercial_building"
+  | "apartment_unit"
+  | "commercial_unit";
 
 interface PortalValuationRow {
   id: string;
@@ -25,6 +31,7 @@ interface PortalValuationRow {
   sector: string | null;
   property_public_id: string | null;
   property_kind: PropertyKind | null;
+  property_type: string | null;
   property_title: string | null;
   listing_id: string | null;
   marketing_type: MarketingType | null;
@@ -37,6 +44,7 @@ export interface PortalValuationSubmissionSummary {
   propertyId: string;
   propertyTitle: string;
   propertyKind?: PropertyKind;
+  propertyType?: string;
   district: string;
   sector?: string;
   listingId?: string;
@@ -55,6 +63,7 @@ export interface PortalValuationPropertyGroup {
   propertyId: string;
   propertyTitle: string;
   propertyKind?: PropertyKind;
+  propertyType?: string;
   district: string;
   sector?: string;
   listingId?: string;
@@ -70,6 +79,7 @@ export interface PortalValuationPropertyOption {
   routeId: string;
   propertyTitle: string;
   propertyKind?: PropertyKind;
+  propertyType?: string;
   district: string;
   sector?: string;
   listingMarketingType?: MarketingType;
@@ -93,6 +103,7 @@ interface PortalValuationPropertyOptionRow {
   route_id: string;
   property_title: string | null;
   property_kind: PropertyKind | null;
+  property_type: string | null;
   district: string | null;
   sector: string | null;
   marketing_type: MarketingType | null;
@@ -133,6 +144,7 @@ function buildSubmission(row: PortalValuationRow): PortalValuationSubmissionSumm
     propertyId: normalizePropertyId(row),
     propertyTitle: normalizePropertyTitle(row),
     propertyKind: row.property_kind || undefined,
+    propertyType: row.property_type || undefined,
     district: row.district || "Unknown district",
     sector: row.sector || undefined,
     listingId: row.listing_id || undefined,
@@ -187,6 +199,7 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           p.sector,
           pa.public_id AS property_public_id,
           pa.asset_type AS property_kind,
+          pp.property_type,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
               THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
@@ -238,6 +251,7 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           COALESCE(parcel_from_asset.sector, parcel_direct.sector) AS sector,
           property_by_public_id.public_id AS property_public_id,
           property_by_public_id.asset_type AS property_kind,
+          COALESCE(profile_from_asset.property_type, profile_direct.property_type) AS property_type,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(property_by_public_id.unit_label), ''), NULL) IS NOT NULL
               THEN CONCAT(
@@ -298,6 +312,7 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
       propertyId: submission.propertyId,
       propertyTitle: submission.propertyTitle,
       propertyKind: submission.propertyKind,
+      propertyType: submission.propertyType,
       district: submission.district,
       sector: submission.sector,
       listingId: submission.listingId,
@@ -328,6 +343,7 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
         COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id) AS route_id,
         COALESCE(active_listing.property_title, primary_asset.property_title, p.display_id, p.public_id, p.parcel_id) AS property_title,
         COALESCE(active_listing.property_kind, primary_asset.property_kind) AS property_kind,
+        COALESCE(active_listing.property_type, primary_asset.property_type) AS property_type,
         p.district,
         p.sector,
         active_listing.marketing_type,
@@ -345,8 +361,11 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
               THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
             ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
           END AS property_title,
-          pa.asset_type AS property_kind
+          pa.asset_type AS property_kind,
+          pp.property_type
         FROM property_asset pa
+        LEFT JOIN property_profile pp
+          ON pp.parcel_id = pa.parcel_id
         WHERE pa.parcel_id = p.parcel_id
           AND pa.is_primary_for_parcel
         ORDER BY pa.created_at ASC, pa.id ASC
@@ -362,12 +381,15 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
             ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
+          pp.property_type,
           l.marketing_type,
           l.asking_price_rwf,
           l.currency
         FROM listing l
         JOIN property_asset pa
           ON pa.id = l.property_asset_id
+        LEFT JOIN property_profile pp
+          ON pp.parcel_id = pa.parcel_id
         WHERE l.parcel_id = p.parcel_id
           AND l.status = 'active'
         ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
@@ -401,6 +423,7 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
     routeId: row.route_id,
     propertyTitle: row.property_title || row.route_id,
     propertyKind: row.property_kind || undefined,
+    propertyType: row.property_type || undefined,
     district: row.district || "Unknown district",
     sector: row.sector || undefined,
     listingMarketingType: row.marketing_type || undefined,

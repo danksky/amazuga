@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS property_profile (
   parcel_id TEXT PRIMARY KEY,
   created_by_user_id TEXT REFERENCES app_user(id),
   description TEXT,
-  property_type TEXT NOT NULL,
+  property_type TEXT NOT NULL CHECK (LOWER(BTRIM(property_type)) <> 'building'),
   bedrooms INTEGER,
   bathrooms NUMERIC(4, 1),
   interior_area_sqm NUMERIC(12, 2),
@@ -63,11 +63,10 @@ CREATE TABLE IF NOT EXISTS property_asset (
     asset_type IN (
       'house',
       'land',
-      'building',
+      'apartment_building',
+      'commercial_building',
       'apartment_unit',
-      'commercial_unit',
-      'mixed_use',
-      'other'
+      'commercial_unit'
     )
   ),
   public_id TEXT NOT NULL UNIQUE,
@@ -186,10 +185,13 @@ CREATE TABLE IF NOT EXISTS property_claim_request (
   upi TEXT NOT NULL,
   claim_scope TEXT NOT NULL DEFAULT 'full_parcel' CHECK (claim_scope IN ('full_parcel', 'unit_partial')),
   unit_label TEXT,
+  declared_property_type TEXT CHECK (declared_property_type IN (
+    'house', 'apartment_building', 'land', 'apartment_unit', 'commercial_building', 'commercial_unit'
+  )),
   tenure_type TEXT NOT NULL DEFAULT 'unspecified' CHECK (tenure_type IN ('freehold', 'emphyteutic_lease', 'unspecified')),
   tenure_source TEXT NOT NULL DEFAULT 'unspecified' CHECK (tenure_source IN ('user_provided', 'auto_populated', 'unspecified')),
   declared_asset_type TEXT CHECK (declared_asset_type IN (
-    'house', 'land', 'building', 'apartment_unit', 'commercial_unit', 'mixed_use', 'other'
+    'house', 'land', 'apartment_building', 'commercial_building', 'apartment_unit', 'commercial_unit'
   )),
   representative_size NUMERIC(14,2),
   zoning TEXT,
@@ -369,10 +371,10 @@ SELECT
     CASE pa.asset_type
       WHEN 'house' THEN 'House'
       WHEN 'land' THEN 'Parcel'
-      WHEN 'building' THEN 'Building'
+      WHEN 'apartment_building' THEN 'Apartment building'
+      WHEN 'commercial_building' THEN 'Commercial building'
       WHEN 'apartment_unit' THEN 'Apartment'
       WHEN 'commercial_unit' THEN 'Commercial'
-      WHEN 'mixed_use' THEN 'Mixed Use'
       ELSE 'Property'
     END,
     pp.property_type

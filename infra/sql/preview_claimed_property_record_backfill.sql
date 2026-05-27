@@ -31,19 +31,19 @@ backfill AS (
     CASE owned.asset_type
       WHEN 'house' THEN 'House'
       WHEN 'apartment_unit' THEN 'Apartment'
-      WHEN 'building' THEN 'Building'
+      WHEN 'apartment_building' THEN 'Apartment building'
+      WHEN 'commercial_building' THEN 'Commercial building'
       WHEN 'commercial_unit' THEN 'Commercial'
       WHEN 'land' THEN 'Parcel'
-      WHEN 'mixed_use' THEN 'Mixed use'
       ELSE 'Property'
     END AS inferred_property_type,
     CASE owned.asset_type
       WHEN 'house' THEN 'Preview house record auto-backfilled from parcel context after claim approval.'
       WHEN 'apartment_unit' THEN 'Preview apartment-unit record auto-backfilled from parcel context after claim approval.'
-      WHEN 'building' THEN 'Preview building record auto-backfilled from parcel context after claim approval.'
+      WHEN 'apartment_building' THEN 'Preview apartment-building record auto-backfilled from parcel context after claim approval.'
+      WHEN 'commercial_building' THEN 'Preview commercial-building record auto-backfilled from parcel context after claim approval.'
       WHEN 'commercial_unit' THEN 'Preview commercial-unit record auto-backfilled from parcel context after claim approval.'
       WHEN 'land' THEN 'Preview land record auto-backfilled from parcel context after claim approval.'
-      WHEN 'mixed_use' THEN 'Preview mixed-use record auto-backfilled from parcel context after claim approval.'
       ELSE 'Preview property record auto-backfilled from parcel context after claim approval.'
     END AS inferred_description,
     CASE owned.asset_type
@@ -79,9 +79,9 @@ backfill AS (
     CASE owned.asset_type
       WHEN 'house' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 0.42, 180.0), 90.0), 420.0)::NUMERIC, 2)
       WHEN 'apartment_unit' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 0.18, 96.0), 55.0), 160.0)::NUMERIC, 2)
-      WHEN 'building' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 1.35, 1680.0), 480.0), 3200.0)::NUMERIC, 2)
+      WHEN 'apartment_building' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 1.35, 1680.0), 480.0), 3200.0)::NUMERIC, 2)
+      WHEN 'commercial_building' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 1.35, 1680.0), 480.0), 3200.0)::NUMERIC, 2)
       WHEN 'commercial_unit' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 0.35, 148.0), 80.0), 420.0)::NUMERIC, 2)
-      WHEN 'mixed_use' THEN ROUND(LEAST(GREATEST(COALESCE(owned.representative_size * 0.58, 260.0), 140.0), 980.0)::NUMERIC, 2)
       ELSE NULL::NUMERIC
     END AS inferred_interior_area_sqm
   FROM owned_assets owned
