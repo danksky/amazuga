@@ -25,6 +25,7 @@ pnpm-debug.log*
 
 # terraform
 .terraform/
+infra/terraform/tfplan
 *.tfstate
 *.tfstate.*
 crash.log
