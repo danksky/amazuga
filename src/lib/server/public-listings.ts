@@ -22,6 +22,9 @@ interface ListingParcelRow {
   cell: string | null;
   village: string | null;
   representative_size: number | string | null;
+  anchor_lon: number | string | null;
+  anchor_lat: number | string | null;
+  anchor_source: string | null;
   centroid_lon: number | string | null;
   centroid_lat: number | string | null;
   bbox_min_lon: number | string | null;
@@ -153,8 +156,8 @@ function buildPlaceholderGeometry(row: ListingParcelRow): Property["geometry"] {
     };
   }
 
-  const lng = toNullableNumber(row.centroid_lon) ?? 0;
-  const lat = toNullableNumber(row.centroid_lat) ?? 0;
+  const lng = toNullableNumber(row.anchor_lon) ?? 0;
+  const lat = toNullableNumber(row.anchor_lat) ?? 0;
   const delta = 0.00005;
   return {
     type: "polygon",
@@ -195,6 +198,9 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
   const maxLng = toNullableNumber(row.bbox_max_lon);
   const maxLat = toNullableNumber(row.bbox_max_lat);
 
+  const locationLng = toNullableNumber(row.anchor_lon) ?? 0;
+  const locationLat = toNullableNumber(row.anchor_lat) ?? 0;
+
   return {
     id: propertyId,
     internalId: row.property_internal_id || undefined,
@@ -212,8 +218,8 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
       sector: row.sector || undefined,
       cell: row.cell || undefined,
       village: row.village || undefined,
-      lat: toNullableNumber(row.centroid_lat) ?? 0,
-      lng: toNullableNumber(row.centroid_lon) ?? 0,
+      lat: locationLat,
+      lng: locationLng,
       bbox:
         minLng !== undefined &&
         minLat !== undefined &&
@@ -405,6 +411,9 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         p.cell,
         p.village,
         p.representative_size,
+        parcel_anchor.anchor_lon,
+        parcel_anchor.anchor_lat,
+        parcel_anchor.anchor_source,
         p.centroid_lon,
         p.centroid_lat,
         p.bbox_min_lon,
@@ -433,9 +442,9 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        pap.description AS profile_description,
+        property_profile.description AS profile_description,
         COALESCE(
-          NULLIF(BTRIM(pap.property_type), ''),
+          NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
             WHEN 'land' THEN 'Land'
@@ -446,19 +455,21 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
             ELSE NULL
           END
         ) AS property_type,
-        pap.bedrooms,
-        pap.bathrooms,
-        pap.interior_area_sqm,
-        pap.year_built
+        property_profile.bedrooms,
+        property_profile.bathrooms,
+        property_profile.interior_area_sqm,
+        property_profile.year_built
       FROM listing l
       JOIN app_user agent
         ON agent.id = l.agent_user_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = l.parcel_id
+      JOIN parcel_anchor_point_preview parcel_anchor
+        ON parcel_anchor.parcel_id = p.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
-      LEFT JOIN property_asset_profile pap
-        ON pap.property_asset_id = pa.id
+      LEFT JOIN property_asset_profile property_profile
+        ON property_profile.property_asset_id = pa.id
       WHERE l.status = 'active'
         AND l.visibility = 'public'
         AND l.marketing_type = $1
@@ -507,6 +518,9 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         p.cell,
         p.village,
         p.representative_size,
+        parcel_anchor.anchor_lon,
+        parcel_anchor.anchor_lat,
+        parcel_anchor.anchor_source,
         p.centroid_lon,
         p.centroid_lat,
         p.bbox_min_lon,
@@ -535,9 +549,9 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        pap.description AS profile_description,
+        property_profile.description AS profile_description,
         COALESCE(
-          NULLIF(BTRIM(pap.property_type), ''),
+          NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
             WHEN 'land' THEN 'Land'
@@ -548,13 +562,15 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
             ELSE NULL
           END
         ) AS property_type,
-        pap.bedrooms,
-        pap.bathrooms,
-        pap.interior_area_sqm,
-        pap.year_built
+        property_profile.bedrooms,
+        property_profile.bathrooms,
+        property_profile.interior_area_sqm,
+        property_profile.year_built
       FROM target_parcel tp
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = tp.parcel_id
+      JOIN parcel_anchor_point_preview parcel_anchor
+        ON parcel_anchor.parcel_id = p.parcel_id
       LEFT JOIN LATERAL (
         SELECT
           pa_inner.id,
@@ -599,8 +615,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
        )
       LEFT JOIN app_user agent
         ON agent.id = l.agent_user_id
-      LEFT JOIN property_asset_profile pap
-        ON pap.property_asset_id = pa.id
+      LEFT JOIN property_asset_profile property_profile
+        ON property_profile.property_asset_id = pa.id
       LIMIT 1
     `,
     [propertyId, viewerUserId ?? null],
