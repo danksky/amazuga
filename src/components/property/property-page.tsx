@@ -115,44 +115,28 @@ function buildWhatsappUrl(phone?: string) {
 }
 
 function buildFactItems(property: Property, propertyKind: PropertyKind): FactItem[] {
-  const typeLabel = property.facts.propertyType ?? formatPropertyKindLabel(propertyKind);
-
   switch (propertyKind) {
     case "land":
       return [
-        { label: "Type", value: typeLabel },
-        { label: "Parcel size", value: formatArea(property.facts.landAreaSqm) },
         { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
-        { label: "District", value: property.location.district },
       ];
     case "apartment_unit":
       return [
-        { label: "Type", value: typeLabel },
-        { label: "Interior", value: formatArea(property.facts.areaSqm) },
-        { label: "Beds / baths", value: formatBedsBaths(property) },
         { label: "Year built", value: property.facts.yearBuilt ? String(property.facts.yearBuilt) : "Unknown" },
       ];
     case "building":
       return [
-        { label: "Type", value: typeLabel },
-        { label: "Built area", value: formatArea(property.facts.areaSqm) },
-        { label: "Parcel size", value: formatArea(property.facts.landAreaSqm) },
         { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
       ];
     case "commercial_unit":
       return [
-        { label: "Type", value: typeLabel },
-        { label: "Floor area", value: formatArea(property.facts.areaSqm) },
         { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
-        { label: "Parcel size", value: formatArea(property.facts.landAreaSqm) },
       ];
     case "house":
     case "mixed_use":
     case "other":
     default:
       return [
-        { label: "Interior", value: formatArea(property.facts.areaSqm) },
-        { label: "Beds / baths", value: formatBedsBaths(property) },
         { label: "Parcel", value: formatArea(property.facts.landAreaSqm) },
         { label: "Year built", value: property.facts.yearBuilt ? String(property.facts.yearBuilt) : "Unknown" },
       ];
@@ -167,31 +151,6 @@ function buildDetailItems(property: Property, propertyKind: PropertyKind): Detai
     detailItems.push({ label: propertyKind === "land" ? "Zone" : "Use zone", value: property.facts.zoningLabel });
   }
 
-  if (property.parcelPublicId) {
-    detailItems.push({ label: "Parcel public ID", value: property.parcelPublicId });
-  }
-
-  if (property.code) {
-    detailItems.push({ label: "Property code", value: property.code });
-  }
-
-  if (property.location.district && !detailItems.some((item) => item.label === "District")) {
-    detailItems.push({ label: "District", value: property.location.district });
-  }
-
-  if (property.location.sector) {
-    detailItems.push({ label: "Sector", value: property.location.sector });
-  }
-
-  if (property.location.cell) {
-    detailItems.push({ label: "Cell", value: property.location.cell });
-  }
-
-  if (property.location.village) {
-    detailItems.push({ label: "Village", value: property.location.village });
-  }
-
-  detailItems.push({ label: "Property kind", value: formatPropertyKindLabel(propertyKind) });
   detailItems.push({ label: "Property ID", value: property.id });
 
   return detailItems;
@@ -304,10 +263,10 @@ function buildPropertyPageBehavior(
 
 function buildListingStateLabel(listing?: Listing) {
   if (!listing) {
-    return "Not listed";
+    return "Unlisted";
   }
 
-  return listing.marketingType === "rent" ? "Listed for rent" : "Listed for sale";
+  return listing.marketingType === "rent" ? "For rent" : "For sale";
 }
 
 export function PropertyPage({
@@ -340,11 +299,9 @@ export function PropertyPage({
   const propertyKind = inferPropertyKind(property);
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
   const detailItems = buildDetailItems(property, propertyKind);
-  const kindBadgeLabel = behavior.kindLabel;
   const listingStateLabel = buildListingStateLabel(listing);
-  const listingMetaLabel = listing ? (listing.marketingType === "rent" ? "For rent" : "For sale") : undefined;
+  const primaryInfoMetaLabel = `${behavior.kindLabel} | ${listingStateLabel}`;
   const summaryDescription = property.description;
-  const zoningLabel = property.facts.zoningLabel;
   const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
   const whatsappUrl = buildWhatsappUrl(agency?.whatsappPhone);
   const primaryPrice = listing
@@ -401,12 +358,6 @@ export function PropertyPage({
           )}
 
           <div className={`${styles.panel} ${styles.summary}`}>
-            <div className={styles.badgeRow}>
-              <div className={styles.status}>{listingStateLabel}</div>
-              <div className={styles.kindBadge}>{kindBadgeLabel}</div>
-              {listingMetaLabel ? <div className={styles.neutralBadge}>{listingMetaLabel}</div> : null}
-              {zoningLabel ? <div className={styles.neutralBadge}>{zoningLabel}</div> : null}
-            </div>
             {statusMessage ? <div className={styles.description}>{statusMessage}</div> : null}
             {!listing && (
               <div className={styles.statusRow}>
@@ -489,24 +440,25 @@ export function PropertyPage({
 
         <div className={styles.rightRail}>
           <div className={`${styles.panel} ${styles.primaryInfoPanel}`}>
-          <div className={styles.eyebrow}>{locationLabel}</div>
-          <div className={styles.priceValue}>{primaryPrice}</div>
-          <h1 className={styles.primaryAddress}>{property.title}</h1>
-          <div className={styles.primaryInfoStats}>
-            {primaryInfoStats.map((stat, index) => (
-              <div className={styles.primaryInfoStat} key={`${propertyKind}-${index}`}>
-                {stat.value ? <span>{stat.value}</span> : null}
-              </div>
-            ))}
-          </div>
-          <div className={styles.ctaGroup}>
-              {listing ? (
-                <>
-                  <div className={styles.contactSummary}>
-                    <div className={styles.contactSummaryLabel}>Contact</div>
-                    <div className={styles.contactSummaryName}>{contactName ?? agency?.businessName ?? "For sale by owner"}</div>
-                    {contactRoleLabel ? <div className={styles.contactSummaryMeta}>{contactRoleLabel}</div> : null}
-                  </div>
+            <div className={styles.eyebrow}>{locationLabel}</div>
+            <div className={styles.eyebrow}>{primaryInfoMetaLabel}</div>
+            <div className={styles.priceValue}>{primaryPrice}</div>
+            <h1 className={styles.primaryAddress}>{property.title}</h1>
+            <div className={styles.primaryInfoStats}>
+              {primaryInfoStats.map((stat, index) => (
+                <div className={styles.primaryInfoStat} key={`${propertyKind}-${index}`}>
+                  {stat.value ? <span>{stat.value}</span> : null}
+                </div>
+              ))}
+            </div>
+            {listing ? (
+              <div className={styles.contactSummary}>
+                <div className={styles.contactIdentity}>
+                  <div className={styles.contactSummaryLabel}>Contact</div>
+                  <div className={styles.contactSummaryName}>{contactName ?? agency?.businessName ?? "For sale by owner"}</div>
+                  {contactRoleLabel ? <div className={styles.contactSummaryMeta}>{contactRoleLabel}</div> : null}
+                </div>
+                <div className={styles.ctaGroup}>
                   {showWhatsapp && whatsappUrl ? (
                     <a className={styles.whatsappAction} href={whatsappUrl} rel="noreferrer" target="_blank">
                       Message on WhatsApp
@@ -521,48 +473,48 @@ export function PropertyPage({
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
-                </>
-              ) : (
-                <>
-                  {claimState === "owned" ? (
-                    <>
-                      <Link className={styles.actionLinkPrimary} href={routes.app.portalProperties}>
-                        View owned properties
+                </div>
+              </div>
+            ) : (
+              <div className={styles.ctaGroup}>
+                {claimState === "owned" ? (
+                  <>
+                    <Link className={styles.actionLinkPrimary} href={routes.app.portalProperties}>
+                      View owned properties
+                    </Link>
+                    {canCreateListing ? (
+                      <Link
+                        className={styles.actionLinkSecondary}
+                        href={`${routes.app.portalListingNew}?property=${encodeURIComponent(propertyRouteId)}`}
+                      >
+                        Create listing
                       </Link>
-                      {canCreateListing ? (
-                        <Link
-                          className={styles.actionLinkSecondary}
-                          href={`${routes.app.portalListingNew}?property=${encodeURIComponent(propertyRouteId)}`}
-                        >
-                          Create listing
-                        </Link>
-                      ) : null}
-                    </>
-                  ) : claimState === "pending" ? (
-                    <Button disabled>Claim pending review</Button>
-                  ) : property.internalId ? (
-                    <form action={createPropertyClaimRequestAction}>
-                      <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
-                      <input name="propertyPath" type="hidden" value={propertyPath} />
-                      <input name="propertyId" type="hidden" value={property.id} />
-                      <input name="propertyInternalId" type="hidden" value={property.internalId} />
-                      <input name="parcelId" type="hidden" value={property.parcelId} />
-                      <input name="upi" type="hidden" value={property.upi} />
-                      <input name="propertyKind" type="hidden" value={property.facts.propertyKind || ""} />
-                      <input name="unitLabel" type="hidden" value={property.unitLabel || ""} />
-                      <Button type="submit">{behavior.claimLabel}</Button>
-                    </form>
-                  ) : (
-                    <Button disabled>{behavior.claimLabel}</Button>
-                  )}
-                  <form action={toggleSavePropertyAction}>
+                    ) : null}
+                  </>
+                ) : claimState === "pending" ? (
+                  <Button disabled>Claim pending review</Button>
+                ) : property.internalId ? (
+                  <form action={createPropertyClaimRequestAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
-                    <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
+                    <input name="propertyId" type="hidden" value={property.id} />
+                    <input name="propertyInternalId" type="hidden" value={property.internalId} />
+                    <input name="parcelId" type="hidden" value={property.parcelId} />
+                    <input name="upi" type="hidden" value={property.upi} />
+                    <input name="propertyKind" type="hidden" value={property.facts.propertyKind || ""} />
+                    <input name="unitLabel" type="hidden" value={property.unitLabel || ""} />
+                    <Button type="submit">{behavior.claimLabel}</Button>
                   </form>
-                </>
-              )}
-            </div>
+                ) : (
+                  <Button disabled>{behavior.claimLabel}</Button>
+                )}
+                <form action={toggleSavePropertyAction}>
+                  <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
+                  <input name="propertyPath" type="hidden" value={propertyPath} />
+                  <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>
