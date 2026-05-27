@@ -280,6 +280,66 @@ upsert_unit_assets AS (
     'preview_multi_unit_examples_v1'
   FROM unit_rows ur
 ),
+upsert_root_asset_profiles AS (
+  INSERT INTO property_asset_profile (
+    property_asset_id,
+    created_by_user_id,
+    description,
+    property_type,
+    bedrooms,
+    bathrooms,
+    interior_area_sqm,
+    year_built,
+    seed_source
+  )
+  SELECT
+    'ast_' || SUBSTR(MD5('preview_multi_unit_examples_v1:building:' || sb.parcel_id), 1, 20),
+    'user-5',
+    NULL,
+    CASE
+      WHEN sb.example_kind = 'apartment_building' THEN 'Apartment building'
+      ELSE 'Commercial building'
+    END,
+    NULL,
+    NULL,
+    CASE
+      WHEN sb.example_kind = 'apartment_building' THEN 1460.0::NUMERIC
+      ELSE 1280.0::NUMERIC
+    END,
+    CASE
+      WHEN sb.example_kind = 'apartment_building' THEN 2022
+      ELSE 2020
+    END,
+    'preview_multi_unit_examples_v1'
+  FROM selected_buildings sb
+),
+upsert_unit_asset_profiles AS (
+  INSERT INTO property_asset_profile (
+    property_asset_id,
+    created_by_user_id,
+    description,
+    property_type,
+    bedrooms,
+    bathrooms,
+    interior_area_sqm,
+    year_built,
+    seed_source
+  )
+  SELECT
+    'ast_' || SUBSTR(MD5('preview_multi_unit_examples_v1:unit:' || ur.parcel_id || ':' || ur.unit_label), 1, 20),
+    'user-5',
+    ur.property_description,
+    CASE
+      WHEN ur.asset_type = 'apartment_unit' THEN 'Apartment unit'
+      ELSE 'Commercial unit'
+    END,
+    ur.bedrooms,
+    ur.bathrooms,
+    ur.interior_area_sqm,
+    ur.year_built,
+    'preview_multi_unit_examples_v1'
+  FROM unit_rows ur
+),
 listed_unit_rows AS (
   SELECT
     ur.*,

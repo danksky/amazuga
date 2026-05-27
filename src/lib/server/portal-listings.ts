@@ -137,8 +137,9 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
           ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
         END AS property_title,
         pa.description AS property_description_override,
-        pp.description AS profile_description,
+        pap.description AS profile_description,
         COALESCE(
+          NULLIF(BTRIM(pap.property_type), ''),
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
             WHEN 'land' THEN 'Land'
@@ -147,12 +148,11 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
             WHEN 'apartment_unit' THEN 'Apartment Unit'
             WHEN 'commercial_unit' THEN 'Commercial Unit'
             ELSE NULL
-          END,
-          pp.property_type
+          END
         ) AS property_type,
-        pp.bedrooms,
-        pp.bathrooms,
-        pp.interior_area_sqm,
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
         first_img.image_url AS first_image_url
       FROM listing l
       JOIN app_user agent
@@ -161,8 +161,8 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = l.parcel_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = pa.id
       LEFT JOIN LATERAL (
         SELECT image_url
         FROM listing_image

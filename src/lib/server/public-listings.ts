@@ -189,10 +189,7 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
   const listingState = row.listing_id ? "listed" : "not_listed";
   const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
   const title = normalizePropertyTitle(row);
-  // Only use profile_description when there is no dedicated property asset — once an
-  // asset exists, profile data (often mock-seeded) is stale and should be ignored.
-  const description = row.property_description_override
-    || (row.property_internal_id ? undefined : row.profile_description);
+  const description = row.property_description_override || row.profile_description;
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
   const maxLng = toNullableNumber(row.bbox_max_lon);
@@ -436,8 +433,9 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        pp.description AS profile_description,
+        pap.description AS profile_description,
         COALESCE(
+          NULLIF(BTRIM(pap.property_type), ''),
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
             WHEN 'land' THEN 'Land'
@@ -446,13 +444,12 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
             WHEN 'apartment_unit' THEN 'Apartment Unit'
             WHEN 'commercial_unit' THEN 'Commercial Unit'
             ELSE NULL
-          END,
-          pp.property_type
+          END
         ) AS property_type,
-        pp.bedrooms,
-        pp.bathrooms,
-        pp.interior_area_sqm,
-        pp.year_built
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
+        pap.year_built
       FROM listing l
       JOIN app_user agent
         ON agent.id = l.agent_user_id
@@ -460,8 +457,8 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = l.parcel_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = pa.id
       WHERE l.status = 'active'
         AND l.visibility = 'public'
         AND l.marketing_type = $1
@@ -538,8 +535,9 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        pp.description AS profile_description,
+        pap.description AS profile_description,
         COALESCE(
+          NULLIF(BTRIM(pap.property_type), ''),
           CASE pa.asset_type
             WHEN 'house' THEN 'House'
             WHEN 'land' THEN 'Land'
@@ -548,13 +546,12 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
             WHEN 'apartment_unit' THEN 'Apartment Unit'
             WHEN 'commercial_unit' THEN 'Commercial Unit'
             ELSE NULL
-          END,
-          pp.property_type
+          END
         ) AS property_type,
-        pp.bedrooms,
-        pp.bathrooms,
-        pp.interior_area_sqm,
-        pp.year_built
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
+        pap.year_built
       FROM target_parcel tp
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = tp.parcel_id
@@ -602,8 +599,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
        )
       LEFT JOIN app_user agent
         ON agent.id = l.agent_user_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = p.parcel_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = pa.id
       LIMIT 1
     `,
     [propertyId, viewerUserId ?? null],

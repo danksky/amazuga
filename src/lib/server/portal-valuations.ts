@@ -199,7 +199,7 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           p.sector,
           pa.public_id AS property_public_id,
           pa.asset_type AS property_kind,
-          pp.property_type,
+          pap.property_type,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
               THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
@@ -214,8 +214,8 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           ON pa.id = vs.property_asset_id
         LEFT JOIN parcel_app_ready_seed_preview p
           ON p.parcel_id = pa.parcel_id
-        LEFT JOIN property_profile pp
-          ON pp.parcel_id = p.parcel_id
+        LEFT JOIN property_asset_profile pap
+          ON pap.property_asset_id = pa.id
         LEFT JOIN LATERAL (
           SELECT
             l.id,
@@ -249,15 +249,15 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           COALESCE(parcel_from_asset.display_id, parcel_direct.display_id) AS display_id,
           COALESCE(parcel_from_asset.district, parcel_direct.district) AS district,
           COALESCE(parcel_from_asset.sector, parcel_direct.sector) AS sector,
-          property_by_public_id.public_id AS property_public_id,
-          property_by_public_id.asset_type AS property_kind,
-          COALESCE(profile_from_asset.property_type, profile_direct.property_type) AS property_type,
+          COALESCE(property_by_public_id.public_id, primary_asset_for_parcel.public_id) AS property_public_id,
+          COALESCE(property_by_public_id.asset_type, primary_asset_for_parcel.asset_type) AS property_kind,
+          COALESCE(profile_from_asset.property_type, primary_asset_for_parcel.property_type) AS property_type,
           CASE
-            WHEN COALESCE(NULLIF(BTRIM(property_by_public_id.unit_label), ''), NULL) IS NOT NULL
+            WHEN COALESCE(NULLIF(BTRIM(COALESCE(property_by_public_id.unit_label, primary_asset_for_parcel.unit_label)), ''), NULL) IS NOT NULL
               THEN CONCAT(
                 COALESCE(parcel_from_asset.display_id, parcel_direct.display_id, parcel_from_asset.public_id, parcel_direct.public_id, parcel_from_asset.parcel_id, parcel_direct.parcel_id),
                 ' · ',
-                property_by_public_id.unit_label
+                COALESCE(property_by_public_id.unit_label, primary_asset_for_parcel.unit_label)
               )
             ELSE COALESCE(parcel_from_asset.display_id, parcel_direct.display_id, parcel_from_asset.public_id, parcel_direct.public_id, parcel_from_asset.parcel_id, parcel_direct.parcel_id)
           END AS property_title,
@@ -270,13 +270,29 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           ON property_by_public_id.public_id = vs.property_id
         LEFT JOIN parcel_app_ready_seed_preview parcel_from_asset
           ON parcel_from_asset.parcel_id = property_by_public_id.parcel_id
-        LEFT JOIN property_profile profile_from_asset
-          ON profile_from_asset.parcel_id = parcel_from_asset.parcel_id
+        LEFT JOIN property_asset_profile profile_from_asset
+          ON profile_from_asset.property_asset_id = property_by_public_id.id
         LEFT JOIN parcel_app_ready_seed_preview parcel_direct
           ON parcel_direct.public_id = vs.property_id
          AND property_by_public_id.id IS NULL
-        LEFT JOIN property_profile profile_direct
-          ON profile_direct.parcel_id = parcel_direct.parcel_id
+        LEFT JOIN LATERAL (
+          SELECT
+            pa.id,
+            pa.public_id,
+            pa.asset_type,
+            pa.unit_label,
+            pap.property_type
+          FROM property_asset pa
+          LEFT JOIN property_asset_profile pap
+            ON pap.property_asset_id = pa.id
+          WHERE pa.parcel_id = parcel_direct.parcel_id
+          ORDER BY
+            CASE WHEN pa.is_primary_for_parcel THEN 0 ELSE 1 END,
+            pa.created_at ASC,
+            pa.id ASC
+          LIMIT 1
+        ) primary_asset_for_parcel
+          ON property_by_public_id.id IS NULL
         LEFT JOIN LATERAL (
           SELECT
             l.id,
@@ -362,10 +378,10 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
             ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
-          pp.property_type
+          pap.property_type
         FROM property_asset pa
-        LEFT JOIN property_profile pp
-          ON pp.parcel_id = pa.parcel_id
+        LEFT JOIN property_asset_profile pap
+          ON pap.property_asset_id = pa.id
         WHERE pa.parcel_id = p.parcel_id
           AND pa.is_primary_for_parcel
         ORDER BY pa.created_at ASC, pa.id ASC
@@ -381,15 +397,15 @@ export async function listPortalValuationPropertyOptions(): Promise<PortalValuat
             ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
-          pp.property_type,
+          pap.property_type,
           l.marketing_type,
           l.asking_price_rwf,
           l.currency
         FROM listing l
         JOIN property_asset pa
           ON pa.id = l.property_asset_id
-        LEFT JOIN property_profile pp
-          ON pp.parcel_id = pa.parcel_id
+        LEFT JOIN property_asset_profile pap
+          ON pap.property_asset_id = pa.id
         WHERE l.parcel_id = p.parcel_id
           AND l.status = 'active'
         ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC

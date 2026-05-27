@@ -215,11 +215,11 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
           ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
         END AS property_title,
         pa.asset_type AS property_kind,
-        pp.property_type,
+        pap.property_type,
         pa.unit_label AS property_unit_label,
-        pp.bedrooms,
-        pp.bathrooms,
-        pp.interior_area_sqm,
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
         p.representative_size,
         p.zoning,
         p.district,
@@ -230,8 +230,8 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         ON pa.id = po.property_internal_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = pa.parcel_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = pa.parcel_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = pa.id
       LEFT JOIN listing open_listing
         ON open_listing.property_asset_id = pa.id
        AND open_listing.status IN ('draft', 'active', 'inactive')
@@ -338,7 +338,7 @@ async function getEditableListingRow(userId: string, listingId: string) {
           ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
         END AS property_title,
         pa.asset_type AS property_kind,
-        pp.property_type,
+        pap.property_type,
         p.district,
         p.sector,
         l.agency_id,
@@ -354,6 +354,8 @@ async function getEditableListingRow(userId: string, listingId: string) {
         ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = pa.id
       WHERE l.id = $1
         AND (
           (array_length($2::TEXT[], 1) > 0 AND l.agency_id = ANY($2::TEXT[]))

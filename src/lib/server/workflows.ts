@@ -621,8 +621,8 @@ async function backfillPropertyRecordForAsset(input: {
 
   await getPgPool().query(
     `
-      INSERT INTO property_profile (
-        parcel_id,
+      INSERT INTO property_asset_profile (
+        property_asset_id,
         created_by_user_id,
         description,
         property_type,
@@ -633,25 +633,25 @@ async function backfillPropertyRecordForAsset(input: {
         seed_source
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'claim_record_backfill_v1')
-      ON CONFLICT (parcel_id) DO UPDATE
+      ON CONFLICT (property_asset_id) DO UPDATE
       SET
-        created_by_user_id = COALESCE(property_profile.created_by_user_id, EXCLUDED.created_by_user_id),
+        created_by_user_id = COALESCE(property_asset_profile.created_by_user_id, EXCLUDED.created_by_user_id),
         description = CASE
-          WHEN COALESCE(NULLIF(BTRIM(property_profile.description), ''), NULL) IS NULL THEN EXCLUDED.description
-          ELSE property_profile.description
+          WHEN COALESCE(NULLIF(BTRIM(property_asset_profile.description), ''), NULL) IS NULL THEN EXCLUDED.description
+          ELSE property_asset_profile.description
         END,
         property_type = CASE
-          WHEN COALESCE(NULLIF(BTRIM(property_profile.property_type), ''), NULL) IS NULL THEN EXCLUDED.property_type
-          ELSE property_profile.property_type
+          WHEN COALESCE(NULLIF(BTRIM(property_asset_profile.property_type), ''), NULL) IS NULL THEN EXCLUDED.property_type
+          ELSE property_asset_profile.property_type
         END,
-        bedrooms = COALESCE(property_profile.bedrooms, EXCLUDED.bedrooms),
-        bathrooms = COALESCE(property_profile.bathrooms, EXCLUDED.bathrooms),
-        interior_area_sqm = COALESCE(property_profile.interior_area_sqm, EXCLUDED.interior_area_sqm),
-        year_built = COALESCE(property_profile.year_built, EXCLUDED.year_built),
+        bedrooms = COALESCE(property_asset_profile.bedrooms, EXCLUDED.bedrooms),
+        bathrooms = COALESCE(property_asset_profile.bathrooms, EXCLUDED.bathrooms),
+        interior_area_sqm = COALESCE(property_asset_profile.interior_area_sqm, EXCLUDED.interior_area_sqm),
+        year_built = COALESCE(property_asset_profile.year_built, EXCLUDED.year_built),
         updated_at = NOW()
     `,
     [
-      row.parcel_id,
+      input.propertyAssetId,
       input.userId,
       claimDescription ?? inferred.propertyDescription,
       inferred.propertyType,
@@ -2166,6 +2166,18 @@ export async function updatePropertyClaimRequestStatusInDb(
   }
 
   if (status === "approved") {
+    const declaredUnitType =
+      existingClaimRequest.declaredAssetType === "apartment_unit"
+      || existingClaimRequest.declaredAssetType === "commercial_unit";
+
+    if (existingClaimRequest.claimScope === "full_parcel" && declaredUnitType) {
+      throw new Error("Full-parcel claims must resolve to a top-level property, not a unit asset.");
+    }
+
+    if (existingClaimRequest.claimScope === "unit_partial" && existingClaimRequest.declaredAssetType && !declaredUnitType) {
+      throw new Error("Unit claims must resolve to an apartment or commercial unit.");
+    }
+
     if (!existingClaimRequest.propertyInternalId || !existingClaimRequest.propertyId) {
       if (existingClaimRequest.kind === "transfer") {
         throw new Error("This transfer request is missing its property target.");

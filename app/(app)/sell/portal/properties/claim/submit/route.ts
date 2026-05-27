@@ -16,6 +16,7 @@ const FORM_TYPE_TO_PROPERTY_KIND: Record<string, PropertyKind> = {
 };
 
 type ClaimPropertyType = PropertyClaimPropertyType;
+const UNIT_PROPERTY_TYPES: ClaimPropertyType[] = ["apartment_unit", "commercial_unit"];
 
 function getOptionalNumber(formData: FormData, key: string) {
   const rawValue = formData.get(key);
@@ -48,6 +49,10 @@ function needsInteriorArea(propertyType: ClaimPropertyType) {
 
 function needsBedroomsAndBathrooms(propertyType: ClaimPropertyType) {
   return propertyType === "house" || propertyType === "apartment_unit";
+}
+
+function isUnitPropertyType(propertyType: ClaimPropertyType) {
+  return UNIT_PROPERTY_TYPES.includes(propertyType);
 }
 
 function getRequiredMissingFacts(propertyType: ClaimPropertyType, propertyFacts: PropertyRecordFactsInput) {
@@ -142,6 +147,10 @@ export async function POST(request: Request) {
   if (!propertyType || !declaredAssetType) {
     const nextUrl = new URL(buildPortalPropertiesStatusHref({ status: "no_match", upi, claimScope, unitLabel }), request.url);
     return NextResponse.redirect(nextUrl, { status: 303 });
+  }
+
+  if ((claimScope === "unit_partial") !== isUnitPropertyType(propertyType)) {
+    throw new Error("Claim scope must match the selected property type");
   }
 
   const missingPropertyFacts = getRequiredMissingFacts(propertyType, propertyFacts);

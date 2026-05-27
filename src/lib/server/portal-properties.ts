@@ -312,9 +312,9 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           END AS property_title,
           pa.asset_type AS property_kind,
           pa.unit_label AS property_unit_label,
-          pp.bedrooms,
-          pp.bathrooms,
-          pp.interior_area_sqm,
+          pap.bedrooms,
+          pap.bathrooms,
+          pap.interior_area_sqm,
           p.representative_size,
           p.zoning,
           p.district,
@@ -333,8 +333,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           ON pa.id = po.property_internal_id
         JOIN parcel_app_ready_seed_preview p
           ON p.parcel_id = po.parcel_id
-        LEFT JOIN property_profile pp
-          ON pp.parcel_id = po.parcel_id
+        LEFT JOIN property_asset_profile pap
+          ON pap.property_asset_id = pa.id
         LEFT JOIN LATERAL (
           SELECT
             listing.id,
@@ -404,8 +404,6 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           ON pa.id = pcr.property_internal_id
         JOIN parcel_app_ready_seed_preview p
           ON p.parcel_id = pcr.parcel_id
-        LEFT JOIN property_profile pp
-          ON pp.parcel_id = pcr.parcel_id
         WHERE pcr.user_id = $1
           AND pcr.status <> 'approved'
         ORDER BY pcr.created_at DESC, pcr.id DESC
@@ -597,6 +595,7 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
     district: string | null;
     sector: string | null;
     asset_count_for_parcel: string | number;
+    root_asset_count: string | number;
   }>(
     `
       SELECT
@@ -615,6 +614,19 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
               'preview_kigali_seed_v1'
             )
         ) AS asset_count_for_parcel
+        ,
+        (
+          SELECT COUNT(*)
+          FROM property_asset pa_root
+          WHERE pa_root.parcel_id = p.parcel_id
+            AND pa_root.parent_asset_id IS NULL
+            AND pa_root.seed_source NOT IN (
+              'mock_import_listing_surface_v1',
+              'preview_property_page_variants_v1',
+              'preview_multi_unit_examples_v1',
+              'preview_kigali_seed_v1'
+            )
+        ) AS root_asset_count
       FROM parcel_app_ready_seed_preview p
       WHERE UPPER(REPLACE(p.upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
       LIMIT 1
@@ -629,6 +641,7 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
   }
 
   const assetCount = Number(parcel.asset_count_for_parcel ?? 0);
+  const rootAssetCount = Number(parcel.root_asset_count ?? 0);
 
   const resolutionResult = await getPgPool().query<{
     property_internal_id: string;
@@ -675,7 +688,7 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
 
   const resolved = resolutionResult.rows[0];
 
-  if (!resolved || (input.claimScope === "full_parcel" && assetCount !== 1)) {
+  if (!resolved || (input.claimScope === "full_parcel" && rootAssetCount !== 1)) {
     return {
       status: "parcel_only",
       upi: parcel.upi,
@@ -723,19 +736,19 @@ export async function getPortalEditablePropertyRecord(
         p.village,
         p.representative_size,
         p.zoning,
-        pp.property_type,
-        pp.description,
-        pp.bedrooms,
-        pp.bathrooms,
-        pp.interior_area_sqm,
-        pp.year_built
+        pap.property_type,
+        pap.description,
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
+        pap.year_built
       FROM property_ownership po
       JOIN property_asset pa
         ON pa.id = po.property_internal_id
       JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = po.parcel_id
-      LEFT JOIN property_profile pp
-        ON pp.parcel_id = po.parcel_id
+      LEFT JOIN property_asset_profile pap
+        ON pap.property_asset_id = pa.id
       WHERE po.user_id = $1
         AND (pa.public_id = $2 OR p.public_id = $2)
       ORDER BY po.created_at DESC, po.id DESC
@@ -842,8 +855,8 @@ export async function updatePortalPropertyRecordInDb(input: {
 
   await getPgPool().query(
     `
-      INSERT INTO property_profile (
-        parcel_id,
+      INSERT INTO property_asset_profile (
+        property_asset_id,
         created_by_user_id,
         description,
         property_type,
@@ -854,7 +867,7 @@ export async function updatePortalPropertyRecordInDb(input: {
         seed_source
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'manual_portal_property_details_v1')
-      ON CONFLICT (parcel_id) DO UPDATE
+      ON CONFLICT (property_asset_id) DO UPDATE
       SET
         created_by_user_id = EXCLUDED.created_by_user_id,
         description = EXCLUDED.description,
@@ -867,7 +880,7 @@ export async function updatePortalPropertyRecordInDb(input: {
         updated_at = NOW()
     `,
     [
-      property.parcelId,
+      property.propertyInternalId,
       input.userId,
       description ?? null,
       property.propertyType,

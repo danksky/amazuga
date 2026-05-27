@@ -200,12 +200,52 @@ selected_seed_rows AS (
   JOIN listing_templates lt
     ON lt.seq = ep.seq
 ),
+resolved_seed_rows AS (
+  SELECT
+    ssr.*,
+    CASE
+      WHEN LOWER(ssr.property_type) = 'house' THEN 'house'
+      WHEN LOWER(ssr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
+      WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
+      WHEN LOWER(ssr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
+      WHEN LOWER(ssr.property_type) LIKE 'building%' THEN 'apartment_building'
+      ELSE NULL
+    END AS listing_asset_type,
+    CASE
+      WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_building'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial%' AND LOWER(ssr.property_type) NOT LIKE 'commercial building%' THEN 'commercial_building'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
+      WHEN LOWER(ssr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
+      WHEN LOWER(ssr.property_type) = 'house' THEN 'house'
+      WHEN LOWER(ssr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
+      WHEN LOWER(ssr.property_type) LIKE 'building%' THEN 'apartment_building'
+      ELSE NULL
+    END AS root_asset_type,
+    CASE
+      WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN 'Apartment building'
+      WHEN LOWER(ssr.property_type) LIKE 'commercial%' AND LOWER(ssr.property_type) NOT LIKE 'commercial building%' THEN 'Commercial building'
+      ELSE ssr.property_type
+    END AS root_property_type,
+    'ast_' || SUBSTR(MD5('parcel-primary:' || ssr.parcel_id), 1, 20) AS listing_asset_id,
+    'ast_' || SUBSTR(MD5('parcel-root:' || ssr.parcel_id), 1, 20) AS root_asset_id,
+    UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)) AS listing_public_id,
+    'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)) AS listing_display_code,
+    'AST-' || UPPER(SUBSTR(MD5('root-display:' || ssr.parcel_id), 1, 10)) AS root_display_code,
+    CASE
+      WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN TRUE
+      WHEN LOWER(ssr.property_type) LIKE 'commercial%' AND LOWER(ssr.property_type) NOT LIKE 'commercial building%' THEN TRUE
+      ELSE FALSE
+    END AS requires_parent_building
+  FROM selected_seed_rows ssr
+),
 delete_stale_seed_listings AS (
   DELETE FROM listing l
   WHERE l.seed_source = 'preview_kigali_seed_v1'
     AND l.id NOT IN (
       SELECT listing_id
-      FROM selected_seed_rows
+      FROM resolved_seed_rows
     )
   RETURNING l.id
 ),
@@ -241,26 +281,62 @@ upsert_assets AS (
   SELECT
     'ast_' || SUBSTR(MD5('parcel-primary:' || ssr.parcel_id), 1, 20),
     ssr.parcel_id,
+    ssr.root_asset_type,
     CASE
-      WHEN LOWER(ssr.property_type) = 'house' THEN 'house'
-      WHEN LOWER(ssr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
-      WHEN LOWER(ssr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
-      WHEN LOWER(ssr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
-      WHEN LOWER(ssr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
-      WHEN LOWER(ssr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
-      WHEN LOWER(ssr.property_type) LIKE 'building%' THEN 'apartment_building'
-      ELSE NULL
+      WHEN ssr.requires_parent_building THEN ssr.public_id
+      ELSE ssr.listing_public_id
     END,
-    UPPER(SUBSTR(MD5('public:' || ssr.parcel_id), 1, 10)),
-    'AST-' || UPPER(SUBSTR(MD5('display:' || ssr.parcel_id), 1, 10)),
-    ssr.property_description,
+    CASE
+      WHEN ssr.requires_parent_building THEN ssr.root_display_code
+      ELSE ssr.listing_display_code
+    END,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.property_description
+    END,
     TRUE,
     'preview_kigali_seed_v1'
-  FROM selected_seed_rows ssr
+  FROM resolved_seed_rows ssr
   ON CONFLICT (id) DO UPDATE
   SET
     asset_type = EXCLUDED.asset_type,
     public_id = EXCLUDED.public_id,
+    description = EXCLUDED.description,
+    is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING id
+),
+upsert_unit_assets AS (
+  INSERT INTO property_asset (
+    id,
+    parcel_id,
+    parent_asset_id,
+    asset_type,
+    public_id,
+    display_code,
+    description,
+    is_primary_for_parcel,
+    seed_source
+  )
+  SELECT
+    ssr.listing_asset_id,
+    ssr.parcel_id,
+    ssr.root_asset_id,
+    ssr.listing_asset_type,
+    ssr.listing_public_id,
+    ssr.listing_display_code,
+    ssr.property_description,
+    FALSE,
+    'preview_kigali_seed_v1'
+  FROM resolved_seed_rows ssr
+  WHERE ssr.requires_parent_building
+  ON CONFLICT (id) DO UPDATE
+  SET
+    parent_asset_id = EXCLUDED.parent_asset_id,
+    asset_type = EXCLUDED.asset_type,
+    public_id = EXCLUDED.public_id,
+    display_code = EXCLUDED.display_code,
     description = EXCLUDED.description,
     is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
     seed_source = EXCLUDED.seed_source,
@@ -282,14 +358,23 @@ upsert_profiles AS (
   SELECT
     ssr.parcel_id,
     ssr.agent_user_id,
-    ssr.property_description,
-    ssr.property_type,
-    ssr.bedrooms,
-    ssr.bathrooms,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.property_description
+    END,
+    ssr.root_property_type,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.bedrooms
+    END,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.bathrooms
+    END,
     ssr.interior_area_sqm,
     ssr.year_built,
     'preview_kigali_seed_v1'
-  FROM selected_seed_rows ssr
+  FROM resolved_seed_rows ssr
   ON CONFLICT (parcel_id) DO UPDATE
   SET
     created_by_user_id = EXCLUDED.created_by_user_id,
@@ -302,6 +387,88 @@ upsert_profiles AS (
     seed_source = EXCLUDED.seed_source,
     updated_at = NOW()
   RETURNING parcel_id
+),
+upsert_root_asset_profiles AS (
+  INSERT INTO property_asset_profile (
+    property_asset_id,
+    created_by_user_id,
+    description,
+    property_type,
+    bedrooms,
+    bathrooms,
+    interior_area_sqm,
+    year_built,
+    seed_source
+  )
+  SELECT
+    ssr.root_asset_id,
+    ssr.agent_user_id,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.property_description
+    END,
+    ssr.root_property_type,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.bedrooms
+    END,
+    CASE
+      WHEN ssr.requires_parent_building THEN NULL
+      ELSE ssr.bathrooms
+    END,
+    ssr.interior_area_sqm,
+    ssr.year_built,
+    'preview_kigali_seed_v1'
+  FROM resolved_seed_rows ssr
+  ON CONFLICT (property_asset_id) DO UPDATE
+  SET
+    created_by_user_id = EXCLUDED.created_by_user_id,
+    description = EXCLUDED.description,
+    property_type = EXCLUDED.property_type,
+    bedrooms = EXCLUDED.bedrooms,
+    bathrooms = EXCLUDED.bathrooms,
+    interior_area_sqm = EXCLUDED.interior_area_sqm,
+    year_built = EXCLUDED.year_built,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING property_asset_id
+),
+upsert_unit_asset_profiles AS (
+  INSERT INTO property_asset_profile (
+    property_asset_id,
+    created_by_user_id,
+    description,
+    property_type,
+    bedrooms,
+    bathrooms,
+    interior_area_sqm,
+    year_built,
+    seed_source
+  )
+  SELECT
+    ssr.listing_asset_id,
+    ssr.agent_user_id,
+    ssr.property_description,
+    ssr.property_type,
+    ssr.bedrooms,
+    ssr.bathrooms,
+    ssr.interior_area_sqm,
+    ssr.year_built,
+    'preview_kigali_seed_v1'
+  FROM resolved_seed_rows ssr
+  WHERE ssr.requires_parent_building
+  ON CONFLICT (property_asset_id) DO UPDATE
+  SET
+    created_by_user_id = EXCLUDED.created_by_user_id,
+    description = EXCLUDED.description,
+    property_type = EXCLUDED.property_type,
+    bedrooms = EXCLUDED.bedrooms,
+    bathrooms = EXCLUDED.bathrooms,
+    interior_area_sqm = EXCLUDED.interior_area_sqm,
+    year_built = EXCLUDED.year_built,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING property_asset_id
 ),
 upsert_listings AS (
   INSERT INTO listing (
@@ -321,7 +488,10 @@ upsert_listings AS (
   SELECT
     ssr.listing_id,
     ssr.parcel_id,
-    'ast_' || SUBSTR(MD5('parcel-primary:' || ssr.parcel_id), 1, 20),
+    CASE
+      WHEN ssr.requires_parent_building THEN ssr.listing_asset_id
+      ELSE ssr.root_asset_id
+    END,
     'agency_preview_kigali_homes_group',
     ssr.agent_user_id,
     'active',
@@ -331,7 +501,7 @@ upsert_listings AS (
     ssr.listing_description,
     'preview_kigali_seed_v1',
     NOW()
-  FROM selected_seed_rows ssr
+  FROM resolved_seed_rows ssr
   ON CONFLICT (id) DO UPDATE
   SET
     parcel_id = EXCLUDED.parcel_id,

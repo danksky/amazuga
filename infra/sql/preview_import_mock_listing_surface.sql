@@ -612,12 +612,55 @@ selected_rows AS (
   JOIN eligible_parcels ep
     ON ep.seq = mls.seq
 ),
+resolved_rows AS (
+  SELECT
+    sr.*,
+    CASE
+      WHEN LOWER(sr.property_type) = 'house' THEN 'house'
+      WHEN LOWER(sr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
+      WHEN LOWER(sr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
+      WHEN LOWER(sr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
+      WHEN LOWER(sr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
+      WHEN LOWER(sr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
+      WHEN LOWER(sr.property_type) LIKE 'building%' THEN 'apartment_building'
+      ELSE NULL
+    END AS listing_asset_type,
+    CASE
+      WHEN LOWER(sr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_building'
+      WHEN LOWER(sr.property_type) LIKE 'commercial%' AND LOWER(sr.property_type) NOT LIKE 'commercial building%' THEN 'commercial_building'
+      ELSE
+        CASE
+          WHEN LOWER(sr.property_type) = 'house' THEN 'house'
+          WHEN LOWER(sr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
+          WHEN LOWER(sr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
+          WHEN LOWER(sr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
+          WHEN LOWER(sr.property_type) LIKE 'building%' THEN 'apartment_building'
+          ELSE NULL
+        END
+    END AS root_asset_type,
+    CASE
+      WHEN LOWER(sr.property_type) IN ('apartment', 'flat', 'unit') THEN 'Apartment building'
+      WHEN LOWER(sr.property_type) LIKE 'commercial%' AND LOWER(sr.property_type) NOT LIKE 'commercial building%' THEN 'Commercial building'
+      ELSE sr.property_type
+    END AS root_property_type,
+    'ast_' || SUBSTR(MD5('parcel-primary:' || sr.parcel_id), 1, 20) AS listing_asset_id,
+    'ast_' || SUBSTR(MD5('parcel-root:' || sr.parcel_id), 1, 20) AS root_asset_id,
+    UPPER(SUBSTR(MD5('public:' || sr.parcel_id), 1, 10)) AS listing_public_id,
+    'AST-' || UPPER(SUBSTR(MD5('display:' || sr.parcel_id), 1, 10)) AS listing_display_code,
+    'AST-' || UPPER(SUBSTR(MD5('root-display:' || sr.parcel_id), 1, 10)) AS root_display_code,
+    CASE
+      WHEN LOWER(sr.property_type) IN ('apartment', 'flat', 'unit') THEN TRUE
+      WHEN LOWER(sr.property_type) LIKE 'commercial%' AND LOWER(sr.property_type) NOT LIKE 'commercial building%' THEN TRUE
+      ELSE FALSE
+    END AS requires_parent_building
+  FROM selected_rows sr
+),
 delete_stale_listings AS (
   DELETE FROM listing l
   WHERE l.seed_source = 'mock_import_listing_surface_v1'
     AND l.id NOT IN (
       SELECT listing_id
-      FROM selected_rows
+      FROM resolved_rows
     )
   RETURNING l.id
 ),
@@ -656,28 +699,64 @@ upsert_assets AS (
     seed_source
   )
   SELECT
-    'ast_' || SUBSTR(MD5('parcel-primary:' || sr.parcel_id), 1, 20),
+    sr.root_asset_id,
     sr.parcel_id,
+    sr.root_asset_type,
     CASE
-      WHEN LOWER(sr.property_type) = 'house' THEN 'house'
-      WHEN LOWER(sr.property_type) IN ('parcel', 'land', 'lot') THEN 'land'
-      WHEN LOWER(sr.property_type) IN ('apartment', 'flat', 'unit') THEN 'apartment_unit'
-      WHEN LOWER(sr.property_type) LIKE 'commercial building%' THEN 'commercial_building'
-      WHEN LOWER(sr.property_type) LIKE 'commercial%' THEN 'commercial_unit'
-      WHEN LOWER(sr.property_type) LIKE 'apartment building%' THEN 'apartment_building'
-      WHEN LOWER(sr.property_type) LIKE 'building%' THEN 'apartment_building'
-      ELSE NULL
+      WHEN sr.requires_parent_building THEN sr.public_id
+      ELSE sr.listing_public_id
     END,
-    UPPER(SUBSTR(MD5('public:' || sr.parcel_id), 1, 10)),
-    'AST-' || UPPER(SUBSTR(MD5('display:' || sr.parcel_id), 1, 10)),
-    sr.property_description,
+    CASE
+      WHEN sr.requires_parent_building THEN sr.root_display_code
+      ELSE sr.listing_display_code
+    END,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.property_description
+    END,
     TRUE,
     'mock_import_listing_surface_v1'
-  FROM selected_rows sr
+  FROM resolved_rows sr
   ON CONFLICT (id) DO UPDATE
   SET
     asset_type = EXCLUDED.asset_type,
     public_id = EXCLUDED.public_id,
+    description = EXCLUDED.description,
+    is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING id
+),
+upsert_unit_assets AS (
+  INSERT INTO property_asset (
+    id,
+    parcel_id,
+    parent_asset_id,
+    asset_type,
+    public_id,
+    display_code,
+    description,
+    is_primary_for_parcel,
+    seed_source
+  )
+  SELECT
+    sr.listing_asset_id,
+    sr.parcel_id,
+    sr.root_asset_id,
+    sr.listing_asset_type,
+    sr.listing_public_id,
+    sr.listing_display_code,
+    sr.property_description,
+    FALSE,
+    'mock_import_listing_surface_v1'
+  FROM resolved_rows sr
+  WHERE sr.requires_parent_building
+  ON CONFLICT (id) DO UPDATE
+  SET
+    parent_asset_id = EXCLUDED.parent_asset_id,
+    asset_type = EXCLUDED.asset_type,
+    public_id = EXCLUDED.public_id,
+    display_code = EXCLUDED.display_code,
     description = EXCLUDED.description,
     is_primary_for_parcel = EXCLUDED.is_primary_for_parcel,
     seed_source = EXCLUDED.seed_source,
@@ -699,14 +778,23 @@ upsert_profiles AS (
   SELECT
     sr.parcel_id,
     sr.agent_user_id,
-    sr.property_description,
-    sr.property_type,
-    sr.bedrooms,
-    sr.bathrooms,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.property_description
+    END,
+    sr.root_property_type,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.bedrooms
+    END,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.bathrooms
+    END,
     sr.interior_area_sqm,
     sr.year_built,
     'mock_import_listing_surface_v1'
-  FROM selected_rows sr
+  FROM resolved_rows sr
   ON CONFLICT (parcel_id) DO UPDATE
   SET
     created_by_user_id = EXCLUDED.created_by_user_id,
@@ -719,6 +807,88 @@ upsert_profiles AS (
     seed_source = EXCLUDED.seed_source,
     updated_at = NOW()
   RETURNING parcel_id
+),
+upsert_root_asset_profiles AS (
+  INSERT INTO property_asset_profile (
+    property_asset_id,
+    created_by_user_id,
+    description,
+    property_type,
+    bedrooms,
+    bathrooms,
+    interior_area_sqm,
+    year_built,
+    seed_source
+  )
+  SELECT
+    sr.root_asset_id,
+    sr.agent_user_id,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.property_description
+    END,
+    sr.root_property_type,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.bedrooms
+    END,
+    CASE
+      WHEN sr.requires_parent_building THEN NULL
+      ELSE sr.bathrooms
+    END,
+    sr.interior_area_sqm,
+    sr.year_built,
+    'mock_import_listing_surface_v1'
+  FROM resolved_rows sr
+  ON CONFLICT (property_asset_id) DO UPDATE
+  SET
+    created_by_user_id = EXCLUDED.created_by_user_id,
+    description = EXCLUDED.description,
+    property_type = EXCLUDED.property_type,
+    bedrooms = EXCLUDED.bedrooms,
+    bathrooms = EXCLUDED.bathrooms,
+    interior_area_sqm = EXCLUDED.interior_area_sqm,
+    year_built = EXCLUDED.year_built,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING property_asset_id
+),
+upsert_unit_asset_profiles AS (
+  INSERT INTO property_asset_profile (
+    property_asset_id,
+    created_by_user_id,
+    description,
+    property_type,
+    bedrooms,
+    bathrooms,
+    interior_area_sqm,
+    year_built,
+    seed_source
+  )
+  SELECT
+    sr.listing_asset_id,
+    sr.agent_user_id,
+    sr.property_description,
+    sr.property_type,
+    sr.bedrooms,
+    sr.bathrooms,
+    sr.interior_area_sqm,
+    sr.year_built,
+    'mock_import_listing_surface_v1'
+  FROM resolved_rows sr
+  WHERE sr.requires_parent_building
+  ON CONFLICT (property_asset_id) DO UPDATE
+  SET
+    created_by_user_id = EXCLUDED.created_by_user_id,
+    description = EXCLUDED.description,
+    property_type = EXCLUDED.property_type,
+    bedrooms = EXCLUDED.bedrooms,
+    bathrooms = EXCLUDED.bathrooms,
+    interior_area_sqm = EXCLUDED.interior_area_sqm,
+    year_built = EXCLUDED.year_built,
+    seed_source = EXCLUDED.seed_source,
+    updated_at = NOW()
+  RETURNING property_asset_id
 ),
 upsert_listings AS (
   INSERT INTO listing (
@@ -740,7 +910,10 @@ upsert_listings AS (
   SELECT
     sr.listing_id,
     sr.parcel_id,
-    'ast_' || SUBSTR(MD5('parcel-primary:' || sr.parcel_id), 1, 20),
+    CASE
+      WHEN sr.requires_parent_building THEN sr.listing_asset_id
+      ELSE sr.root_asset_id
+    END,
     sr.agency_id,
     sr.agent_user_id,
     sr.status,
@@ -752,7 +925,7 @@ upsert_listings AS (
     sr.created_at,
     sr.created_at,
     sr.updated_at
-  FROM selected_rows sr
+  FROM resolved_rows sr
   ON CONFLICT (id) DO UPDATE
   SET
     parcel_id = EXCLUDED.parcel_id,
