@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import maplibregl, { LngLatBoundsLike } from "maplibre-gl";
 import { PMTiles, Protocol } from "pmtiles";
 
+import { loadFocusedParcelGeometry } from "@/lib/parcel-focus-geometry";
 import type { Property } from "@/types/domain";
 
 import styles from "./property-parcel-map.module.css";
@@ -19,12 +20,14 @@ interface PropertyParcelMapProps {
 export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const parcelKey = property.parcelPublicId ?? property.parcelId ?? property.id;
-  const centroid: [number, number] = [property.location.lng, property.location.lat];
+  const propertyBbox = property.location.bbox;
 
   useEffect(() => {
     if (!mapRef.current || !PMTILES_URL) {
       return;
     }
+
+    const centroid: [number, number] = [property.location.lng, property.location.lat];
 
     maplibregl.removeProtocol("pmtiles");
     const protocol = new Protocol();
@@ -49,6 +52,13 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
           parcels: {
             type: "vector",
             url: `pmtiles://${PMTILES_URL}`,
+          },
+          focusedParcel: {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: [],
+            },
           },
           propertyCentroid: {
             type: "geojson",
@@ -94,24 +104,18 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
             },
           },
           {
-            id: "selected-parcel-fill",
+            id: "focused-parcel-fill",
             type: "fill",
-            source: "parcels",
-            "source-layer": "parcels",
-            filter: ["==", ["get", "parcel_key"], parcelKey],
-            minzoom: 15,
+            source: "focusedParcel",
             paint: {
               "fill-color": "#60a5fa",
               "fill-opacity": 0.18,
             },
           },
           {
-            id: "selected-parcel-outline",
+            id: "focused-parcel-outline",
             type: "line",
-            source: "parcels",
-            "source-layer": "parcels",
-            filter: ["==", ["get", "parcel_key"], parcelKey],
-            minzoom: 15,
+            source: "focusedParcel",
             paint: {
               "line-color": "#2563eb",
               "line-width": [
@@ -164,7 +168,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
     map.on("load", () => {
       map.resize();
 
-      const bbox = property.location.bbox;
+      const bbox = propertyBbox;
       if (bbox) {
         const bounds: LngLatBoundsLike = [
           [bbox.minLng, bbox.minLat],
@@ -174,6 +178,31 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
       } else {
         map.jumpTo({ center: centroid, zoom: 17 });
       }
+
+      void loadFocusedParcelGeometry({
+        bbox: propertyBbox,
+        parcelKey,
+        pmtilesUrl: PMTILES_URL,
+      }).then((focusedParcel) => {
+        if (!focusedParcel || !map.getSource("focusedParcel")) {
+          return;
+        }
+
+        const source = map.getSource("focusedParcel") as maplibregl.GeoJSONSource | undefined;
+        if (source) {
+          source.setData(focusedParcel.featureCollection);
+        }
+
+        if (focusedParcel.bbox) {
+          const focusedBounds: LngLatBoundsLike = [
+            [focusedParcel.bbox.minLng, focusedParcel.bbox.minLat],
+            [focusedParcel.bbox.maxLng, focusedParcel.bbox.maxLat],
+          ];
+          map.fitBounds(focusedBounds, { padding: 40, maxZoom: 18, duration: 0 });
+        }
+      }).catch(() => {
+        // Fall back to centroid + parcel-context tiles when focused geometry cannot be extracted.
+      });
     });
 
     return () => {
@@ -181,7 +210,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
       map.remove();
       maplibregl.removeProtocol("pmtiles");
     };
-  }, [centroid, parcelKey, property]);
+  }, [parcelKey, property, propertyBbox]);
 
   return <div ref={mapRef} className={styles.map} />;
 }

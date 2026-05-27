@@ -17,6 +17,7 @@
     "next": "16.2.0",
     "pg": "^8.20.0",
     "pmtiles": "^4.4.0",
+    "polygon-clipping": "^0.15.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
