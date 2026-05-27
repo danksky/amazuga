@@ -19,6 +19,7 @@ interface PropertyParcelMapProps {
 export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const parcelKey = property.parcelPublicId ?? property.parcelId ?? property.id;
+  const centroid: [number, number] = [property.location.lng, property.location.lat];
 
   useEffect(() => {
     if (!mapRef.current || !PMTILES_URL) {
@@ -48,6 +49,22 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
           parcels: {
             type: "vector",
             url: `pmtiles://${PMTILES_URL}`,
+          },
+          propertyCentroid: {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: [
+                {
+                  type: "Feature",
+                  geometry: {
+                    type: "Point",
+                    coordinates: centroid,
+                  },
+                  properties: {},
+                },
+              ],
+            },
           },
         },
         layers: [
@@ -109,9 +126,30 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
               "line-opacity": 1,
             },
           },
+          {
+            id: "property-centroid-halo",
+            type: "circle",
+            source: "propertyCentroid",
+            paint: {
+              "circle-radius": 11,
+              "circle-color": "rgba(37, 99, 235, 0.16)",
+              "circle-stroke-width": 0,
+            },
+          },
+          {
+            id: "property-centroid-pin",
+            type: "circle",
+            source: "propertyCentroid",
+            paint: {
+              "circle-radius": 6,
+              "circle-color": "#2563eb",
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 2,
+            },
+          },
         ],
       },
-      center: [property.location.lng, property.location.lat],
+      center: centroid,
       zoom: 17,
     });
 
@@ -134,7 +172,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
         ];
         map.fitBounds(bounds, { padding: 40, maxZoom: 18, duration: 0 });
       } else {
-        map.jumpTo({ center: [property.location.lng, property.location.lat], zoom: 17 });
+        map.jumpTo({ center: centroid, zoom: 17 });
       }
     });
 
@@ -143,7 +181,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
       map.remove();
       maplibregl.removeProtocol("pmtiles");
     };
-  }, [parcelKey, property]);
+  }, [centroid, parcelKey, property]);
 
   return <div ref={mapRef} className={styles.map} />;
 }
