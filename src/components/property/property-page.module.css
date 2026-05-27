@@ -130,6 +130,21 @@
   overflow-wrap: anywhere;
 }
 
+.primaryInfoStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 2px 0 4px;
+}
+
+.primaryInfoStat {
+  min-height: 24px;
+  color: var(--foreground);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .eyebrow {
   color: var(--foreground-muted);
   text-transform: uppercase;
@@ -288,8 +303,7 @@
 }
 
 .secondaryMapFrame {
-  min-height: 420px;
-  height: 100%;
+  height: 420px;
   overflow: hidden;
 }
 
@@ -483,6 +497,32 @@
 @media (max-width: 1000px) {
   .pageGrid {
     grid-template-columns: 1fr;
+  }
+
+  .leftRail,
+  .rightRail {
+    display: contents;
+  }
+
+  .mediaPanel,
+  .mapPanel {
+    order: 1;
+  }
+
+  .primaryInfoPanel {
+    order: 2;
+  }
+
+  .summary {
+    order: 3;
+  }
+
+  .mapSection {
+    order: 4;
+  }
+
+  .valuationPanel {
+    order: 5;
   }
 }
 

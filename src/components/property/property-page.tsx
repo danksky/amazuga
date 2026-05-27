@@ -34,6 +34,10 @@ interface DetailItem {
   value: string;
 }
 
+interface PrimaryInfoStat {
+  value?: string;
+}
+
 interface PropertyPageBehavior {
   kind: PropertyKind;
   kindLabel: string;
@@ -193,6 +197,46 @@ function buildDetailItems(property: Property, propertyKind: PropertyKind): Detai
   return detailItems;
 }
 
+function buildPrimaryInfoStats(property: Property, propertyKind: PropertyKind): PrimaryInfoStat[] {
+  const bedroomValue = property.facts.bedrooms !== undefined ? `${property.facts.bedrooms} bd` : undefined;
+  const bathroomValue = property.facts.bathrooms !== undefined ? `${property.facts.bathrooms} ba` : undefined;
+  const interiorValue = property.facts.areaSqm ? formatAreaSqm(property.facts.areaSqm) : undefined;
+  const parcelValue = property.facts.landAreaSqm ? formatAreaSqm(property.facts.landAreaSqm) : undefined;
+  const yearBuiltValue = property.facts.yearBuilt ? String(property.facts.yearBuilt) : undefined;
+
+  switch (propertyKind) {
+    case "land":
+      return [{}, {}, { value: parcelValue }];
+    case "apartment_unit":
+      return [
+        { value: bedroomValue },
+        { value: bathroomValue },
+        { value: interiorValue },
+      ];
+    case "building":
+      return [
+        { value: interiorValue },
+        { value: parcelValue },
+        { value: yearBuiltValue },
+      ];
+    case "commercial_unit":
+      return [
+        { value: interiorValue },
+        { value: bathroomValue },
+        { value: parcelValue },
+      ];
+    case "mixed_use":
+    case "other":
+    case "house":
+    default:
+      return [
+        { value: bedroomValue },
+        { value: bathroomValue },
+        { value: interiorValue },
+      ];
+  }
+}
+
 function buildPropertyPageBehavior(
   property: Property,
   propertyKind: PropertyKind,
@@ -301,6 +345,7 @@ export function PropertyPage({
   const listingMetaLabel = listing ? (listing.marketingType === "rent" ? "For rent" : "For sale") : undefined;
   const summaryDescription = property.description;
   const zoningLabel = property.facts.zoningLabel;
+  const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
   const whatsappUrl = buildWhatsappUrl(agency?.whatsappPhone);
   const primaryPrice = listing
     ? formatCurrency(listing.askingPrice, listing.currency)
@@ -363,18 +408,18 @@ export function PropertyPage({
               {zoningLabel ? <div className={styles.neutralBadge}>{zoningLabel}</div> : null}
             </div>
             {statusMessage ? <div className={styles.description}>{statusMessage}</div> : null}
-            <div className={styles.statusRow}>
-              {listing ? (
-                <div className={styles.inlineMeta}>Listed at {formatCurrency(listing.askingPrice, listing.currency)}</div>
-              ) : latestValuation ? (
-                <div className={styles.inlineMeta}>
-                  Market estimate based on {formatDate(latestValuation.effectiveDate)}:{" "}
-                  {formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}
-                </div>
-              ) : (
-                <div className={styles.inlineMeta}>No active listing is attached to this property right now.</div>
-              )}
-            </div>
+            {!listing && (
+              <div className={styles.statusRow}>
+                {latestValuation ? (
+                  <div className={styles.inlineMeta}>
+                    Market estimate based on {formatDate(latestValuation.effectiveDate)}:{" "}
+                    {formatCurrency(latestValuation.estimatedValue, latestValuation.currency)}
+                  </div>
+                ) : (
+                  <div className={styles.inlineMeta}>No active listing is attached to this property right now.</div>
+                )}
+              </div>
+            )}
             {!listing && latestValuation ? (
               <div className={styles.estimateCard}>
                 <div className={styles.estimateLabel}>Market estimate</div>
@@ -406,7 +451,7 @@ export function PropertyPage({
             </div>
           ) : null}
 
-          <div className={`${styles.panel} ${styles.section}`}>
+          <div className={`${styles.panel} ${styles.section} ${styles.valuationPanel}`}>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>Valuation history</h2>
               <div className={styles.sectionMeta}>{valuations.length} approved entries</div>
@@ -444,10 +489,17 @@ export function PropertyPage({
 
         <div className={styles.rightRail}>
           <div className={`${styles.panel} ${styles.primaryInfoPanel}`}>
-            <div className={styles.eyebrow}>{locationLabel}</div>
-            <div className={styles.priceValue}>{primaryPrice}</div>
-            <h1 className={styles.primaryAddress}>{property.title}</h1>
-            <div className={styles.ctaGroup}>
+          <div className={styles.eyebrow}>{locationLabel}</div>
+          <div className={styles.priceValue}>{primaryPrice}</div>
+          <h1 className={styles.primaryAddress}>{property.title}</h1>
+          <div className={styles.primaryInfoStats}>
+            {primaryInfoStats.map((stat, index) => (
+              <div className={styles.primaryInfoStat} key={`${propertyKind}-${index}`}>
+                {stat.value ? <span>{stat.value}</span> : null}
+              </div>
+            ))}
+          </div>
+          <div className={styles.ctaGroup}>
               {listing ? (
                 <>
                   <div className={styles.contactSummary}>

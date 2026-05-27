@@ -117,7 +117,15 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+    });
+
+    resizeObserver.observe(mapRef.current);
+
     map.on("load", () => {
+      map.resize();
+
       const bbox = property.location.bbox;
       if (bbox) {
         const bounds: LngLatBoundsLike = [
@@ -131,6 +139,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
     });
 
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       maplibregl.removeProtocol("pmtiles");
     };
