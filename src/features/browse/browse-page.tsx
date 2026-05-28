@@ -61,6 +61,11 @@ export function BrowsePage({ mode }: BrowsePageProps) {
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedListingId]);
 
+  useEffect(() => {
+    document.body.style.overflow = showMobileMap ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [showMobileMap]);
+
   const handleResultsChange = useCallback((incoming: BrowseMapCard[]) => {
     if (incoming.length >= MIN_DISPLAY_CARDS) {
       fallbackRef.current = incoming;
@@ -94,6 +99,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
           <div className={styles.mapCard}>
             <BrowseMap
               mode={mode}
+              visible={showMobileMap}
               onResultsChange={handleResultsChange}
               onLoadingChange={setIsLoading}
               selectedListingId={selectedListingId}
@@ -119,7 +125,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
         </div>
         {!filtersOpen ? (
           <div className={styles.mobileToggle}>
-            <Button onClick={() => setShowMobileMap((current) => !current)} type="button">
+            <Button onClick={() => { setShowMobileMap((current) => !current); window.scrollTo({ top: 0, behavior: "instant" }); }} type="button">
               {showMobileMap ? "Show listings" : "Use map"}
             </Button>
           </div>

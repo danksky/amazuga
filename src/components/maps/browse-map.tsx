@@ -42,6 +42,7 @@ const PIN_COLOR_SELECTED = "#16a34a";
 
 interface BrowseMapProps {
   mode: "buy" | "rent";
+  visible?: boolean;
   onResultsChange: (cards: BrowseMapCard[]) => void;
   onLoadingChange?: (loading: boolean) => void;
   selectedListingId: string | null;
@@ -121,7 +122,7 @@ function createPillSprite(label: string, color: string): ImageData {
   return ctx.getImageData(0, 0, w + gutter * 2, h + gutter * 2);
 }
 
-export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedListingId, onSelectListing }: BrowseMapProps) {
+export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, selectedListingId, onSelectListing }: BrowseMapProps) {
   const router = useRouter();
   const routerRef = useRef(router);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -154,6 +155,14 @@ export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedList
   useEffect(() => {
     routerRef.current = router;
   });
+
+  // Re-measure the map canvas whenever it becomes visible (e.g. mobile toggle).
+  useEffect(() => {
+    if (visible === false) return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    requestAnimationFrame(() => map.resize());
+  }, [visible]);
 
   // When selection changes from outside, update the ref and re-draw pins.
   useEffect(() => {
