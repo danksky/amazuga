@@ -162,6 +162,7 @@ export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedList
   }, [selectedListingId]);
 
   const [showSearchArea, setShowSearchArea] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -234,6 +235,7 @@ export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedList
       abortControllerRef.current = controller;
 
       onLoadingChangeRef.current?.(true);
+      setIsFetching(true);
 
       try {
         const res = await fetch(
@@ -242,6 +244,7 @@ export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedList
         );
         if (!res.ok) {
           onLoadingChangeRef.current?.(false);
+          setIsFetching(false);
           return;
         }
 
@@ -261,10 +264,12 @@ export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedList
 
         onResultsChangeRef.current(data.cards);
         onLoadingChangeRef.current?.(false);
+        setIsFetching(false);
         setShowSearchArea(false);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         onLoadingChangeRef.current?.(false);
+        setIsFetching(false);
       }
     }
 
@@ -499,7 +504,7 @@ export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedList
   return (
     <div className={styles.container}>
       <div ref={mapContainerRef} className={styles.map} />
-      {showSearchArea ? (
+      {showSearchArea && !isFetching ? (
         <button
           className={styles.searchAreaButton}
           onClick={() => void fetchBrowseDataRef.current?.()}

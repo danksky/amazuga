@@ -20,6 +20,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   const [showMobileMap, setShowMobileMap] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cards, setCards] = useState<BrowseMapCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   // Holds the last rich batch so we can fill in when the current view is sparse.
   const fallbackRef = useRef<BrowseMapCard[]>([]);
@@ -76,9 +77,10 @@ export function BrowsePage({ mode }: BrowsePageProps) {
       ? cards
       : [...cards, ...fillers].slice(0, Math.max(cards.length, MIN_DISPLAY_CARDS));
 
-  const countLabel =
-    cards.length === 0
-      ? "Searching current view…"
+  const countLabel = isLoading
+    ? "Searching current view…"
+    : cards.length === 0
+      ? "No listings in this area"
       : `${cards.length} listing${cards.length === 1 ? "" : "s"} in the current view`;
 
   return (
@@ -93,6 +95,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
             <BrowseMap
               mode={mode}
               onResultsChange={handleResultsChange}
+              onLoadingChange={setIsLoading}
               selectedListingId={selectedListingId}
               onSelectListing={setSelectedListingId}
             />

@@ -168,7 +168,7 @@
 
   .mobileMapVisible .mapCard {
     display: block;
-    height: auto;
+    height: calc(100dvh - 130px);
     margin-inline: calc(50% - 50vw);
     border-left: 0;
     border-right: 0;
