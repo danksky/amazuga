@@ -43,6 +43,7 @@ const PIN_COLOR_SELECTED = "#16a34a";
 interface BrowseMapProps {
   mode: "buy" | "rent";
   onResultsChange: (cards: BrowseMapCard[]) => void;
+  onLoadingChange?: (loading: boolean) => void;
   selectedListingId: string | null;
   onSelectListing: (listingId: string | null) => void;
 }
@@ -120,7 +121,7 @@ function createPillSprite(label: string, color: string): ImageData {
   return ctx.getImageData(0, 0, w + gutter * 2, h + gutter * 2);
 }
 
-export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectListing }: BrowseMapProps) {
+export function BrowseMap({ mode, onResultsChange, onLoadingChange, selectedListingId, onSelectListing }: BrowseMapProps) {
   const router = useRouter();
   const routerRef = useRef(router);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -130,6 +131,7 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
   const lastEnvelopeRef = useRef<Envelope | null>(null);
   const lastZoomRef = useRef<number | null>(null);
   const onResultsChangeRef = useRef(onResultsChange);
+  const onLoadingChangeRef = useRef(onLoadingChange);
   const onSelectListingRef = useRef(onSelectListing);
   const fetchBrowseDataRef = useRef<(() => Promise<void>) | null>(null);
   const updatePinsRef = useRef<((pins: BrowseMapPin[]) => void) | null>(null);
@@ -139,6 +141,10 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
 
   useEffect(() => {
     onResultsChangeRef.current = onResultsChange;
+  });
+
+  useEffect(() => {
+    onLoadingChangeRef.current = onLoadingChange;
   });
 
   useEffect(() => {
@@ -227,12 +233,17 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
+      onLoadingChangeRef.current?.(true);
+
       try {
         const res = await fetch(
           `/api/public/browse/map?mode=${apiMode}&bbox=${bbox}`,
           { signal: controller.signal },
         );
-        if (!res.ok) return;
+        if (!res.ok) {
+          onLoadingChangeRef.current?.(false);
+          return;
+        }
 
         const data = (await res.json()) as BrowseMapResult;
 
@@ -249,9 +260,11 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
         }
 
         onResultsChangeRef.current(data.cards);
+        onLoadingChangeRef.current?.(false);
         setShowSearchArea(false);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
+        onLoadingChangeRef.current?.(false);
       }
     }
 
