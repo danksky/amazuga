@@ -12,7 +12,7 @@
 /* Mobile "Search this area" overlay button */
 .searchAreaButton {
   position: absolute;
-  bottom: 48px;
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -37,6 +37,6 @@
 
 @media (max-width: 1100px) {
   .searchAreaButton {
-    bottom: 88px;
+    top: 16px;
   }
 }
