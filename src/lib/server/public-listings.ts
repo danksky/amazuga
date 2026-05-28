@@ -506,13 +506,17 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         SELECT pa.parcel_id
         FROM property_asset pa
         WHERE pa.public_id = $1
+        UNION
+        SELECT pap.parcel_id
+        FROM parcel_anchor_point_preview pap
+        WHERE pap.public_id = $1
         LIMIT 1
       )
       SELECT
-        p.parcel_id,
-        p.public_id,
-        p.upi,
-        p.display_id,
+        parcel_anchor.parcel_id,
+        parcel_anchor.public_id,
+        parcel_anchor.upi,
+        COALESCE(p.display_id, parcel_anchor.display_id) AS display_id,
         p.district,
         p.sector,
         p.cell,
@@ -521,8 +525,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         parcel_anchor.anchor_lon,
         parcel_anchor.anchor_lat,
         parcel_anchor.anchor_source,
-        p.centroid_lon,
-        p.centroid_lat,
+        COALESCE(p.centroid_lon, parcel_anchor.centroid_lon) AS centroid_lon,
+        COALESCE(p.centroid_lat, parcel_anchor.centroid_lat) AS centroid_lat,
         p.bbox_min_lon,
         p.bbox_min_lat,
         p.bbox_max_lon,
@@ -567,10 +571,10 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         property_profile.interior_area_sqm,
         property_profile.year_built
       FROM target_parcel tp
-      JOIN parcel_app_ready_seed_preview p
-        ON p.parcel_id = tp.parcel_id
       JOIN parcel_anchor_point_preview parcel_anchor
-        ON parcel_anchor.parcel_id = p.parcel_id
+        ON parcel_anchor.parcel_id = tp.parcel_id
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = tp.parcel_id
       LEFT JOIN LATERAL (
         SELECT
           pa_inner.id,
@@ -581,11 +585,11 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
           pa_inner.unit_label,
           pa_inner.description
         FROM property_asset pa_inner
-        WHERE pa_inner.parcel_id = p.parcel_id
+        WHERE pa_inner.parcel_id = parcel_anchor.parcel_id
         ORDER BY
           CASE
             WHEN pa_inner.public_id = $1 THEN 0
-            WHEN p.public_id = $1 AND pa_inner.is_primary_for_parcel THEN 1
+            WHEN parcel_anchor.public_id = $1 AND pa_inner.is_primary_for_parcel THEN 1
             WHEN pa_inner.is_primary_for_parcel THEN 2
             ELSE 3
           END,

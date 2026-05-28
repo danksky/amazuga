@@ -19,7 +19,7 @@ const OFF_MARKET_PMTILES_URL =
   process.env.NEXT_PUBLIC_OFF_MARKET_PMTILES_URL ||
   (process.env.NODE_ENV === "development" ? "/tiles/off-market-preview-v1.pmtiles" : "");
 
-const OFF_MARKET_MIN_ZOOM = 13;
+const OFF_MARKET_MIN_ZOOM = 16;
 const ZOOM_REFETCH_THRESHOLD = 1;
 const FETCH_DEBOUNCE_MS = 300;
 const MOBILE_BREAKPOINT = 1100;
@@ -135,6 +135,7 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
   const updatePinsRef = useRef<((pins: BrowseMapPin[]) => void) | null>(null);
   const lastPinsRef = useRef<BrowseMapPin[]>([]);
   const selectedListingIdRef = useRef<string | null>(selectedListingId);
+  const selectedParcelIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     onResultsChangeRef.current = onResultsChange;
@@ -310,7 +311,11 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
       sources.parcels = { type: "vector", url: `pmtiles://${PARCEL_PMTILES_URL}` };
     }
     if (OFF_MARKET_PMTILES_URL) {
-      sources["off-market"] = { type: "vector", url: `pmtiles://${OFF_MARKET_PMTILES_URL}` };
+      sources["off-market"] = {
+        type: "vector",
+        url: `pmtiles://${OFF_MARKET_PMTILES_URL}`,
+        promoteId: { off_market_parcels: "parcel_public_id" },
+      };
     }
 
     const layers: maplibregl.LayerSpecification[] = [
@@ -340,11 +345,11 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
         "source-layer": "off_market_parcels",
         minzoom: OFF_MARKET_MIN_ZOOM,
         paint: {
-          "circle-radius": 4,
-          "circle-color": "#94a3b8",
+          "circle-radius": ["case", ["boolean", ["feature-state", "selected"], false], 6, 4],
+          "circle-color": ["case", ["boolean", ["feature-state", "selected"], false], PIN_COLOR_SELECTED, "#94a3b8"],
           "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1,
-          "circle-opacity": 0.8,
+          "circle-stroke-width": ["case", ["boolean", ["feature-state", "selected"], false], 2, 1],
+          "circle-opacity": 1,
         },
       });
     }
@@ -382,8 +387,23 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
     map.on("load", () => {
       map.resize();
 
+      // Tracks whether the current click cycle hit a feature (prevents background deselect)
+      let clickHitFeature = false;
+
+      function deselectParcel() {
+        const prev = selectedParcelIdRef.current;
+        if (prev) {
+          map.setFeatureState(
+            { source: "off-market", sourceLayer: "off_market_parcels", id: prev },
+            { selected: false },
+          );
+          selectedParcelIdRef.current = null;
+        }
+      }
+
       // First click selects; second click on the same pill navigates.
       map.on("click", "listing-pins", (e) => {
+        clickHitFeature = true;
         const feature = e.features?.[0];
         if (!feature) return;
         const listingId = feature.properties?.listing_id as string | undefined;
@@ -392,23 +412,47 @@ export function BrowseMap({ mode, onResultsChange, selectedListingId, onSelectLi
         if (selectedListingIdRef.current === listingId) {
           if (routeId) routerRef.current.push(`/property/${encodeURIComponent(routeId)}`);
         } else {
+          deselectParcel();
           onSelectListingRef.current(listingId);
         }
       });
       map.on("mouseenter", "listing-pins", () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", "listing-pins", () => { map.getCanvas().style.cursor = ""; });
 
-      // Off-market dot clicks
+      // Off-market dot clicks — first click selects (green), second click navigates
       if (OFF_MARKET_PMTILES_URL && map.getLayer("off-market-dots")) {
         map.on("click", "off-market-dots", (e) => {
+          clickHitFeature = true;
           const feature = e.features?.[0];
           if (!feature) return;
+          const parcelId = feature.properties?.parcel_public_id as string | undefined;
           const routeId = feature.properties?.route_id as string | undefined;
-          if (routeId) routerRef.current.push(`/property/${encodeURIComponent(routeId)}`);
+          if (!parcelId) return;
+
+          if (selectedParcelIdRef.current === parcelId) {
+            if (routeId) routerRef.current.push(`/property/${encodeURIComponent(routeId)}`);
+          } else {
+            deselectParcel();
+            onSelectListingRef.current(null);
+            selectedParcelIdRef.current = parcelId;
+            map.setFeatureState(
+              { source: "off-market", sourceLayer: "off_market_parcels", id: parcelId },
+              { selected: true },
+            );
+          }
         });
         map.on("mouseenter", "off-market-dots", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "off-market-dots", () => { map.getCanvas().style.cursor = ""; });
       }
+
+      // Clicking the map background clears any selected dot
+      map.on("click", () => {
+        if (clickHitFeature) {
+          clickHitFeature = false;
+          return;
+        }
+        deselectParcel();
+      });
 
       void fetchBrowseData();
     });
