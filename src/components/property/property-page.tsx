@@ -107,6 +107,19 @@ function inferPropertyKind(property: Property): PropertyKind | undefined {
   return undefined;
 }
 
+function formatValuationDate(date: string) {
+  const d = new Date(date);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+function formatValuationPrice(amount: number, currency: string) {
+  const millions = amount / 1_000_000;
+  return `${currency} ${millions.toFixed(2)} M`;
+}
+
 function formatBedsBaths(property: Property) {
   return `${property.facts.bedrooms ?? "-"} bd / ${property.facts.bathrooms ?? "-"} ba`;
 }
@@ -410,40 +423,30 @@ export function PropertyPage({
             </div>
           ) : null}
 
-          <div className={`${styles.panel} ${styles.section} ${styles.valuationPanel}`}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Valuation history</h2>
-              <div className={styles.sectionMeta}>{valuations.length} approved entries</div>
-            </div>
-            {valuations.length > 0 ? (
+          {valuations.length > 0 ? (
+            <div className={`${styles.panel} ${styles.section} ${styles.valuationPanel}`}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Valuation history</h2>
+                <div className={styles.sectionMeta}>{valuations.length} approved entries</div>
+              </div>
               <table className={styles.historyTable}>
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Value</th>
-                    <th>Valuator</th>
-                    <th>Recorded</th>
+                    <th>Price</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {valuations.map((valuation) => {
-                    const valuatorLabel = valuation.isAnonymous ? "Anonymous" : "Named valuator";
-
-                    return (
-                      <tr key={valuation.id}>
-                        <td>{formatDate(valuation.effectiveDate)}</td>
-                        <td>{formatCurrency(valuation.estimatedValue, valuation.currency)}</td>
-                        <td>{valuatorLabel}</td>
-                        <td>{formatDate(valuation.createdAt)}</td>
-                      </tr>
-                    );
-                  })}
+                  {valuations.map((valuation) => (
+                    <tr key={valuation.id}>
+                      <td>{formatValuationDate(valuation.effectiveDate)}</td>
+                      <td>{formatValuationPrice(valuation.estimatedValue, valuation.currency)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-            ) : (
-              <div className={styles.emptyState}>No approved valuation history yet.</div>
-            )}
-          </div>
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.rightRail}>
