@@ -40,7 +40,6 @@ interface EditableListingRow {
   visibility: ListingVisibility;
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string | null;
-  description: string | null;
   campaign_index: number;
 }
 
@@ -115,7 +114,6 @@ export interface PortalEditableListing {
   visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
-  description?: string;
   images: Array<{
     id: string;
     imageUrl: string;
@@ -147,10 +145,6 @@ function toNumber(value: number | string | null | undefined) {
 
 function normalizePropertyTitle(input: { propertyTitle?: string | null; propertyRouteId: string }) {
   return input.propertyTitle?.trim() || input.propertyRouteId;
-}
-
-function hasNonEmptyText(value: string | null | undefined) {
-  return Boolean(value?.trim());
 }
 
 function isListingReadyForAsset(input: {
@@ -346,7 +340,6 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.visibility,
         l.marketing_type,
         l.asking_price_rwf,
-        l.description,
         l.campaign_index
       FROM listing l
       JOIN parcel_app_ready_seed_preview p
@@ -626,7 +619,6 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     visibility: row.visibility,
     marketingType: row.marketing_type,
     askingPrice: toNumber(row.asking_price_rwf),
-    description: row.description || undefined,
     images,
     priceHistory,
     accessGrants,
@@ -915,11 +907,10 @@ export async function createPortalListingInDb(input: {
         marketing_type,
         asking_price_rwf,
         currency,
-        description,
         seed_source,
         published_at
       )
-      VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, NULL, 'RWF', NULL, 'manual_workflow_v1', NULL)
+      VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, NULL, 'RWF', 'manual_workflow_v1', NULL)
     `,
     [
       id,
@@ -946,7 +937,6 @@ export async function updatePortalListingInDb(input: {
   marketingType: Listing["marketingType"];
   visibility: ListingVisibility;
   askingPrice?: number;
-  description?: string;
 }) {
   const listing = await getEditableListingRow(input.userId, input.listingId);
 
@@ -981,7 +971,6 @@ export async function updatePortalListingInDb(input: {
           marketing_type = $3,
           visibility = $4,
           asking_price_rwf = COALESCE($5, asking_price_rwf),
-          description = $6,
           updated_at = NOW()
         WHERE id = $1
         RETURNING
@@ -995,7 +984,7 @@ export async function updatePortalListingInDb(input: {
           ) AS property_route_id,
           marketing_type
       `,
-      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice, input.description || null],
+      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice],
     );
 
     if (priceChanged) {
@@ -1087,10 +1076,6 @@ export async function setPortalListingStatusInDb(input: {
 
       if (lockedListing.asking_price_rwf == null) {
         throw new Error("An asking price is required before publishing a listing");
-      }
-
-      if (!hasNonEmptyText(listing.description)) {
-        throw new Error("A description is required before publishing a listing");
       }
 
       const readyImageCount = await countReadyListingImages(client, input.listingId);

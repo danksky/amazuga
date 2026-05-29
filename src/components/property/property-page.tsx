@@ -311,7 +311,6 @@ export function PropertyPage({
   const detailItems = buildDetailItems(property, propertyKind);
   const listingStateLabel = buildListingStateLabel(listing);
   const primaryInfoMetaLabel = `${listingStateLabel} | ${behavior.kindLabel}`;
-  const summaryDescription = property.description;
   const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
   const whatsappUrl = buildWhatsappUrl(agency?.whatsappPhone);
   const primaryPrice = listing
@@ -391,7 +390,6 @@ export function PropertyPage({
                 </div>
               </div>
             ) : null}
-            {summaryDescription ? <div className={styles.description}>{summaryDescription}</div> : null}
             <div className={styles.detailList}>
               {detailItems.map((detailItem) => (
                 <div className={styles.detailRow} key={detailItem.label}>

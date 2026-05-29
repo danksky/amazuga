@@ -430,7 +430,7 @@ export function PortalPropertiesPage({
                               <ListingStatusButton
                                 className={styles.actionMenuButton}
                                 currentStatus="inactive"
-                                disabled={!property.listingAskingPrice || !property.listingDescription || !property.firstImageUrl}
+                                disabled={!property.listingAskingPrice || !property.firstImageUrl}
                                 nextStatus="active"
                               />
                             </form>

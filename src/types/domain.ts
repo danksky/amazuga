@@ -84,7 +84,6 @@ export interface Property {
   unitLabel?: string;
   upi: string;
   title: string;
-  description?: string;
   location: PropertyLocation;
   geometry: PropertyGeometry;
   facts: PropertyFacts;
@@ -104,7 +103,6 @@ export interface Listing {
   marketingType: "sale" | "rent";
   askingPrice: number;
   currency: "RWF";
-  description?: string;
   imageUrls: string[];
   createdAt: string;
   updatedAt: string;
@@ -206,7 +204,6 @@ export interface PropertyRecordFactsInput {
   bathrooms?: number;
   interiorAreaSqm?: number;
   yearBuilt?: number;
-  description?: string;
 }
 
 export interface PropertyClaimRequest {

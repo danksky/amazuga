@@ -40,7 +40,6 @@ interface ListingParcelRow {
   property_kind: PropertyKind | null;
   property_code: string | null;
   property_unit_label: string | null;
-  property_description_override: string | null;
   listing_id: string | null;
   agency_id: string | null;
   agent_user_id: string | null;
@@ -50,10 +49,8 @@ interface ListingParcelRow {
   marketing_type: Listing["marketingType"] | null;
   asking_price_rwf: number | string | null;
   currency: Listing["currency"] | null;
-  listing_description: string | null;
   listing_created_at: string | null;
   listing_updated_at: string | null;
-  profile_description: string | null;
   property_type: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
@@ -192,7 +189,6 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
   const listingState = row.listing_id ? "listed" : "not_listed";
   const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
   const title = normalizePropertyTitle(row);
-  const description = row.property_description_override || row.profile_description;
   const minLng = toNullableNumber(row.bbox_min_lon);
   const minLat = toNullableNumber(row.bbox_min_lat);
   const maxLng = toNullableNumber(row.bbox_max_lon);
@@ -212,7 +208,6 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
     unitLabel: row.property_unit_label || undefined,
     upi: row.upi,
     title,
-    description: description || undefined,
     location: {
       district: row.district || "Unknown district",
       sector: row.sector || undefined,
@@ -275,7 +270,6 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf) ?? 0,
     currency: row.currency,
-    description: row.listing_description || undefined,
     imageUrls,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,
@@ -429,7 +423,6 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         pa.asset_type AS property_kind,
         pa.display_code AS property_code,
         to_jsonb(pa)->>'unit_label' AS property_unit_label,
-        pa.description AS property_description_override,
         l.id AS listing_id,
         l.agency_id,
         l.agent_user_id,
@@ -439,10 +432,8 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
-        l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        property_profile.description AS profile_description,
         COALESCE(
           NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
@@ -540,7 +531,6 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         pa.asset_type AS property_kind,
         pa.display_code AS property_code,
         to_jsonb(pa)->>'unit_label' AS property_unit_label,
-        pa.description AS property_description_override,
         l.id AS listing_id,
         l.agency_id,
         l.agent_user_id,
@@ -550,10 +540,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.marketing_type,
         l.asking_price_rwf,
         l.currency,
-        l.description AS listing_description,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
-        property_profile.description AS profile_description,
         COALESCE(
           NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
@@ -582,8 +570,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
           pa_inner.parent_asset_id,
           pa_inner.asset_type,
           pa_inner.display_code,
-          pa_inner.unit_label,
-          pa_inner.description
+          pa_inner.unit_label
         FROM property_asset pa_inner
         WHERE pa_inner.parcel_id = parcel_anchor.parcel_id
         ORDER BY

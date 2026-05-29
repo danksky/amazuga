@@ -44,7 +44,6 @@ export default async function AdminPropertiesPage() {
           : []),
         ...(claim.propertyFacts?.zoning ? [{ label: "Use zone", value: claim.propertyFacts.zoning }] : []),
         ...(claim.propertyFacts?.yearBuilt !== undefined ? [{ label: "Year built", value: String(claim.propertyFacts.yearBuilt) }] : []),
-        ...(claim.propertyFacts?.description ? [{ label: "Property description", value: claim.propertyFacts.description }] : []),
         {
           label: "Land tenure",
           value:

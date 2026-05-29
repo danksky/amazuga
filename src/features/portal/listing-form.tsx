@@ -142,7 +142,6 @@ export function ListingForm({
 }) {
   const [publishAttempted, setPublishAttempted] = useState(false);
   const [askingPriceHasValue, setAskingPriceHasValue] = useState(Boolean(listing?.askingPrice));
-  const [descriptionHasValue, setDescriptionHasValue] = useState(Boolean(listing?.description?.trim()));
   const [photoCount, setPhotoCount] = useState(listing?.images.length ?? 0);
 
   const isPrivateListerMode = agencies.length === 0;
@@ -165,7 +164,7 @@ export function ListingForm({
         }
       : propertyOptions[0]);
   const showCreateEmptyState = mode === "create" && propertyOptions.length === 0;
-  const canPublish = askingPriceHasValue && descriptionHasValue && photoCount > 0;
+  const canPublish = askingPriceHasValue && photoCount > 0;
   const isManageMode = mode === "edit";
   const priceHistoryGroups = listing ? groupPriceHistoryByCampaign(listing.priceHistory) : [];
 
@@ -358,20 +357,7 @@ export function ListingForm({
             </div>
 
             {mode === "edit" ? (
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="description">
-                  Description
-                </label>
-                <textarea
-                  className={`${styles.textarea}${publishAttempted && !descriptionHasValue ? ` ${styles.inputError}` : ""}`}
-                  defaultValue={listing?.description}
-                  id="description"
-                  name="description"
-                  onChange={(e) => setDescriptionHasValue(Boolean(e.target.value.trim()))}
-                  placeholder="Add listing copy, context, and useful details for the public property page."
-                />
-                <div className={styles.hint}>Price, description, and at least one photo are required before publish.</div>
-              </div>
+              <div className={styles.hint}>Price and at least one photo are required before publish.</div>
             ) : null}
           </section>
 

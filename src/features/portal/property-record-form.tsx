@@ -233,17 +233,6 @@ export function PropertyRecordForm({
             </div>
           </div>
 
-          <label className={styles.field}>
-            <span className={styles.label}>Description</span>
-            <textarea
-              className={styles.textarea}
-              defaultValue={property.description}
-              name="description"
-              placeholder="Optional descriptive context for this property record."
-              rows={5}
-            />
-          </label>
-
           <div className={styles.note}>
             Listing creation will use these property facts directly. Complete the required fields now so the listing
             flow can stay focused on price, photos, and market-facing copy.
@@ -350,16 +339,6 @@ export function PropertyRecordForm({
                   <div className={styles.readOnly}>New units created here start owned by you.</div>
                 </div>
               </div>
-
-              <label className={styles.field}>
-                <span className={styles.label}>Unit description</span>
-                <textarea
-                  className={styles.textarea}
-                  name="description"
-                  placeholder={`Optional notes for this ${getChildUnitKindLabel(property.propertyKind).toLowerCase()}.`}
-                  rows={4}
-                />
-              </label>
 
               <div className={styles.actions}>
                 <button className={styles.primaryAction} type="submit">

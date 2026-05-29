@@ -90,7 +90,6 @@ interface PropertyClaimRequestRow {
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
   year_built: number | string | null;
-  description: string | null;
   transfer_mode: PropertyTransferMode | null;
   transfer_from_user_id: string | null;
   transfer_initiated_by_user_id: string | null;
@@ -269,7 +268,6 @@ function getPropertyClaimFactsFromRow(row: PropertyClaimRequestRow): PropertyRec
   const interiorAreaSqm = toFiniteNumber(row.interior_area_sqm);
   const yearBuilt = toFiniteNumber(row.year_built);
   const zoning = row.zoning?.trim() || undefined;
-  const description = row.description?.trim() || undefined;
 
   if (
     representativeSize === null &&
@@ -277,8 +275,7 @@ function getPropertyClaimFactsFromRow(row: PropertyClaimRequestRow): PropertyRec
     bathrooms === null &&
     interiorAreaSqm === null &&
     yearBuilt === null &&
-    !zoning &&
-    !description
+    !zoning
   ) {
     return undefined;
   }
@@ -290,7 +287,6 @@ function getPropertyClaimFactsFromRow(row: PropertyClaimRequestRow): PropertyRec
     bathrooms: bathrooms ?? undefined,
     interiorAreaSqm: interiorAreaSqm ?? undefined,
     yearBuilt: yearBuilt ?? undefined,
-    description,
   };
 }
 
@@ -479,7 +475,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "House",
-        propertyDescription: "Claimed house record created from the parcel details on file.",
         bedrooms: representativeSize !== null && representativeSize >= 650 ? 5 : representativeSize !== null && representativeSize >= 420 ? 4 : representativeSize !== null && representativeSize >= 250 ? 3 : 2,
         bathrooms: representativeSize !== null && representativeSize >= 650 ? 4 : representativeSize !== null && representativeSize >= 420 ? 3 : 2,
         interiorAreaSqm: fallbackArea(0.42, 90, 420, 180),
@@ -488,7 +483,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: normalizedUnitLabel,
         propertyType: "Apartment unit",
-        propertyDescription: "Claimed apartment unit record created from the parcel details on file.",
         bedrooms: representativeSize !== null && representativeSize >= 900 ? 3 : representativeSize !== null && representativeSize >= 450 ? 2 : 1,
         bathrooms: representativeSize !== null && representativeSize < 300 ? 1 : 2,
         interiorAreaSqm: fallbackArea(0.18, 55, 160, 96),
@@ -497,7 +491,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "Apartment building",
-        propertyDescription: "Claimed apartment building record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
@@ -506,7 +499,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "Commercial building",
-        propertyDescription: "Claimed commercial building record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(1.35, 480, 3200, 1680),
@@ -515,7 +507,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: normalizedUnitLabel,
         propertyType: "Commercial unit",
-        propertyDescription: "Claimed commercial unit record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: fallbackArea(0.35, 80, 420, 148),
@@ -524,7 +515,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: null,
         propertyType: "Land",
-        propertyDescription: "Claimed land record created from the parcel details on file.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: null,
@@ -533,7 +523,6 @@ function inferClaimRecordBackfill(input: {
       return {
         assetUnitLabel: normalizedUnitLabel,
         propertyType: "Property",
-        propertyDescription: "Preview property record auto-backfilled from parcel context after claim approval.",
         bedrooms: null,
         bathrooms: null,
         interiorAreaSqm: null,
@@ -785,7 +774,6 @@ async function backfillPropertyRecordForAsset(input: {
   const claimBathrooms = toFiniteNumber(input.propertyFacts?.bathrooms);
   const claimInteriorAreaSqm = toFiniteNumber(input.propertyFacts?.interiorAreaSqm);
   const claimYearBuilt = toFiniteNumber(input.propertyFacts?.yearBuilt);
-  const claimDescription = input.propertyFacts?.description?.trim() || null;
 
   // These values are preview-only defaults that make approved claims listing-ready without overwriting real edits.
   const inferred = inferClaimRecordBackfill({
@@ -826,7 +814,6 @@ async function backfillPropertyRecordForAsset(input: {
       INSERT INTO property_asset_profile (
         property_asset_id,
         created_by_user_id,
-        description,
         property_type,
         bedrooms,
         bathrooms,
@@ -834,14 +821,10 @@ async function backfillPropertyRecordForAsset(input: {
         year_built,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'claim_record_backfill_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'claim_record_backfill_v1')
       ON CONFLICT (property_asset_id) DO UPDATE
       SET
         created_by_user_id = COALESCE(property_asset_profile.created_by_user_id, EXCLUDED.created_by_user_id),
-        description = CASE
-          WHEN COALESCE(NULLIF(BTRIM(property_asset_profile.description), ''), NULL) IS NULL THEN EXCLUDED.description
-          ELSE property_asset_profile.description
-        END,
         property_type = CASE
           WHEN COALESCE(NULLIF(BTRIM(property_asset_profile.property_type), ''), NULL) IS NULL THEN EXCLUDED.property_type
           ELSE property_asset_profile.property_type
@@ -855,7 +838,6 @@ async function backfillPropertyRecordForAsset(input: {
     [
       input.propertyAssetId,
       input.userId,
-      claimDescription ?? inferred.propertyDescription,
       inferred.propertyType,
       claimBedrooms ?? inferred.bedrooms,
       claimBathrooms ?? inferred.bathrooms,
@@ -1172,7 +1154,6 @@ export async function listPropertyClaimRequestsFromDb() {
         pcr.bathrooms,
         pcr.interior_area_sqm,
         pcr.year_built,
-        pcr.description,
         pcr.transfer_mode,
         pcr.transfer_from_user_id,
         pcr.transfer_initiated_by_user_id,
@@ -1308,7 +1289,6 @@ export async function listPropertyClaimRequestsForUser(userId: string) {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -1960,7 +1940,6 @@ export async function createPropertyClaimRequestInDb(input: {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2009,11 +1988,10 @@ export async function createPropertyClaimRequestInDb(input: {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         status,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'pending', 'manual_workflow_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 'pending', 'manual_workflow_v1')
       RETURNING
         id,
         user_id,
@@ -2034,7 +2012,6 @@ export async function createPropertyClaimRequestInDb(input: {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         NULL::TEXT AS transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2063,7 +2040,6 @@ export async function createPropertyClaimRequestInDb(input: {
       input.propertyFacts?.bathrooms ?? null,
       input.propertyFacts?.interiorAreaSqm ?? null,
       input.propertyFacts?.yearBuilt ?? null,
-      input.propertyFacts?.description?.trim() || null,
     ],
   );
 
@@ -2155,7 +2131,6 @@ export async function createOwnershipTransferRequestInDb(input: {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2223,7 +2198,6 @@ export async function createOwnershipTransferRequestInDb(input: {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2301,7 +2275,6 @@ export async function respondToOwnershipTransferRequestInDb(input: {
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2346,7 +2319,6 @@ export async function updatePropertyClaimRequestStatusInDb(
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,
@@ -2485,7 +2457,6 @@ export async function updatePropertyClaimRequestStatusInDb(
         bathrooms,
         interior_area_sqm,
         year_built,
-        description,
         transfer_mode,
         transfer_from_user_id,
         transfer_initiated_by_user_id,

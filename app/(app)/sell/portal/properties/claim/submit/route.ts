@@ -128,7 +128,6 @@ export async function POST(request: Request) {
     bathrooms: getOptionalNumber(formData, "bathrooms"),
     interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
     yearBuilt: getOptionalNumber(formData, "yearBuilt"),
-    description: getOptionalString(formData, "description"),
   };
 
   if (!upi) {

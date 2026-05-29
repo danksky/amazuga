@@ -228,7 +228,6 @@ export async function submitListingUpdateAction(formData: FormData) {
       marketingType: getRequiredListingMarketingType(formData, "marketingType"),
       visibility: getRequiredListingVisibility(formData, "visibility"),
       askingPrice: getOptionalNumber(formData, "askingPrice"),
-      description: getOptionalString(formData, "description"),
     }),
     getPortalAccessState(currentUser.id),
   ]);
@@ -413,7 +412,6 @@ export async function submitPropertyDetailsAction(formData: FormData) {
     userId: currentUser.id,
     propertyRouteId: getRequiredString(formData, "propertyRouteId"),
     unitLabel: getOptionalString(formData, "unitLabel"),
-    description: getOptionalString(formData, "description"),
     bedrooms: getOptionalInteger(formData, "bedrooms"),
     bathrooms: getOptionalNumber(formData, "bathrooms"),
     interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
@@ -439,7 +437,6 @@ export async function registerBuildingUnitAction(formData: FormData) {
     userId: currentUser.id,
     buildingRouteId,
     unitLabel: getRequiredString(formData, "unitLabel"),
-    description: getOptionalString(formData, "description"),
     bedrooms: getOptionalInteger(formData, "bedrooms"),
     bathrooms: getOptionalNumber(formData, "bathrooms"),
     interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),

@@ -249,19 +249,6 @@ export function ClaimDetailsForm({
             </div>
           </div>
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="claim-description">
-              Property description
-            </label>
-            <textarea
-              className={styles.textarea}
-              id="claim-description"
-              name="description"
-              placeholder="Optional notes about the property record you want created from this claim."
-              rows={5}
-            />
-          </div>
-
           <div className={styles.actions}>
             <button className={styles.submitAction} type="submit">
               Submit claim

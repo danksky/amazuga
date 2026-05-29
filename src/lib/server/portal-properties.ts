@@ -35,7 +35,6 @@ interface PortalOwnedPropertyRow {
   listing_status: "draft" | "active" | "inactive" | null;
   listing_visibility: ListingVisibility | null;
   listing_asking_price: number | string | null;
-  listing_description: string | null;
   listing_marketing_type: "sale" | "rent" | null;
   agency_id: string | null;
   agency_name: string | null;
@@ -91,7 +90,6 @@ interface PortalEditablePropertyRow {
   representative_size: number | string | null;
   zoning: string | null;
   property_type: string | null;
-  description: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
@@ -129,7 +127,6 @@ export interface PortalOwnedPropertySummary {
   listingStatus?: "draft" | "active" | "inactive";
   listingVisibility?: ListingVisibility;
   listingAskingPrice?: number;
-  listingDescription?: string;
   listingMarketingType?: "sale" | "rent";
   listingAgencyId?: string;
   listingAgencyName?: string;
@@ -191,7 +188,6 @@ export interface PortalEditablePropertyRecord {
   representativeSize?: number;
   zoning?: string;
   propertyType: string;
-  description?: string;
   bedrooms?: number;
   bathrooms?: number;
   interiorAreaSqm?: number;
@@ -448,7 +444,6 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           l.status AS listing_status,
           l.visibility AS listing_visibility,
           l.asking_price_rwf AS listing_asking_price,
-          l.description AS listing_description,
           l.marketing_type AS listing_marketing_type,
           l.agency_id,
           agency.business_name AS agency_name,
@@ -466,7 +461,6 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
             listing.status,
             listing.visibility,
             listing.asking_price_rwf,
-            listing.description,
             listing.marketing_type,
             listing.agency_id,
             (
@@ -600,7 +594,6 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       listingStatus: row.listing_status || undefined,
       listingVisibility: row.listing_visibility || undefined,
       listingAskingPrice: row.listing_asking_price ? Number(row.listing_asking_price) : undefined,
-      listingDescription: row.listing_description || undefined,
       listingMarketingType: row.listing_marketing_type || undefined,
       listingAgencyId: row.agency_id || undefined,
       listingAgencyName: row.agency_name || undefined,
@@ -862,7 +855,6 @@ export async function getPortalEditablePropertyRecord(
         p.representative_size,
         p.zoning,
         pap.property_type,
-        pap.description,
         pap.bedrooms,
         pap.bathrooms,
         pap.interior_area_sqm,
@@ -918,7 +910,6 @@ export async function getPortalEditablePropertyRecord(
     representativeSize: toNumber(row.representative_size),
     zoning,
     propertyType: row.property_type || getDefaultPropertyType(row.property_kind),
-    description: row.description || undefined,
     bedrooms: toNumber(row.bedrooms),
     bathrooms: toNumber(row.bathrooms),
     interiorAreaSqm: toNumber(row.interior_area_sqm),
@@ -941,7 +932,6 @@ export async function updatePortalPropertyRecordInDb(input: {
   userId: string;
   propertyRouteId: string;
   unitLabel?: string;
-  description?: string;
   bedrooms?: number;
   bathrooms?: number;
   interiorAreaSqm?: number;
@@ -960,7 +950,6 @@ export async function updatePortalPropertyRecordInDb(input: {
   const bathrooms = input.bathrooms ?? property.bathrooms;
   const zoning = property.zoning;
   const unitLabel = normalizedUnitLabel ?? property.unitLabel;
-  const description = input.description?.trim() || property.description || undefined;
   const yearBuilt = input.yearBuilt ?? property.yearBuilt;
 
   const missingFacts = getRequiredPropertyFacts({
@@ -997,7 +986,6 @@ export async function updatePortalPropertyRecordInDb(input: {
       INSERT INTO property_asset_profile (
         property_asset_id,
         created_by_user_id,
-        description,
         property_type,
         bedrooms,
         bathrooms,
@@ -1005,11 +993,10 @@ export async function updatePortalPropertyRecordInDb(input: {
         year_built,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'manual_portal_property_details_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'manual_portal_property_details_v1')
       ON CONFLICT (property_asset_id) DO UPDATE
       SET
         created_by_user_id = EXCLUDED.created_by_user_id,
-        description = EXCLUDED.description,
         property_type = EXCLUDED.property_type,
         bedrooms = EXCLUDED.bedrooms,
         bathrooms = EXCLUDED.bathrooms,
@@ -1021,7 +1008,6 @@ export async function updatePortalPropertyRecordInDb(input: {
     [
       property.propertyInternalId,
       input.userId,
-      description ?? null,
       property.propertyType,
       bedrooms ?? null,
       bathrooms ?? null,
@@ -1041,7 +1027,6 @@ export async function registerPortalBuildingUnitInDb(input: {
   bedrooms?: number;
   bathrooms?: number;
   yearBuilt?: number;
-  description?: string;
 }) {
   const building = await getPortalEditablePropertyRecord(input.userId, input.buildingRouteId);
 
@@ -1059,7 +1044,6 @@ export async function registerPortalBuildingUnitInDb(input: {
     throw new Error("Unit label is required");
   }
 
-  const description = input.description?.trim() || undefined;
   const propertyType = getDefaultPropertyType(unitKind);
   const missingFacts = getRequiredPropertyFacts({
     propertyKind: unitKind,
@@ -1115,11 +1099,10 @@ export async function registerPortalBuildingUnitInDb(input: {
           public_id,
           display_code,
           unit_label,
-          description,
           is_primary_for_parcel,
           seed_source
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, 'manual_building_unit_registration_v1')
+        VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, 'manual_building_unit_registration_v1')
       `,
       [
         propertyInternalId,
@@ -1129,7 +1112,6 @@ export async function registerPortalBuildingUnitInDb(input: {
         propertyRouteId,
         displayCode,
         normalizedUnitLabel,
-        description ?? null,
       ],
     );
 
@@ -1138,7 +1120,6 @@ export async function registerPortalBuildingUnitInDb(input: {
         INSERT INTO property_asset_profile (
           property_asset_id,
           created_by_user_id,
-          description,
           property_type,
           bedrooms,
           bathrooms,
@@ -1146,12 +1127,11 @@ export async function registerPortalBuildingUnitInDb(input: {
           year_built,
           seed_source
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'manual_building_unit_registration_v1')
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'manual_building_unit_registration_v1')
       `,
       [
         propertyInternalId,
         input.userId,
-        description ?? null,
         propertyType,
         input.bedrooms ?? null,
         input.bathrooms ?? null,

@@ -15,7 +15,6 @@ interface PortalListingRow {
   listing_created_at: string;
   listing_updated_at: string;
   listing_published_at: string | null;
-  listing_description: string | null;
   agency_id: string | null;
   agent_user_id: string;
   agent_full_name: string;
@@ -26,8 +25,6 @@ interface PortalListingRow {
   property_public_id: string | null;
   property_kind: string | null;
   property_title: string | null;
-  property_description_override: string | null;
-  profile_description: string | null;
   parcel_display_id: string | null;
   property_type: string | null;
   bedrooms: number | string | null;
@@ -50,7 +47,6 @@ export interface PortalListingSummary {
   propertyId: string;
   propertyInternalId?: string;
   propertyTitle: string;
-  propertyDescription?: string;
   propertyType: string;
   propertyKind?: string;
   district: string;
@@ -62,7 +58,6 @@ export interface PortalListingSummary {
   visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
-  description?: string;
   currency: Listing["currency"];
   createdAt: string;
   updatedAt: string;
@@ -96,10 +91,6 @@ function normalizePropertyTitle(row: PortalListingRow) {
   return row.property_title || row.parcel_display_id || row.public_id || "Untitled property";
 }
 
-function normalizePropertyDescription(row: PortalListingRow) {
-  return row.property_description_override || row.profile_description || undefined;
-}
-
 export async function getPortalListingsWorkspaceData(userId: string): Promise<PortalListingsWorkspaceData> {
   const agencies = (await listAgenciesFromDb()).filter(
     (agency) =>
@@ -116,7 +107,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         l.visibility AS listing_visibility,
         l.marketing_type,
         l.asking_price_rwf,
-        l.description AS listing_description,
         l.currency,
         l.created_at::TEXT AS listing_created_at,
         l.updated_at::TEXT AS listing_updated_at,
@@ -136,8 +126,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
             THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
           ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
         END AS property_title,
-        pa.description AS property_description_override,
-        pap.description AS profile_description,
         COALESCE(
           NULLIF(BTRIM(pap.property_type), ''),
           CASE pa.asset_type
@@ -198,7 +186,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     propertyId: row.property_public_id || row.public_id,
     propertyInternalId: row.property_internal_id || undefined,
     propertyTitle: normalizePropertyTitle(row),
-    propertyDescription: normalizePropertyDescription(row),
     propertyType: normalizePropertyType(row),
     propertyKind: row.property_kind || undefined,
     district: row.district || "Unknown district",
@@ -210,7 +197,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
     visibility: row.listing_visibility,
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf),
-    description: row.listing_description || undefined,
     currency: row.currency,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,
