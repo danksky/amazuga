@@ -19,7 +19,11 @@ export const getCurrentUser = cache(async () => {
     return null;
   }
 
-  return getUserByIdFromDb(userId);
+  try {
+    return await getUserByIdFromDb(userId);
+  } catch {
+    return null;
+  }
 });
 
 export function isAdminUser(user: User | null | undefined) {
