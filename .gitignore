@@ -23,6 +23,9 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# wrangler local state
+.wrangler/
+
 # terraform
 .terraform/
 infra/terraform/tfplan
