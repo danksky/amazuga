@@ -140,7 +140,7 @@
 .primaryInfoStat {
   min-height: 24px;
   color: var(--foreground);
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 4vw, 1.5rem);
   font-weight: 600;
   line-height: 1.2;
 }

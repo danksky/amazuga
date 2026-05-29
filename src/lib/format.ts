@@ -17,6 +17,6 @@ export function formatDate(date: string) {
 
 export function formatAreaSqm(areaSqm: number) {
   return `${new Intl.NumberFormat("en-RW", {
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(areaSqm)} m²`;
 }
