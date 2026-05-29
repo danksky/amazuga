@@ -67,10 +67,27 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   }, [showMobileMap]);
 
   const handleResultsChange = useCallback((incoming: BrowseMapCard[]) => {
-    if (incoming.length >= MIN_DISPLAY_CARDS) {
+    if (incoming.length > fallbackRef.current.length) {
       fallbackRef.current = incoming;
     }
     setCards(incoming);
+  }, []);
+
+  // On mount, seed the fallback with a Kigali-wide fetch so mobile users
+  // see listings immediately without waiting for the hidden map to initialise.
+  useEffect(() => {
+    const apiMode = mode === "buy" ? "sale" : "rent";
+    const KIGALI_BBOX = "29.90,-2.05,30.25,-1.80";
+    fetch(`/api/public/browse/map?mode=${apiMode}&bbox=${KIGALI_BBOX}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.cards?.length) {
+          fallbackRef.current = data.cards;
+          setCards((prev) => prev.length ? prev : data.cards);
+        }
+      })
+      .catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Build the displayed list: always at least MIN_DISPLAY_CARDS entries by
