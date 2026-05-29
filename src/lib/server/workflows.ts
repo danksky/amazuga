@@ -1347,7 +1347,6 @@ export async function getUserPropertyRelationship(userId: string, propertyIntern
           bathrooms,
           interior_area_sqm,
           year_built,
-          description,
           transfer_mode,
           transfer_from_user_id,
           transfer_initiated_by_user_id,
