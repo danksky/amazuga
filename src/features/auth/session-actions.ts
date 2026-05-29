@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { routes } from "@/lib/routes";
-import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb } from "@/lib/server/users";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, upsertOtpUserInDb } from "@/lib/server/users";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -95,4 +96,59 @@ export async function signInAsUserAction(formData: FormData) {
   });
 
   redirect(next);
+}
+
+// --- OTP actions (used when AUTH_MODE=otp) ---
+
+function normalizeRwandaPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("250")) return `+${digits}`;
+  if (digits.startsWith("0") && digits.length === 10) return `+250${digits.slice(1)}`;
+  if (digits.length === 9) return `+250${digits}`;
+  return `+${digits}`;
+}
+
+export async function requestOtpAction(formData: FormData) {
+  const rawPhone = getRequiredString(formData, "phone");
+  const next = getNextDestination(formData, routes.public.buy);
+  const phone = normalizeRwandaPhone(rawPhone);
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+
+  if (error) {
+    redirect(
+      `${routes.auth.login}?error=otp-send-failed&next=${encodeURIComponent(next)}`,
+    );
+  }
+
+  redirect(
+    `${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`,
+  );
+}
+
+export async function verifyOtpAction(formData: FormData) {
+  const phone = getRequiredString(formData, "phone");
+  const token = getRequiredString(formData, "token");
+  const next = getNextDestination(formData, routes.public.buy);
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+
+  if (error || !data.user) {
+    redirect(
+      `${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&error=invalid-otp&next=${encodeURIComponent(next)}`,
+    );
+  }
+
+  // Ensure the user exists in our app_user table
+  await upsertOtpUserInDb({ supabaseAuthId: data.user.id, phone: data.user.phone ?? phone });
+
+  redirect(next);
+}
+
+export async function signOutOtpAction() {
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signOut();
+  redirect(routes.auth.login);
 }

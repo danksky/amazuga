@@ -51,3 +51,6 @@ override.tf.json
 next-env.d.ts
 
 public/tiles/*.pmtiles
+
+# DB backups — kept locally, not committed
+infra/backups/

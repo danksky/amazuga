@@ -82,7 +82,7 @@ variable "cloudflare_tiles_worker_public_path" {
 variable "cloudflare_tiles_worker_object_key" {
   description = "R2 object key that stores the PMTiles archive."
   type        = string
-  default     = "parcel-context-v1.pmtiles"
+  default     = "approved-provisional-parcels-v2.pmtiles"
 }
 
 variable "cloudflare_tiles_worker_local_allowed_origins" {

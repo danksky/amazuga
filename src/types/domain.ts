@@ -32,7 +32,8 @@ export type PropertyKind =
 
 export interface User {
   id: string;
-  email: string;
+  email?: string;
+  phone?: string;
   fullName: string;
   roles: Role[];
   mockPersonaLabel?: string;

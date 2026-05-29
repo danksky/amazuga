@@ -20,7 +20,7 @@ set -euo pipefail
 
 # ---- Config --------------------------------------------------------------
 
-OBJECT_KEY="off-market-v1.pmtiles"
+OBJECT_KEY="${OBJECT_KEY:-off-market-v1.pmtiles}"
 LOCAL_GEOJSON="/tmp/off-market.geojson"
 LOCAL_PMTILES="/tmp/${OBJECT_KEY}"
 R2_BUCKET_NAME="amazuga-off-market-tiles"

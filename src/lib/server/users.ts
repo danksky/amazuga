@@ -6,7 +6,8 @@ import { getPgPool } from "./postgres";
 
 interface AppUserRow {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   full_name: string;
   roles: string[];
   avatar_url: string | null;
@@ -19,7 +20,8 @@ interface AppUserRow {
 function toUser(row: AppUserRow): User {
   return {
     id: row.id,
-    email: row.email,
+    email: row.email || undefined,
+    phone: row.phone || undefined,
     fullName: row.full_name,
     roles: row.roles as User["roles"],
     avatarUrl: row.avatar_url || undefined,
@@ -36,6 +38,7 @@ async function getUserRows(whereSql?: string, params: string[] = []) {
       SELECT
         u.id,
         u.email,
+        u.phone,
         u.full_name,
         u.roles,
         u.avatar_url,
@@ -54,6 +57,7 @@ async function getUserRows(whereSql?: string, params: string[] = []) {
       GROUP BY
         u.id,
         u.email,
+        u.phone,
         u.full_name,
         u.roles,
         u.avatar_url,
@@ -109,6 +113,42 @@ export async function createUserInDb(input: { email: string; fullName: string })
       RETURNING id
     `,
     [email, fullName],
+  );
+
+  return getUserByIdFromDb(idResult.rows[0].id);
+}
+
+export async function getUserBySupabaseAuthIdFromDb(supabaseAuthId: string) {
+  const rows = await getUserRows("WHERE u.status = 'active' AND u.supabase_auth_id = $1", [supabaseAuthId]);
+  return rows[0] ? toUser(rows[0]) : null;
+}
+
+export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: string }) {
+  const idResult = await getPgPool().query<{ id: string }>(
+    `
+      INSERT INTO app_user (
+        id,
+        phone,
+        full_name,
+        supabase_auth_id,
+        roles,
+        status,
+        seed_source
+      )
+      VALUES (
+        'user-' || SUBSTR(MD5($1 || ':' || NOW()::TEXT), 1, 20),
+        $2,
+        $2,
+        $1,
+        ARRAY['user']::TEXT[],
+        'active',
+        'otp_signup_v1'
+      )
+      ON CONFLICT (supabase_auth_id) DO UPDATE
+        SET phone = EXCLUDED.phone
+      RETURNING id
+    `,
+    [input.supabaseAuthId, input.phone],
   );
 
   return getUserByIdFromDb(idResult.rows[0].id);
