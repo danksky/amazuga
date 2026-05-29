@@ -265,7 +265,6 @@ export async function submitListingEditAction(formData: FormData) {
         marketingType: getRequiredListingMarketingType(formData, "marketingType"),
         visibility: getRequiredListingVisibility(formData, "visibility"),
         askingPrice: getOptionalNumber(formData, "askingPrice"),
-        description: getOptionalString(formData, "description"),
       });
     }
 
@@ -296,7 +295,6 @@ export async function submitListingEditAction(formData: FormData) {
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
     visibility: getRequiredListingVisibility(formData, "visibility"),
     askingPrice: getOptionalNumber(formData, "askingPrice"),
-    description: getOptionalString(formData, "description"),
   });
 
   revalidateListingSurfaces({
