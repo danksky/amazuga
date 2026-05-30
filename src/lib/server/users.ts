@@ -143,8 +143,10 @@ export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: 
         'active',
         'otp_signup_v1'
       )
-      ON CONFLICT (id) DO UPDATE
-        SET phone = EXCLUDED.phone
+      ON CONFLICT (phone) DO UPDATE
+        SET id        = EXCLUDED.id,
+            full_name = COALESCE(EXCLUDED.full_name, app_user.full_name),
+            status    = 'active'
       RETURNING id
     `,
     [input.supabaseAuthId, input.phone, fullName],
