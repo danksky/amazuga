@@ -118,6 +118,11 @@ export async function createUserInDb(input: { email: string; fullName: string })
   return getUserByIdFromDb(idResult.rows[0].id);
 }
 
+export async function getUserByPhoneFromDb(phone: string) {
+  const rows = await getUserRows("WHERE u.status = 'active' AND u.phone = $1", [phone]);
+  return rows[0] ? toUser(rows[0]) : null;
+}
+
 export async function getUserBySupabaseAuthIdFromDb(supabaseAuthId: string) {
   const rows = await getUserRows("WHERE u.status = 'active' AND u.supabase_auth_id = $1", [supabaseAuthId]);
   return rows[0] ? toUser(rows[0]) : null;

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, upsertOtpUserInDb } from "@/lib/server/users";
+import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, getUserByPhoneFromDb, upsertOtpUserInDb } from "@/lib/server/users";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -90,6 +90,49 @@ export async function signInAsUserAction(formData: FormData) {
 
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, matchingUser.id, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  redirect(next);
+}
+
+// --- Mock OTP actions (used when AUTH_MODE=mock) ---
+// Simulates the two-step phone OTP flow without hitting Supabase or sending SMS.
+// Any test number accepts code 000000.
+
+export async function requestMockOtpAction(formData: FormData) {
+  const rawPhone = getRequiredString(formData, "phone");
+  const next = getNextDestination(formData, routes.public.buy);
+  const phone = normalizeRwandaPhone(rawPhone);
+
+  const user = await getUserByPhoneFromDb(phone);
+  if (!user) {
+    redirect(`${routes.auth.login}?error=phone-not-found&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+}
+
+export async function verifyMockOtpAction(formData: FormData) {
+  const phone = getRequiredString(formData, "phone");
+  const token = getRequiredString(formData, "token");
+  const next = getNextDestination(formData, routes.public.buy);
+
+  if (token !== "000000") {
+    redirect(
+      `${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&error=invalid-otp&next=${encodeURIComponent(next)}`,
+    );
+  }
+
+  const user = await getUserByPhoneFromDb(phone);
+  if (!user) {
+    redirect(routes.auth.login);
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, user.id, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

@@ -43,6 +43,16 @@
   color: #8c2b2b;
 }
 
+.devHint {
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: #fffbeb;
+  border: 1px solid #e5d58a;
+  border-radius: 12px;
+  color: #7a6012;
+  font-size: 0.9rem;
+}
+
 .form {
   display: grid;
   gap: 16px;

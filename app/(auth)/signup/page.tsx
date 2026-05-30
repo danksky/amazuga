@@ -1,22 +1,17 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/lib/auth";
-import { AuthPage } from "@/features/auth/auth-page";
 import { routes } from "@/lib/routes";
-import { listUsersFromDb } from "@/lib/server/users";
 
 export const dynamic = "force-dynamic";
 
+// Signup as a separate flow no longer exists — phone OTP creates accounts on
+// first sign-in. Redirect to login so old links don't 404.
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; email?: string; error?: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
-  const [currentUser, { next, email, error }, users] = await Promise.all([getCurrentUser(), searchParams, listUsersFromDb()]);
-
-  if (currentUser) {
-    redirect(next ?? routes.public.buy);
-  }
-
-  return <AuthPage error={error} initialEmail={email} mode="signup" next={next} users={users} />;
+  const { next } = await searchParams;
+  const destination = next ? `${routes.auth.login}?next=${encodeURIComponent(next)}` : routes.auth.login;
+  redirect(destination);
 }
