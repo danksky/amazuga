@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, getUserByPhoneFromDb, upsertOtpUserInDb } from "@/lib/server/users";
+import { createPhoneUserInDb, createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, getUserByPhoneFromDb, upsertOtpUserInDb } from "@/lib/server/users";
 
 
 function getRequiredString(formData: FormData, key: string) {
@@ -188,6 +188,92 @@ export async function verifyOtpAction(formData: FormData) {
   // Ensure the user exists in our app_user table
   await upsertOtpUserInDb({ supabaseAuthId: data.user.id, phone: data.user.phone ?? phone });
 
+  redirect(next);
+}
+
+// --- Sign-up actions (OTP mode) ---
+
+export async function requestSignUpOtpAction(formData: FormData) {
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const rawPhone = getRequiredString(formData, "phone");
+  const next = getNextDestination(formData, routes.public.buy);
+  const phone = normalizeRwandaPhone(rawPhone);
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+
+  if (error) {
+    redirect(`${routes.auth.signup}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(
+    `${routes.auth.signup}?step=verify&phone=${encodeURIComponent(phone)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&next=${encodeURIComponent(next)}`,
+  );
+}
+
+export async function verifySignUpOtpAction(formData: FormData) {
+  const phone = getRequiredString(formData, "phone");
+  const token = getRequiredString(formData, "token");
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const next = getNextDestination(formData, routes.public.buy);
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+
+  if (error || !data.user) {
+    redirect(
+      `${routes.auth.signup}?step=verify&phone=${encodeURIComponent(phone)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&error=invalid-otp&next=${encodeURIComponent(next)}`,
+    );
+  }
+
+  await upsertOtpUserInDb({ supabaseAuthId: data.user.id, phone: data.user.phone ?? phone, fullName });
+
+  redirect(next);
+}
+
+// --- Sign-up actions (mock mode) ---
+
+export async function requestMockSignUpOtpAction(formData: FormData) {
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const rawPhone = getRequiredString(formData, "phone");
+  const next = getNextDestination(formData, routes.public.buy);
+  const phone = normalizeRwandaPhone(rawPhone);
+
+  redirect(
+    `${routes.auth.signup}?step=verify&phone=${encodeURIComponent(phone)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&next=${encodeURIComponent(next)}`,
+  );
+}
+
+export async function verifyMockSignUpOtpAction(formData: FormData) {
+  const phone = getRequiredString(formData, "phone");
+  const token = getRequiredString(formData, "token");
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const next = getNextDestination(formData, routes.public.buy);
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  if (token !== "000000") {
+    redirect(
+      `${routes.auth.signup}?step=verify&phone=${encodeURIComponent(phone)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&error=invalid-otp&next=${encodeURIComponent(next)}`,
+    );
+  }
+
+  const existing = await getUserByPhoneFromDb(phone);
+  if (existing) {
+    const cookieStore = await cookies();
+    cookieStore.set(AUTH_COOKIE_NAME, existing.id, { httpOnly: true, sameSite: "lax", path: "/" });
+    redirect(next);
+  }
+
+  const newUser = await createPhoneUserInDb({ phone, fullName });
+  if (!newUser) throw new Error("Failed to create user");
+
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, newUser.id, { httpOnly: true, sameSite: "lax", path: "/" });
   redirect(next);
 }
 

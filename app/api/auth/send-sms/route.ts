@@ -51,6 +51,32 @@ async function sendViaAfricasTalking(to: string, message: string): Promise<void>
   }
 }
 
+async function sendViaTwilio(to: string, message: string): Promise<void> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+  const authToken = process.env.TWILIO_AUTH_TOKEN!;
+  const from = process.env.TWILIO_PHONE_NUMBER!;
+
+  const body = new URLSearchParams({ To: to, From: from, Body: message });
+  const credentials = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Twilio error ${res.status}: ${text}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-supabase-signature");
@@ -71,7 +97,11 @@ export async function POST(request: NextRequest) {
   const message = `Your Amazuga verification code is: ${otp}`;
 
   try {
-    await sendViaAfricasTalking(phone, message);
+    if (phone.startsWith("+1")) {
+      await sendViaTwilio(phone, message);
+    } else {
+      await sendViaAfricasTalking(phone, message);
+    }
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[send-sms hook]", err);

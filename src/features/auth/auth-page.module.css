@@ -59,6 +59,12 @@
   margin-top: 24px;
 }
 
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .field {
   display: grid;
   gap: 8px;

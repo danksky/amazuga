@@ -123,7 +123,8 @@ export async function getUserByPhoneFromDb(phone: string) {
   return rows[0] ? toUser(rows[0]) : null;
 }
 
-export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: string }) {
+export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: string; fullName?: string }) {
+  const fullName = input.fullName ?? input.phone;
   const idResult = await getPgPool().query<{ id: string }>(
     `
       INSERT INTO app_user (
@@ -137,7 +138,7 @@ export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: 
       VALUES (
         $1::uuid,
         $2,
-        $2,
+        $3,
         ARRAY['user']::TEXT[],
         'active',
         'otp_signup_v1'
@@ -146,9 +147,35 @@ export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: 
         SET phone = EXCLUDED.phone
       RETURNING id
     `,
-    [input.supabaseAuthId, input.phone],
+    [input.supabaseAuthId, input.phone, fullName],
   );
 
+  return getUserByIdFromDb(idResult.rows[0].id);
+}
+
+export async function createPhoneUserInDb(input: { phone: string; fullName: string }) {
+  const idResult = await getPgPool().query<{ id: string }>(
+    `
+      INSERT INTO app_user (
+        id,
+        phone,
+        full_name,
+        roles,
+        status,
+        seed_source
+      )
+      VALUES (
+        gen_random_uuid(),
+        $1,
+        $2,
+        ARRAY['user']::TEXT[],
+        'active',
+        'mock_signup_v1'
+      )
+      RETURNING id
+    `,
+    [input.phone, input.fullName],
+  );
   return getUserByIdFromDb(idResult.rows[0].id);
 }
 
