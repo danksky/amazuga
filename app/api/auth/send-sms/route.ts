@@ -1,20 +1,28 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-// Supabase sends a webhook with an HMAC-SHA256 signature in x-supabase-signature.
-// The secret is v1,whsec_<hex> — we verify against the raw hex portion.
-function verifyHmac(body: string, signatureHeader: string | null): boolean {
+// Supabase uses Svix-style webhook signing:
+//   Header:  Webhook-Signature: v1,<base64_hmac>
+//   Signed:  "{Webhook-Id}.{Webhook-Timestamp}.{body}"
+//   Key:     raw SUPABASE_HOOK_SECRET bytes (the hex string itself, not decoded)
+function verifyHmac(request: NextRequest, body: string): boolean {
   const secret = process.env.SUPABASE_HOOK_SECRET;
-  if (!secret || !signatureHeader) return false;
+  const signatureHeader = request.headers.get("webhook-signature");
+  const webhookId = request.headers.get("webhook-id");
+  const webhookTimestamp = request.headers.get("webhook-timestamp");
 
-  // Supabase sends: "v1,<hmac_hex>"
-  const [, receivedHex] = signatureHeader.split(",");
-  if (!receivedHex) return false;
+  if (!secret || !signatureHeader || !webhookId || !webhookTimestamp) return false;
 
-  const expected = createHmac("sha256", secret).update(body).digest("hex");
+  const [, receivedB64] = signatureHeader.split(",");
+  if (!receivedB64) return false;
+
+  const signedContent = `${webhookId}.${webhookTimestamp}.${body}`;
+  const expected = createHmac("sha256", Buffer.from(secret))
+    .update(signedContent)
+    .digest("base64");
 
   try {
-    return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(receivedHex, "hex"));
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(receivedB64));
   } catch {
     return false;
   }
@@ -79,9 +87,8 @@ async function sendViaTwilio(to: string, message: string): Promise<void> {
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const signature = request.headers.get("x-supabase-signature");
 
-  if (!verifyHmac(rawBody, signature)) {
+  if (!verifyHmac(request, rawBody)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -92,8 +99,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { phone } = payload.user;
+  const { phone: rawPhone } = payload.user;
   const { otp } = payload.sms;
+  // Supabase omits the leading + in hook payloads — normalise to E.164
+  const phone = rawPhone.startsWith("+") ? rawPhone : `+${rawPhone}`;
   const message = `Your Amazuga verification code is: ${otp}`;
 
   try {
