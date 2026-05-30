@@ -282,3 +282,106 @@ variable "neon_preview_role_name" {
   type        = string
   default     = "amazuga_preview_owner"
 }
+
+# --- Supabase ---
+
+variable "supabase_access_token" {
+  description = "Supabase personal access token (sbp_...)."
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_project_ref" {
+  description = "Supabase project reference ID."
+  type        = string
+  default     = "xdjclalffugjziukuqqi"
+}
+
+variable "supabase_hook_send_sms_url" {
+  description = "Public URL Supabase will POST to when sending an OTP SMS."
+  type        = string
+  default     = "https://amazuga.vercel.app/api/auth/send-sms"
+}
+
+variable "supabase_sms_test_otp" {
+  description = "Comma-separated list of <e164_without_plus>=<code> test phone overrides. Set to null to disable."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "supabase_sms_test_otp_valid_until" {
+  description = "ISO-8601 expiry for the sms_test_otp entries."
+  type        = string
+  default     = "2026-12-31T23:59:59Z"
+}
+
+# --- Auth env vars (Vercel) ---
+
+variable "auth_mode" {
+  description = "AUTH_MODE for the Next.js app: 'mock' (cookie-only dev) or 'otp' (Supabase phone OTP)."
+  type        = string
+  default     = "otp"
+}
+
+variable "next_public_supabase_url" {
+  description = "Supabase project URL (public)."
+  type        = string
+}
+
+variable "next_public_supabase_anon_key" {
+  description = "Supabase anon/public JWT key."
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_service_role_key" {
+  description = "Supabase service role JWT key (server-side only)."
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_hook_secret" {
+  description = "HMAC secret used to verify Supabase webhook signatures on /api/auth/send-sms."
+  type        = string
+  sensitive   = true
+}
+
+# --- Africa's Talking env vars (Vercel) ---
+
+variable "africas_talking_api_key" {
+  description = "Africa's Talking API key."
+  type        = string
+  sensitive   = true
+}
+
+variable "africas_talking_username" {
+  description = "Africa's Talking account username ('sandbox' for testing)."
+  type        = string
+  default     = "sandbox"
+}
+
+variable "africas_talking_sandbox" {
+  description = "Route SMS through the AT sandbox API when 'true'."
+  type        = string
+  default     = "true"
+}
+
+# --- Twilio env vars (Vercel) ---
+
+variable "twilio_account_sid" {
+  description = "Twilio account SID for +1 number OTP delivery."
+  type        = string
+  sensitive   = true
+}
+
+variable "twilio_auth_token" {
+  description = "Twilio auth token."
+  type        = string
+  sensitive   = true
+}
+
+variable "twilio_phone_number" {
+  description = "Twilio outbound phone number in E.164 format (e.g. +14692564390)."
+  type        = string
+}

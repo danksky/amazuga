@@ -18,6 +18,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    supabase = {
+      source  = "supabase/supabase"
+      version = "~> 1.9"
+    }
   }
 }
 
@@ -32,6 +36,10 @@ provider "neon" {
 provider "vercel" {
   api_token = var.vercel_token
   team      = var.vercel_team_id
+}
+
+provider "supabase" {
+  access_token = var.supabase_access_token
 }
 
 locals {
@@ -530,4 +538,141 @@ resource "neon_endpoint" "preview" {
   type       = "read_write"
 
   suspend_timeout_seconds = 300
+}
+
+# --- Supabase ---
+
+resource "supabase_settings" "production" {
+  project_ref = var.supabase_project_ref
+
+  auth = jsonencode(merge(
+    {
+      # Phone OTP via custom SMS hook
+      external_phone_enabled  = true
+      hook_send_sms_enabled   = true
+      hook_send_sms_uri       = var.supabase_hook_send_sms_url
+      sms_otp_exp             = 60
+      sms_otp_length          = 6
+    },
+    var.supabase_sms_test_otp != null ? {
+      sms_test_otp           = var.supabase_sms_test_otp
+      sms_test_otp_valid_until = var.supabase_sms_test_otp_valid_until
+    } : {}
+  ))
+}
+
+# --- Vercel env vars: auth ---
+
+resource "vercel_project_environment_variable" "auth_mode" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AUTH_MODE"
+  value      = var.auth_mode
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "'otp' uses Supabase phone OTP; 'mock' uses cookie-only dev auth."
+}
+
+resource "vercel_project_environment_variable" "next_public_supabase_url" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_SUPABASE_URL"
+  value      = var.next_public_supabase_url
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "Supabase project URL."
+}
+
+resource "vercel_project_environment_variable" "next_public_supabase_anon_key" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  value      = var.next_public_supabase_anon_key
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Supabase anon/public JWT key."
+}
+
+resource "vercel_project_environment_variable" "supabase_service_role_key" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "SUPABASE_SERVICE_ROLE_KEY"
+  value      = var.supabase_service_role_key
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Supabase service role key (server-only)."
+}
+
+resource "vercel_project_environment_variable" "supabase_hook_secret" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "SUPABASE_HOOK_SECRET"
+  value      = var.supabase_hook_secret
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "HMAC secret for verifying Supabase webhook signatures on /api/auth/send-sms."
+}
+
+# --- Vercel env vars: Africa's Talking ---
+
+resource "vercel_project_environment_variable" "africas_talking_api_key" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AFRICAS_TALKING_API_KEY"
+  value      = var.africas_talking_api_key
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Africa's Talking API key for SMS delivery to +250 numbers."
+}
+
+resource "vercel_project_environment_variable" "africas_talking_username" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AFRICAS_TALKING_USERNAME"
+  value      = var.africas_talking_username
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "Africa's Talking account username ('sandbox' for testing, production username for live)."
+}
+
+resource "vercel_project_environment_variable" "africas_talking_sandbox" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AFRICAS_TALKING_SANDBOX"
+  value      = var.africas_talking_sandbox
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "'true' routes through AT sandbox (no real SMS); 'false' sends live SMS."
+}
+
+# --- Vercel env vars: Twilio ---
+
+resource "vercel_project_environment_variable" "twilio_account_sid" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "TWILIO_ACCOUNT_SID"
+  value      = var.twilio_account_sid
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Twilio account SID for +1 number OTP delivery."
+}
+
+resource "vercel_project_environment_variable" "twilio_auth_token" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "TWILIO_AUTH_TOKEN"
+  value      = var.twilio_auth_token
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Twilio auth token."
+}
+
+resource "vercel_project_environment_variable" "twilio_phone_number" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "TWILIO_PHONE_NUMBER"
+  value      = var.twilio_phone_number
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "Twilio outbound number in E.164 format."
 }
