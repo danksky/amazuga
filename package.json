@@ -21,7 +21,8 @@
     "pmtiles": "^4.4.0",
     "polygon-clipping": "^0.15.7",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "standardwebhooks": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

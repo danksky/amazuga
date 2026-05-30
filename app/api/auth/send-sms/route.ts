@@ -1,32 +1,9 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { Webhook, WebhookVerificationError } from "standardwebhooks";
 import { NextRequest, NextResponse } from "next/server";
 
-// Supabase uses Svix-style webhook signing:
-//   Header:  Webhook-Signature: v1,<base64_hmac>
-//   Signed:  "{Webhook-Id}.{Webhook-Timestamp}.{body}"
-//   Key:     hex-decoded SUPABASE_HOOK_SECRET bytes
-function verifyHmac(request: NextRequest, body: string): boolean {
-  const secret = process.env.SUPABASE_HOOK_SECRET;
-  const signatureHeader = request.headers.get("webhook-signature");
-  const webhookId = request.headers.get("webhook-id");
-  const webhookTimestamp = request.headers.get("webhook-timestamp");
-
-  if (!secret || !signatureHeader || !webhookId || !webhookTimestamp) return false;
-
-  const [, receivedB64] = signatureHeader.split(",");
-  if (!receivedB64) return false;
-
-  const signedContent = `${webhookId}.${webhookTimestamp}.${body}`;
-  const expected = createHmac("sha256", Buffer.from(secret, "hex"))
-    .update(signedContent)
-    .digest("base64");
-
-  try {
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(receivedB64));
-  } catch {
-    return false;
-  }
-}
+// Supabase signs hook requests using Standard Webhooks (https://www.standardwebhooks.com).
+// SUPABASE_HOOK_SECRET must be in whsec_<base64> format — set it to the value
+// provided when configuring the hook in Supabase (strip the leading "v1," if present).
 
 interface HookPayload {
   user: { phone: string };
@@ -81,8 +58,26 @@ async function sendViaTelnyx(to: string, message: string): Promise<void> {
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
 
-  if (!verifyHmac(request, rawBody)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  const secret = process.env.SUPABASE_HOOK_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: "Hook secret not configured" }, { status: 500 });
+  }
+
+  // Strip "v1," prefix if present (Supabase sometimes includes it in the env value)
+  const webhookSecret = secret.startsWith("v1,") ? secret.slice(3) : secret;
+
+  try {
+    const wh = new Webhook(webhookSecret);
+    wh.verify(rawBody, {
+      "webhook-id": request.headers.get("webhook-id") ?? "",
+      "webhook-signature": request.headers.get("webhook-signature") ?? "",
+      "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
+    });
+  } catch (err) {
+    if (err instanceof WebhookVerificationError) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+    throw err;
   }
 
   let payload: HookPayload;
