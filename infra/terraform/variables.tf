@@ -82,7 +82,7 @@ variable "cloudflare_tiles_worker_public_path" {
 variable "cloudflare_tiles_worker_object_key" {
   description = "R2 object key that stores the PMTiles archive."
   type        = string
-  default     = "approved-provisional-parcels-v2.pmtiles"
+  default     = "approved-provisional-parcels-v3.pmtiles"
 }
 
 variable "cloudflare_tiles_worker_local_allowed_origins" {
@@ -159,7 +159,7 @@ variable "cloudflare_off_market_tiles_worker_public_path" {
 variable "cloudflare_off_market_tiles_worker_object_key" {
   description = "R2 object key for the off-market PMTiles archive."
   type        = string
-  default     = "off-market-v1.pmtiles"
+  default     = "off-market-v2.pmtiles"
 }
 
 variable "cloudflare_off_market_tiles_worker_rate_limit_namespace_id" {
