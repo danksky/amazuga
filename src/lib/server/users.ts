@@ -103,7 +103,7 @@ export async function createUserInDb(input: { email: string; fullName: string })
         seed_source
       )
       VALUES (
-        'user-' || SUBSTR(MD5($1 || ':' || NOW()::TEXT), 1, 20),
+        gen_random_uuid(),
         $1,
         $2,
         ARRAY['user']::TEXT[],
@@ -123,11 +123,6 @@ export async function getUserByPhoneFromDb(phone: string) {
   return rows[0] ? toUser(rows[0]) : null;
 }
 
-export async function getUserBySupabaseAuthIdFromDb(supabaseAuthId: string) {
-  const rows = await getUserRows("WHERE u.status = 'active' AND u.supabase_auth_id = $1", [supabaseAuthId]);
-  return rows[0] ? toUser(rows[0]) : null;
-}
-
 export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: string }) {
   const idResult = await getPgPool().query<{ id: string }>(
     `
@@ -135,21 +130,19 @@ export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: 
         id,
         phone,
         full_name,
-        supabase_auth_id,
         roles,
         status,
         seed_source
       )
       VALUES (
-        'user-' || SUBSTR(MD5($1 || ':' || NOW()::TEXT), 1, 20),
+        $1::uuid,
         $2,
         $2,
-        $1,
         ARRAY['user']::TEXT[],
         'active',
         'otp_signup_v1'
       )
-      ON CONFLICT (supabase_auth_id) DO UPDATE
+      ON CONFLICT (id) DO UPDATE
         SET phone = EXCLUDED.phone
       RETURNING id
     `,

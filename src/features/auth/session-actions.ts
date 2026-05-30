@@ -8,6 +8,7 @@ import { routes } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, getUserByPhoneFromDb, upsertOtpUserInDb } from "@/lib/server/users";
 
+
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
 

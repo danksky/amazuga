@@ -6,7 +6,7 @@ import { cache } from "react";
 
 import { routes } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getUserByIdFromDb, getUserBySupabaseAuthIdFromDb } from "@/lib/server/users";
+import { getUserByIdFromDb } from "@/lib/server/users";
 import type { User } from "@/types/domain";
 
 export const AUTH_COOKIE_NAME = "amazuga_mock_auth";
@@ -38,7 +38,7 @@ async function getCurrentUserOtp() {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    return await getUserBySupabaseAuthIdFromDb(user.id);
+    return await getUserByIdFromDb(user.id);
   } catch {
     return null;
   }

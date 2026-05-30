@@ -156,14 +156,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS parcel_anchor_point_preview_upi_idx
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS app_user (
-  id                        TEXT PRIMARY KEY,
-  -- Nullable: phone-only OTP users may not have an email
+  -- UUID primary key matching auth.users.id in Supabase.
+  -- Created from the Supabase auth UUID on first OTP sign-in.
+  id                        UUID PRIMARY KEY,
+  -- Nullable: phone-only OTP users may not have an email.
   email                     TEXT UNIQUE,
   full_name                 TEXT NOT NULL,
-  -- Phone number in E.164 format (+250...). Set for Supabase phone OTP users.
+  -- Phone number in E.164 format (+250...).
   phone                     TEXT UNIQUE,
-  -- UUID from auth.users in Supabase. Set when the user was created via phone OTP.
-  supabase_auth_id          TEXT UNIQUE,
   -- 'user' is the default. Admins and valuators are promoted by role.
   roles                     TEXT[] NOT NULL DEFAULT ARRAY['user']::TEXT[],
   avatar_url                TEXT,
@@ -194,8 +194,8 @@ CREATE TABLE IF NOT EXISTS agency (
   google_maps_url             TEXT,
   status                      TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
   -- Temporary reference during the approval workflow before manager_user_id is set.
-  pending_manager_user_id     TEXT REFERENCES app_user(id),
-  manager_user_id             TEXT REFERENCES app_user(id),
+  pending_manager_user_id     UUID REFERENCES app_user(id),
+  manager_user_id             UUID REFERENCES app_user(id),
   seed_source                 TEXT NOT NULL DEFAULT 'manual',
   created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS agency (
 CREATE TABLE IF NOT EXISTS agency_membership (
   id         TEXT PRIMARY KEY,
   agency_id  TEXT NOT NULL REFERENCES agency(id) ON DELETE CASCADE,
-  user_id    TEXT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
   -- 'manager' has admin rights within the agency; 'agent' can create listings.
   role       TEXT NOT NULL CHECK (role IN ('agent', 'manager')),
   status     TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
@@ -318,7 +318,7 @@ CREATE INDEX IF NOT EXISTS property_asset_asset_type_idx
 CREATE TABLE IF NOT EXISTS property_asset_profile (
   -- 1-to-1 with property_asset. Cascade-deleted when the asset is deleted.
   property_asset_id   TEXT PRIMARY KEY REFERENCES property_asset(id) ON DELETE CASCADE,
-  created_by_user_id  TEXT REFERENCES app_user(id),
+  created_by_user_id  UUID REFERENCES app_user(id),
   description         TEXT,
   -- Human-readable property type label (e.g. "House", "Land"). Must not be
   -- the bare string "building" — use apartment_building or commercial_building.
@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS listing (
   parcel_id           TEXT NOT NULL,
   property_asset_id   TEXT NOT NULL REFERENCES property_asset(id),
   agency_id           TEXT NOT NULL REFERENCES agency(id),
-  agent_user_id       TEXT NOT NULL REFERENCES app_user(id),
+  agent_user_id       UUID NOT NULL REFERENCES app_user(id),
   status              TEXT NOT NULL CHECK (status IN ('draft', 'active', 'inactive', 'archived')),
   marketing_type      TEXT NOT NULL CHECK (marketing_type IN ('sale', 'rent')),
   -- Nullable: draft listings and some rent listings may not have a price yet.
@@ -435,7 +435,7 @@ CREATE TABLE IF NOT EXISTS listing_image (
   width                INTEGER,
   height               INTEGER,
   file_size_bytes      INTEGER,
-  uploaded_by_user_id  TEXT REFERENCES app_user(id),
+  uploaded_by_user_id  UUID REFERENCES app_user(id),
   -- 'pending_delete' / 'delete_failed' are set by the cleanup job when the
   -- R2 object needs to be removed but the deletion has not yet succeeded.
   status               TEXT NOT NULL DEFAULT 'ready' CHECK (
@@ -459,7 +459,7 @@ CREATE TABLE IF NOT EXISTS listing_image_cleanup_job (
   image_id             TEXT NOT NULL,
   listing_id           TEXT NOT NULL REFERENCES listing(id) ON DELETE CASCADE,
   storage_key          TEXT NOT NULL UNIQUE,
-  uploaded_by_user_id  TEXT REFERENCES app_user(id),
+  uploaded_by_user_id  UUID REFERENCES app_user(id),
   status               TEXT NOT NULL DEFAULT 'pending' CHECK (
     status IN ('pending', 'processing', 'failed', 'completed')
   ),
@@ -486,7 +486,7 @@ CREATE TABLE IF NOT EXISTS listing_price_history (
   -- campaign_index copied from the listing at the time of the price change,
   -- allowing price history to be grouped per listing campaign.
   campaign_index      INTEGER NOT NULL DEFAULT 1,
-  changed_by_user_id  TEXT REFERENCES app_user(id),
+  changed_by_user_id  UUID REFERENCES app_user(id),
   changed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -500,8 +500,8 @@ CREATE INDEX IF NOT EXISTS listing_price_history_listing_idx
 CREATE TABLE IF NOT EXISTS listing_access_grant (
   id                  TEXT PRIMARY KEY,
   listing_id          TEXT NOT NULL REFERENCES listing(id) ON DELETE CASCADE,
-  granted_to_user_id  TEXT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-  granted_by_user_id  TEXT NOT NULL REFERENCES app_user(id),
+  granted_to_user_id  UUID NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  granted_by_user_id  UUID NOT NULL REFERENCES app_user(id),
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (listing_id, granted_to_user_id)
 );
@@ -518,7 +518,7 @@ CREATE INDEX IF NOT EXISTS listing_access_grant_user_idx
 -- is kept for rows saved before the asset model was introduced.
 CREATE TABLE IF NOT EXISTS saved_property (
   id                  TEXT PRIMARY KEY,
-  user_id             TEXT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  user_id             UUID NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
   property_route_id   TEXT,
   legacy_property_ref TEXT,
   seed_source         TEXT NOT NULL DEFAULT 'manual',
@@ -546,7 +546,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS saved_property_user_legacy_ref_idx
 
 CREATE TABLE IF NOT EXISTS agency_application (
   id                   TEXT PRIMARY KEY,
-  created_by_user_id   TEXT NOT NULL REFERENCES app_user(id),
+  created_by_user_id   UUID NOT NULL REFERENCES app_user(id),
   business_name        TEXT NOT NULL,
   tin                  TEXT NOT NULL,
   website_url          TEXT,
@@ -566,7 +566,7 @@ CREATE INDEX IF NOT EXISTS agency_application_status_idx
 
 CREATE TABLE IF NOT EXISTS agent_application (
   id                     TEXT PRIMARY KEY,
-  user_id                TEXT NOT NULL REFERENCES app_user(id),
+  user_id                UUID NOT NULL REFERENCES app_user(id),
   national_id_photo_url  TEXT NOT NULL,
   selected_agency_id     TEXT REFERENCES agency(id),
   status                 TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
@@ -584,7 +584,7 @@ CREATE INDEX IF NOT EXISTS agent_application_status_idx
 
 CREATE TABLE IF NOT EXISTS valuator_application (
   id                       TEXT PRIMARY KEY,
-  user_id                  TEXT NOT NULL REFERENCES app_user(id),
+  user_id                  UUID NOT NULL REFERENCES app_user(id),
   -- Rwanda Institute of Professional Valuers registration number.
   irpv_registration_number TEXT NOT NULL,
   status                   TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
@@ -619,7 +619,7 @@ CREATE INDEX IF NOT EXISTS valuator_application_status_idx
 
 CREATE TABLE IF NOT EXISTS property_claim_request (
   id                          TEXT PRIMARY KEY,
-  user_id                     TEXT NOT NULL REFERENCES app_user(id),
+  user_id                     UUID NOT NULL REFERENCES app_user(id),
   -- 'claim'    = new ownership claim on an unclaimed parcel
   -- 'transfer' = ownership transfer from an existing owner to this user
   request_kind                TEXT NOT NULL DEFAULT 'claim' CHECK (request_kind IN ('claim', 'transfer')),
@@ -666,8 +666,8 @@ CREATE TABLE IF NOT EXISTS property_claim_request (
   description                 TEXT,
   -- Transfer-specific fields (null for request_kind = 'claim').
   transfer_mode               TEXT CHECK (transfer_mode IN ('sale', 'transfer')),
-  transfer_from_user_id       TEXT REFERENCES app_user(id),
-  transfer_initiated_by_user_id TEXT REFERENCES app_user(id),
+  transfer_from_user_id       UUID REFERENCES app_user(id),
+  transfer_initiated_by_user_id UUID REFERENCES app_user(id),
   buyer_confirmed_at          TIMESTAMPTZ,
   buyer_declined_at           TIMESTAMPTZ,
   transfer_note               TEXT,
@@ -708,7 +708,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS property_claim_request_one_pending_per_user_pa
 -- One owner per property_asset at a time (enforced by unique index).
 CREATE TABLE IF NOT EXISTS property_ownership (
   id                           TEXT PRIMARY KEY,
-  user_id                      TEXT NOT NULL REFERENCES app_user(id),
+  user_id                      UUID NOT NULL REFERENCES app_user(id),
   -- Stable public property ID at the time of ownership creation.
   property_id                  TEXT NOT NULL,
   property_internal_id         TEXT NOT NULL REFERENCES property_asset(id),
@@ -754,7 +754,7 @@ CREATE TABLE IF NOT EXISTS valuation_submission (
   property_id            TEXT,
   property_asset_id      TEXT REFERENCES property_asset(id),
   legacy_property_ref    TEXT,
-  submitted_by_user_id   TEXT NOT NULL REFERENCES app_user(id),
+  submitted_by_user_id   UUID NOT NULL REFERENCES app_user(id),
   is_anonymous           BOOLEAN NOT NULL DEFAULT FALSE,
   effective_date         DATE NOT NULL,
   estimated_value_rwf    BIGINT NOT NULL CHECK (estimated_value_rwf > 0),
