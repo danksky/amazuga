@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Supabase uses Svix-style webhook signing:
 //   Header:  Webhook-Signature: v1,<base64_hmac>
 //   Signed:  "{Webhook-Id}.{Webhook-Timestamp}.{body}"
-//   Key:     raw SUPABASE_HOOK_SECRET bytes (the hex string itself, not decoded)
+//   Key:     hex-decoded SUPABASE_HOOK_SECRET bytes
 function verifyHmac(request: NextRequest, body: string): boolean {
   const secret = process.env.SUPABASE_HOOK_SECRET;
   const signatureHeader = request.headers.get("webhook-signature");
@@ -17,7 +17,7 @@ function verifyHmac(request: NextRequest, body: string): boolean {
   if (!receivedB64) return false;
 
   const signedContent = `${webhookId}.${webhookTimestamp}.${body}`;
-  const expected = createHmac("sha256", Buffer.from(secret))
+  const expected = createHmac("sha256", Buffer.from(secret, "hex"))
     .update(signedContent)
     .digest("base64");
 

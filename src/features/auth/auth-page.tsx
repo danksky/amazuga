@@ -28,7 +28,7 @@ interface AuthPageProps {
 
 function getPhoneErrorCopy(error?: string, isMock?: boolean) {
   if (!error) return null;
-  if (error === "otp-send-failed") return "We couldn't send a code to that number. Check the number and try again.";
+  if (error === "otp-send-failed") return "Something went wrong sending your code. Please try again.";
   if (error === "phone-not-found" && isMock) return "That number isn't a test account. Try one of the numbers listed below.";
   return "Something went wrong. Try again.";
 }
@@ -211,7 +211,7 @@ function SignupDetailsStep({
 }) {
   const errorMessage =
     error === "otp-send-failed"
-      ? "We couldn't send a code to that number. Check the number and try again."
+      ? "Something went wrong sending your code. Please try again."
       : error
         ? "Something went wrong. Try again."
         : null;

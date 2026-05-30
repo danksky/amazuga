@@ -204,6 +204,7 @@ export async function requestSignUpOtpAction(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({ phone });
 
   if (error) {
+    console.error("[requestSignUpOtpAction] signInWithOtp error:", error.status, error.message, error.code);
     redirect(`${routes.auth.signup}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
   }
 
