@@ -9,7 +9,7 @@ import {
   id = "xdjclalffugjziukuqqi"
 }
 
-# Vercel env vars added manually via API — bring under Terraform management
+# Vercel env vars — bring under Terraform management
 import {
   to = vercel_project_environment_variable.auth_mode
   id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/puzNfJxsdlXqGw5I"
@@ -22,22 +22,22 @@ import {
 
 import {
   to = vercel_project_environment_variable.next_public_supabase_anon_key
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/oN9zXjnkvNFjyQYl"
+  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/kcOfKve5qvVHiYeN"
 }
 
 import {
   to = vercel_project_environment_variable.supabase_service_role_key
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/eBuNiMIb5hepYLZe"
+  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/MOrBSmXtMC8Hssw9"
 }
 
 import {
   to = vercel_project_environment_variable.supabase_hook_secret
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/9lmOUks8o0u2knLN"
+  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/oyghaQVqfvxWMvml"
 }
 
 import {
   to = vercel_project_environment_variable.africas_talking_api_key
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/Lcle5HKUUFSBIxjq"
+  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/NxPtYw1suzxyK01V"
 }
 
 import {
@@ -51,16 +51,11 @@ import {
 }
 
 import {
-  to = vercel_project_environment_variable.twilio_account_sid
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/YI4bI7UtLIOHivxS"
+  to = vercel_project_environment_variable.telnyx_api_key
+  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/QCKFWB2hWqjVWW5a"
 }
 
 import {
-  to = vercel_project_environment_variable.twilio_auth_token
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/D5e6sA1sWdvdBYmn"
-}
-
-import {
-  to = vercel_project_environment_variable.twilio_phone_number
-  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/QtaethEExsihE8DN"
+  to = vercel_project_environment_variable.telnyx_phone_number
+  id = "team_oTT19Jmu6sLX5Cx4EgLCajgK/prj_hmBtq0JhdnDAJfQzP1IJHpD3vO8K/b0GGRA1lOi2L3otp"
 }
