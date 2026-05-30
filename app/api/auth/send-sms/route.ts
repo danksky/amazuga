@@ -59,29 +59,22 @@ async function sendViaAfricasTalking(to: string, message: string): Promise<void>
   }
 }
 
-async function sendViaTwilio(to: string, message: string): Promise<void> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-  const authToken = process.env.TWILIO_AUTH_TOKEN!;
-  const from = process.env.TWILIO_PHONE_NUMBER!;
+async function sendViaTelnyx(to: string, message: string): Promise<void> {
+  const apiKey = process.env.TELNYX_API_KEY!;
+  const from = process.env.TELNYX_PHONE_NUMBER!;
 
-  const body = new URLSearchParams({ To: to, From: from, Body: message });
-  const credentials = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: body.toString(),
+  const res = await fetch("https://api.telnyx.com/v2/messages", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({ from, to, text: message }),
+  });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Twilio error ${res.status}: ${text}`);
+    throw new Error(`Telnyx error ${res.status}: ${text}`);
   }
 }
 
@@ -107,7 +100,7 @@ export async function POST(request: NextRequest) {
 
   try {
     if (phone.startsWith("+1")) {
-      await sendViaTwilio(phone, message);
+      await sendViaTelnyx(phone, message);
     } else {
       await sendViaAfricasTalking(phone, message);
     }
