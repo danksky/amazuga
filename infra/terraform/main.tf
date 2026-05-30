@@ -551,6 +551,7 @@ resource "supabase_settings" "production" {
       external_phone_enabled  = true
       hook_send_sms_enabled   = true
       hook_send_sms_uri       = var.supabase_hook_send_sms_url
+      hook_send_sms_secrets   = "v1,${var.supabase_hook_secret}"
       sms_otp_exp             = 60
       sms_otp_length          = 6
     },
@@ -645,36 +646,26 @@ resource "vercel_project_environment_variable" "africas_talking_sandbox" {
   comment    = "'true' routes through AT sandbox (no real SMS); 'false' sends live SMS."
 }
 
-# --- Vercel env vars: Twilio ---
+# --- Vercel env vars: Telnyx ---
 
-resource "vercel_project_environment_variable" "twilio_account_sid" {
+resource "vercel_project_environment_variable" "telnyx_api_key" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id
-  key        = "TWILIO_ACCOUNT_SID"
-  value      = var.twilio_account_sid
+  key        = "TELNYX_API_KEY"
+  value      = var.telnyx_api_key
   sensitive  = true
   target     = ["production", "preview"]
-  comment    = "Twilio account SID for +1 number OTP delivery."
+  comment    = "Telnyx API key for +1 number OTP delivery."
 }
 
-resource "vercel_project_environment_variable" "twilio_auth_token" {
+resource "vercel_project_environment_variable" "telnyx_phone_number" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id
-  key        = "TWILIO_AUTH_TOKEN"
-  value      = var.twilio_auth_token
-  sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "Twilio auth token."
-}
-
-resource "vercel_project_environment_variable" "twilio_phone_number" {
-  project_id = vercel_project.amazuga.id
-  team_id    = var.vercel_team_id
-  key        = "TWILIO_PHONE_NUMBER"
-  value      = var.twilio_phone_number
+  key        = "TELNYX_PHONE_NUMBER"
+  value      = var.telnyx_phone_number
   sensitive  = false
   target     = ["production", "preview"]
-  comment    = "Twilio outbound number in E.164 format."
+  comment    = "Telnyx outbound number in E.164 format (+12762530653)."
 }
 
 # --- Email forwarding (Forward Email) ---

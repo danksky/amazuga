@@ -367,21 +367,16 @@ variable "africas_talking_sandbox" {
   default     = "true"
 }
 
-# --- Twilio env vars (Vercel) ---
+# --- Telnyx env vars (Vercel) ---
 
-variable "twilio_account_sid" {
-  description = "Twilio account SID for +1 number OTP delivery."
+variable "telnyx_api_key" {
+  description = "Telnyx API key for +1 number OTP delivery."
   type        = string
   sensitive   = true
 }
 
-variable "twilio_auth_token" {
-  description = "Twilio auth token."
+variable "telnyx_phone_number" {
+  description = "Telnyx outbound phone number in E.164 format."
   type        = string
-  sensitive   = true
-}
-
-variable "twilio_phone_number" {
-  description = "Twilio outbound phone number in E.164 format (e.g. +14692564390)."
-  type        = string
+  default     = "+12762530653"
 }
