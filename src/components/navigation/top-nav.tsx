@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { signOutAction } from "@/features/auth/session-actions";
+import { signOutAction, signOutOtpAction } from "@/features/auth/session-actions";
 import { routes } from "@/lib/routes";
 import type { User } from "@/types/domain";
 
@@ -22,6 +22,7 @@ interface TopNavProps {
   isAdmin?: boolean;
   marketingLinks: NavLinkItem[];
   signedInLinks: NavLinkItem[];
+  otpMode?: boolean;
 }
 
 function isLinkActive(pathname: string, href: string) {
@@ -46,7 +47,7 @@ function isLinkActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInLinks }: TopNavProps) {
+export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInLinks, otpMode = false }: TopNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -130,7 +131,7 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
                     <div className={styles.accountHeading}>Signed in as {signedInLabel}</div>
                     <div className={styles.accountFooter}>
                       <span className={styles.accountFooterLabel}>Not you?</span>
-                      <form action={signOutAction}>
+                      <form action={otpMode ? signOutOtpAction : signOutAction}>
                         <button className={styles.signOutLink} type="submit">
                           Sign out
                         </button>
@@ -224,7 +225,7 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
                     <div className={styles.mobileUserLabel}>Signed in as {signedInLabel}</div>
                     <div className={styles.mobileSignOutRow}>
                       <span className={styles.mobileUserLabel}>Not you?</span>
-                      <form action={signOutAction} onSubmit={() => setMenuOpen(false)}>
+                      <form action={otpMode ? signOutOtpAction : signOutAction} onSubmit={() => setMenuOpen(false)}>
                         <button className={styles.signOutLink} type="submit">
                           Sign out
                         </button>

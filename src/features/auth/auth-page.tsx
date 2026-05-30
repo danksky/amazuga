@@ -3,8 +3,6 @@ import {
   requestMockOtpAction,
   requestOtpAction,
   signInAsUserAction,
-  signOutAction,
-  signOutOtpAction,
   verifyMockOtpAction,
   verifyOtpAction,
 } from "@/features/auth/session-actions";
@@ -114,12 +112,6 @@ function PhoneStep({
             </div>
           </div>
         ) : null}
-
-        <form action={isMock ? signOutAction : signOutOtpAction}>
-          <Button type="submit" variant="ghost">
-            Clear current session
-          </Button>
-        </form>
       </div>
     </div>
   );

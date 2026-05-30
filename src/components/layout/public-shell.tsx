@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { TopNav } from "@/components/navigation/top-nav";
-import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { getCurrentUser, isAdminUser, isOtpMode } from "@/lib/auth";
 import { publicTopNav } from "@/lib/navigation";
 import { routes } from "@/lib/routes";
 
@@ -18,6 +18,7 @@ export async function PublicShell({ children }: PropsWithChildren) {
         currentUser={currentUser}
         isAdmin={isAdminUser(currentUser)}
         marketingLinks={marketingLinks}
+        otpMode={isOtpMode()}
         signedInLinks={signedInLinks}
       />
       <main className={styles.main}>{children}</main>
