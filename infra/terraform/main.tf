@@ -676,3 +676,37 @@ resource "vercel_project_environment_variable" "twilio_phone_number" {
   target     = ["production", "preview"]
   comment    = "Twilio outbound number in E.164 format."
 }
+
+# --- Email forwarding (Forward Email) ---
+
+resource "cloudflare_dns_record" "mx_forwardemail_1" {
+  zone_id  = data.cloudflare_zone.amazuga.id
+  name     = "@"
+  type     = "MX"
+  content  = "mx1.forwardemail.net"
+  priority = 10
+  proxied  = false
+  ttl      = 1
+  comment  = "Forward Email MX record (primary)"
+}
+
+resource "cloudflare_dns_record" "mx_forwardemail_2" {
+  zone_id  = data.cloudflare_zone.amazuga.id
+  name     = "@"
+  type     = "MX"
+  content  = "mx2.forwardemail.net"
+  priority = 10
+  proxied  = false
+  ttl      = 1
+  comment  = "Forward Email MX record (secondary)"
+}
+
+resource "cloudflare_dns_record" "txt_forwardemail_verification" {
+  zone_id = data.cloudflare_zone.amazuga.id
+  name    = "@"
+  type    = "TXT"
+  content = "forward-email-site-verification=FubbXCfd81"
+  proxied = false
+  ttl     = 1
+  comment = "Forward Email domain verification"
+}
