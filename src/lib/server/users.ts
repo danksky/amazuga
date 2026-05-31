@@ -119,7 +119,9 @@ export async function createUserInDb(input: { email: string; fullName: string })
 }
 
 export async function getUserByPhoneFromDb(phone: string) {
-  const rows = await getUserRows("WHERE u.status = 'active' AND u.phone = $1", [phone]);
+  // Phones are stored without leading + — normalise before lookup
+  const normalised = phone.startsWith("+") ? phone.slice(1) : phone;
+  const rows = await getUserRows("WHERE u.status = 'active' AND u.phone = $1", [normalised]);
   return rows[0] ? toUser(rows[0]) : null;
 }
 
