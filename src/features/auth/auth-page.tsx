@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/features/auth/phone-input";
 import {
   requestMockOtpAction,
   requestMockSignUpOtpAction,
@@ -70,14 +71,7 @@ function PhoneStep({
               <label className={styles.label} htmlFor="phone">
                 Phone number
               </label>
-              <input
-                autoComplete="tel"
-                className={styles.input}
-                id="phone"
-                name="phone"
-                placeholder="+250 788 000 000"
-                type="tel"
-              />
+              <PhoneInput />
             </div>
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
@@ -241,7 +235,7 @@ function SignupDetailsStep({
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="phone">Phone number</label>
-              <input autoComplete="tel" className={styles.input} defaultValue={phone} id="phone" name="phone" placeholder="+250 788 000 000" type="tel" />
+              <PhoneInput />
             </div>
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
