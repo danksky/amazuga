@@ -21,23 +21,6 @@ export function AgentApplicationForm({ agencies }: { agencies: Agency[] }) {
 
         <form action={submitAgentApplicationAction} className={styles.form}>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="full-name">
-              Full name
-            </label>
-            <input className={styles.input} id="full-name" name="fullName" placeholder="Enter your full name" />
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="phone-number">
-              Phone number
-            </label>
-            <div className={styles.phoneField}>
-              <div className={styles.phonePrefix}>+250</div>
-              <input className={styles.input} id="phone-number" name="phoneNumber" placeholder="7XXXXXXXX" />
-            </div>
-          </div>
-
-          <div className={styles.field}>
             <div className={styles.label}>Which agency do you belong to?</div>
             <div className={styles.hint}>
               Select the approved agency you intend to join. Agency selection is required for agent review.
