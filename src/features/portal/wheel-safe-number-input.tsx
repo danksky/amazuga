@@ -10,6 +10,7 @@ export function WheelSafeNumberInput(props: WheelSafeNumberInputProps) {
   const handleWheel = (event: WheelEvent<HTMLInputElement>) => {
     if (document.activeElement === event.currentTarget) {
       event.preventDefault();
+      event.currentTarget.blur();
     }
 
     onWheel?.(event);
