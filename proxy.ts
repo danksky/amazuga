@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Only run Supabase session refresh in otp mode
   if (process.env.AUTH_MODE !== "otp") {
     return NextResponse.next();
