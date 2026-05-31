@@ -52,7 +52,7 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const pathname = usePathname();
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
-  const signedInLabel = currentUser?.fullName ?? "Account";
+  const signedInLabel = (currentUser?.fullName ?? "Account").toUpperCase();
 
   useEffect(() => {
     if (!accountMenuOpen) {
@@ -128,7 +128,7 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
               {accountMenuOpen ? (
                 <div className={styles.accountDropdown} role="menu">
                   <div className={styles.accountIdentity}>
-                    <div className={styles.accountHeading}>Signed in as {signedInLabel}</div>
+                    <div className={styles.accountHeading}>{signedInLabel}</div>
                     <div className={styles.accountFooter}>
                       <form action={otpMode ? signOutOtpAction : signOutAction}>
                         <button className={styles.signOutLink} type="submit">
@@ -221,7 +221,7 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
                         Admin
                       </Link>
                     ) : null}
-                    <div className={styles.mobileUserLabel}>Signed in as {signedInLabel}</div>
+                    <div className={styles.mobileUserLabel}>{signedInLabel}</div>
                     <div className={styles.mobileSignOutRow}>
                       <form action={otpMode ? signOutOtpAction : signOutAction} onSubmit={() => setMenuOpen(false)}>
                         <button className={styles.signOutLink} type="submit">

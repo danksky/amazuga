@@ -124,7 +124,7 @@ export async function getUserByPhoneFromDb(phone: string) {
 }
 
 export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: string; fullName?: string }) {
-  const fullName = input.fullName ?? input.phone;
+  const fullName = input.fullName ?? null;
   const idResult = await getPgPool().query<{ id: string }>(
     `
       INSERT INTO app_user (
@@ -138,14 +138,14 @@ export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: 
       VALUES (
         $1::uuid,
         $2,
-        $3,
+        COALESCE($3, $2),
         ARRAY['user']::TEXT[],
         'active',
         'otp_signup_v1'
       )
       ON CONFLICT (phone) DO UPDATE
         SET id        = EXCLUDED.id,
-            full_name = COALESCE(EXCLUDED.full_name, app_user.full_name),
+            full_name = COALESCE($3, app_user.full_name),
             status    = 'active'
       RETURNING id
     `,

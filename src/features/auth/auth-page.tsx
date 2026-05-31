@@ -203,11 +203,13 @@ function SignupDetailsStep({
   error,
   action,
   isMock,
+  phone,
 }: {
   next?: string;
   error?: string;
   action: (formData: FormData) => Promise<void>;
   isMock?: boolean;
+  phone?: string;
 }) {
   const errorMessage =
     error === "otp-send-failed"
@@ -239,7 +241,7 @@ function SignupDetailsStep({
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="phone">Phone number</label>
-              <input autoComplete="tel" className={styles.input} id="phone" name="phone" placeholder="+250 788 000 000" type="tel" />
+              <input autoComplete="tel" className={styles.input} defaultValue={phone} id="phone" name="phone" placeholder="+250 788 000 000" type="tel" />
             </div>
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
@@ -378,6 +380,7 @@ export function SignupPage({ next, error, otpMode, step, phone, firstName, lastN
       error={error}
       isMock={!otpMode}
       next={next}
+      phone={phone}
     />
   );
 }

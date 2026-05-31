@@ -157,6 +157,11 @@ export async function requestOtpAction(formData: FormData) {
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
 
+  const existingUser = await getUserByPhoneFromDb(phone);
+  if (!existingUser) {
+    redirect(`${routes.auth.signup}?phone=${encodeURIComponent(phone)}`);
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({ phone });
 
