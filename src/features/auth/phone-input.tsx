@@ -7,9 +7,17 @@ import styles from "./auth-page.module.css";
 const DEFAULT_PREFIX = "+250";
 const US_PREFIX = "+1";
 
-export function PhoneInput() {
-  const [prefix, setPrefix] = useState(DEFAULT_PREFIX);
-  const [local, setLocal] = useState("");
+function parseInitialValue(value?: string): { prefix: string; local: string } {
+  if (!value) return { prefix: DEFAULT_PREFIX, local: "" };
+  if (value.startsWith("+1")) return { prefix: US_PREFIX, local: value.slice(2).trim() };
+  if (value.startsWith("+250")) return { prefix: DEFAULT_PREFIX, local: value.slice(4).trim() };
+  return { prefix: DEFAULT_PREFIX, local: value.replace(/^\+/, "") };
+}
+
+export function PhoneInput({ initialValue }: { initialValue?: string }) {
+  const parsed = parseInitialValue(initialValue);
+  const [prefix, setPrefix] = useState(parsed.prefix);
+  const [local, setLocal] = useState(parsed.local);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;

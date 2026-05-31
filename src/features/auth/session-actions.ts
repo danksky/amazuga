@@ -110,7 +110,7 @@ export async function requestMockOtpAction(formData: FormData) {
 
   const user = await getUserByPhoneFromDb(phone);
   if (!user) {
-    redirect(`${routes.auth.login}?error=phone-not-found&next=${encodeURIComponent(next)}`);
+    redirect(`${routes.auth.login}?error=phone-not-found&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
   }
 
   redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);

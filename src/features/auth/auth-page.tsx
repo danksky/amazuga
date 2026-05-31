@@ -45,12 +45,14 @@ function getVerifyErrorCopy(error?: string) {
 function PhoneStep({
   next,
   error,
+  phone,
   action,
   users = [],
   isMock,
 }: {
   next?: string;
   error?: string;
+  phone?: string;
   action: (formData: FormData) => Promise<void>;
   users?: User[];
   isMock?: boolean;
@@ -71,7 +73,7 @@ function PhoneStep({
               <label className={styles.label} htmlFor="phone">
                 Phone number
               </label>
-              <PhoneInput />
+              <PhoneInput initialValue={phone} />
             </div>
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
@@ -235,7 +237,7 @@ function SignupDetailsStep({
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="phone">Phone number</label>
-              <PhoneInput />
+              <PhoneInput initialValue={phone} />
             </div>
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
@@ -331,14 +333,14 @@ export function AuthPage({ mode, next, error, users = [], otpMode, otpStep, otpP
     if (isVerifyStep) {
       return <VerifyStep action={verifyOtpAction} error={error} next={next} phone={otpPhone!} />;
     }
-    return <PhoneStep action={requestOtpAction} error={error} next={next} />;
+    return <PhoneStep action={requestOtpAction} error={error} next={next} phone={otpPhone} />;
   }
 
   // Mock two-step flow
   if (isVerifyStep) {
     return <VerifyStep action={verifyMockOtpAction} error={error} isMock next={next} phone={otpPhone!} />;
   }
-  return <PhoneStep action={requestMockOtpAction} error={error} isMock next={next} users={users} />;
+  return <PhoneStep action={requestMockOtpAction} error={error} isMock next={next} phone={otpPhone} users={users} />;
 }
 
 interface SignupPageProps {
