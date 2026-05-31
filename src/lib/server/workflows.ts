@@ -980,8 +980,8 @@ export async function listAgenciesFromDb() {
         a.pending_manager_user_id,
         a.manager_user_id,
         COALESCE(
-          ARRAY_AGG(DISTINCT am.user_id) FILTER (WHERE am.user_id IS NOT NULL AND am.status = 'active'),
-          ARRAY[]::UUID[]
+          ARRAY_AGG(DISTINCT am.user_id::TEXT) FILTER (WHERE am.user_id IS NOT NULL AND am.status = 'active'),
+          ARRAY[]::TEXT[]
         ) AS member_user_ids
       FROM agency a
       LEFT JOIN agency_membership am
@@ -1076,8 +1076,8 @@ export async function listAgenciesForUser(userId: string) {
         a.pending_manager_user_id,
         a.manager_user_id,
         COALESCE(
-          ARRAY_AGG(DISTINCT am.user_id) FILTER (WHERE am.user_id IS NOT NULL AND am.status = 'active'),
-          ARRAY[]::UUID[]
+          ARRAY_AGG(DISTINCT am.user_id::TEXT) FILTER (WHERE am.user_id IS NOT NULL AND am.status = 'active'),
+          ARRAY[]::TEXT[]
         ) AS member_user_ids
       FROM agency a
       LEFT JOIN agency_membership am
@@ -1800,7 +1800,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         status,
         pending_manager_user_id,
         manager_user_id,
-        ARRAY[]::UUID[] AS member_user_ids
+        ARRAY[]::TEXT[] AS member_user_ids
     `,
     [
       agencyId,

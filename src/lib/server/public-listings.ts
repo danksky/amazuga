@@ -336,8 +336,8 @@ async function getAgencyByIdFromDb(agencyId: string) {
         a.pending_manager_user_id,
         a.manager_user_id,
         COALESCE(
-          ARRAY_AGG(am.user_id ORDER BY am.user_id) FILTER (WHERE am.status = 'active'),
-          ARRAY[]::UUID[]
+          ARRAY_AGG(am.user_id::TEXT ORDER BY am.user_id::TEXT) FILTER (WHERE am.status = 'active'),
+          ARRAY[]::TEXT[]
         ) AS member_user_ids
       FROM agency a
       LEFT JOIN agency_membership am
