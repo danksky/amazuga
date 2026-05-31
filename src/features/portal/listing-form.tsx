@@ -382,12 +382,11 @@ export function ListingForm({
                 </div>
                 <div className={styles.propertyMetaFooter}>
                   <div className={styles.propertyMetaFooterCopy}>
-                    <strong>Need a correction?</strong> Property-record correction requests will be added here in a
-                    later pass so listing managers can flag issues without editing asset facts directly.
+                    These details are pulled from the property record. To update them, edit the property directly.
                   </div>
-                  <button className={styles.propertyMetaPlaceholderAction} disabled type="button">
-                    Request correction
-                  </button>
+                  <Link className={styles.propertyMetaPlaceholderAction} href={routes.app.portalPropertyEdit(selectedProperty.propertyRouteId)}>
+                    Edit property details
+                  </Link>
                 </div>
               </div>
             </section>
