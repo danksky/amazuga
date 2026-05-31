@@ -130,7 +130,6 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
                   <div className={styles.accountIdentity}>
                     <div className={styles.accountHeading}>Signed in as {signedInLabel}</div>
                     <div className={styles.accountFooter}>
-                      <span className={styles.accountFooterLabel}>Not you?</span>
                       <form action={otpMode ? signOutOtpAction : signOutAction}>
                         <button className={styles.signOutLink} type="submit">
                           Sign out
@@ -224,7 +223,6 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
                     ) : null}
                     <div className={styles.mobileUserLabel}>Signed in as {signedInLabel}</div>
                     <div className={styles.mobileSignOutRow}>
-                      <span className={styles.mobileUserLabel}>Not you?</span>
                       <form action={otpMode ? signOutOtpAction : signOutAction} onSubmit={() => setMenuOpen(false)}>
                         <button className={styles.signOutLink} type="submit">
                           Sign out

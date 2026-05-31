@@ -148,7 +148,7 @@
 .accountIdentity {
   display: grid;
   gap: 8px;
-  padding-bottom: 2px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -169,6 +169,10 @@
   color: var(--foreground);
 }
 
+.accountFooter form {
+  width: 100%;
+}
+
 .accountFooter {
   display: flex;
   align-items: center;
@@ -182,14 +186,23 @@
 }
 
 .signOutLink {
-  padding: 0;
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
   border: 0;
+  border-radius: 10px;
   background: transparent;
-  color: var(--foreground);
+  color: var(--foreground-muted);
   font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.signOutLink:hover {
+  background: var(--surface-muted);
+  color: var(--foreground);
 }
 
 .mobileOverlay {
