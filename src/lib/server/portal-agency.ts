@@ -67,7 +67,7 @@ async function getUsersByIds(userIds: string[]) {
     `
       SELECT id, full_name, email
       FROM app_user
-      WHERE id = ANY($1::TEXT[])
+      WHERE id = ANY($1::UUID[])
     `,
     [userIds],
   );
