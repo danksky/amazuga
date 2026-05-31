@@ -10,7 +10,6 @@ import { getUserByIdFromDb } from "@/lib/server/users";
 import type { User } from "@/types/domain";
 
 export const AUTH_COOKIE_NAME = "amazuga_mock_auth";
-const ADMIN_EMAIL = "daniel.kawalsky@gmail.com";
 
 export const isOtpMode = () => process.env.AUTH_MODE === "otp";
 
@@ -45,7 +44,7 @@ async function getCurrentUserOtp() {
 }
 
 export function isAdminUser(user: User | null | undefined) {
-  return !!user?.email && user.email === ADMIN_EMAIL;
+  return !!user?.roles?.includes("admin");
 }
 
 export async function requireCurrentUser(next?: string) {
