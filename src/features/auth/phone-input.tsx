@@ -14,21 +14,28 @@ export function PhoneInput() {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
 
-    // Easter egg: +1 prefix switch
+    // +1… → switch to US
     if (raw.startsWith("+1")) {
       setPrefix(US_PREFIX);
       setLocal(raw.slice(2).trimStart());
       return;
     }
 
-    // Allow bare "+" to sit while the user might still be typing "+1"
-    if (raw === "+") {
-      setLocal("+");
+    // +250… → confirm/switch to Rwanda
+    if (raw.startsWith("+250")) {
+      setPrefix(DEFAULT_PREFIX);
+      setLocal(raw.slice(4).trimStart());
       return;
     }
 
-    // Strip accidental re-entry of the country code prefix
-    setLocal(raw.replace(/^\+250\s*/g, "").replace(/^\+/g, ""));
+    // +, +2, +25 — hold in place; user may still be completing +250
+    if (/^\+2?5?$/.test(raw)) {
+      setLocal(raw);
+      return;
+    }
+
+    // Anything else starting with + that isn't a known prefix → strip the +
+    setLocal(raw.replace(/^\+/g, ""));
   }
 
   const fullPhone = local.trim() ? `${prefix}${local.replace(/\s/g, "") ? " " + local.trim() : ""}` : "";
