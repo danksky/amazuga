@@ -491,6 +491,14 @@ export function PropertyPage({
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
+                  <a
+                    className={styles.actionLinkSecondary}
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Get directions
+                  </a>
                 </div>
               </div>
             ) : (
@@ -531,6 +539,14 @@ export function PropertyPage({
                   <input name="propertyPath" type="hidden" value={propertyPath} />
                   <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                 </form>
+                <a
+                  className={styles.actionLinkSecondary}
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Get directions
+                </a>
               </div>
             )}
           </div>
