@@ -14,14 +14,20 @@ export function PhoneInput() {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
 
-    // Easter egg: typing +1 anywhere switches to US prefix
-    if (raw.includes("+1")) {
+    // Easter egg: +1 prefix switch
+    if (raw.startsWith("+1")) {
       setPrefix(US_PREFIX);
-      setLocal(raw.replace(/\+1/g, "").trimStart());
+      setLocal(raw.slice(2).trimStart());
       return;
     }
 
-    // Strip any accidental leading + or country code re-entry
+    // Allow bare "+" to sit while the user might still be typing "+1"
+    if (raw === "+") {
+      setLocal("+");
+      return;
+    }
+
+    // Strip accidental re-entry of the country code prefix
     setLocal(raw.replace(/^\+250\s*/g, "").replace(/^\+/g, ""));
   }
 
