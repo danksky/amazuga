@@ -595,11 +595,11 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
            l.visibility = 'private'
            AND $2::TEXT IS NOT NULL
            AND (
-             l.agent_user_id = $2::TEXT
+             l.agent_user_id::TEXT = $2::TEXT
              OR EXISTS (
                SELECT 1 FROM listing_access_grant lag
                WHERE lag.listing_id = l.id
-                 AND lag.granted_to_user_id = $2::TEXT
+                 AND lag.granted_to_user_id::TEXT = $2::TEXT
              )
            )
          )
