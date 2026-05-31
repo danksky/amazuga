@@ -1,15 +1,9 @@
 .navWrap {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 20;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-}
-
-@media (min-width: 901px) {
-  .navWrap {
-    position: sticky;
-    top: 0;
-  }
 }
 
 .nav {
