@@ -14,8 +14,8 @@ export function SellEntryPage({
     ? routes.app.portalProperties
     : `${routes.auth.signup}?next=${encodeURIComponent(routes.app.portalProperties)}`;
   const agentHref = isSignedIn
-    ? routes.onboarding.agentApplicationNew
-    : `${routes.auth.signup}?next=${encodeURIComponent(routes.onboarding.agentApplicationNew)}`;
+    ? routes.onboarding.agentApplicationChoosePath
+    : `${routes.auth.signup}?next=${encodeURIComponent(routes.onboarding.agentApplicationChoosePath)}`;
 
   return (
     <div className={`container ${styles.page}`}>

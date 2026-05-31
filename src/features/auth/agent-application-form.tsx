@@ -43,6 +43,13 @@ export function AgentApplicationForm({ agencies }: { agencies: Agency[] }) {
               Select the approved agency you intend to join. Agency selection is required for agent review.
             </div>
             <AgencyPicker agencies={agencies} />
+            <div className={styles.hint}>
+              Don&apos;t see your agency?{" "}
+              <Link className={styles.inlineLink} href={routes.onboarding.agencyRegistrationNew}>
+                Register one
+              </Link>
+              .
+            </div>
           </div>
 
           <div className={styles.field}>

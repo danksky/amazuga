@@ -33,6 +33,7 @@ export const routes = {
   onboarding: {
     advertise: "/sell/portal/applications",
     assess: "/assess",
+    agentApplicationChoosePath: "/agent/applications/choose-path",
     agentApplicationNew: "/agent/applications/new",
     agentApplication: (applicationId: string) => `/agent/applications/${applicationId}`,
     agencyRegistrationNew: "/agency/registration-requests/new",
