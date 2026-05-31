@@ -1647,6 +1647,9 @@ export async function updateApplicationStatusInDb(
         ? "agent_application"
         : "valuator_application";
 
+  // agency_application uses created_by_user_id; agent/valuator use user_id
+  const returningClause = kind === "agency" ? "created_by_user_id" : "user_id";
+
   const result = await getPgPool().query<{ user_id?: string; created_by_user_id?: string }>(
     `
       UPDATE ${tableName}
@@ -1654,7 +1657,7 @@ export async function updateApplicationStatusInDb(
         status = $2,
         updated_at = NOW()
       WHERE id = $1
-      RETURNING user_id, created_by_user_id
+      RETURNING ${returningClause}
     `,
     [applicationId, status],
   );
