@@ -560,12 +560,12 @@
 
   .summary,
   .primaryInfoPanel,
-  .section,
-  .mapPanel {
+  .section {
     padding: 18px;
   }
 
-  .mediaPanel {
+  .mediaPanel,
+  .mapPanel {
     height: auto;
   }
 
@@ -595,12 +595,11 @@
   }
 
   .mapGrid {
-    height: auto;
-    min-height: 280px;
+    height: 280px;
   }
 
   .secondaryMapFrame {
-    min-height: 280px;
+    height: 280px;
   }
 
   .facts {
