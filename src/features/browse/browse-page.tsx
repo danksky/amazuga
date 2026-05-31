@@ -11,13 +11,14 @@ import { BrowseListingCard } from "@/components/property/browse-listing-card";
 import styles from "./browse-page.module.css";
 
 const MIN_DISPLAY_CARDS = 6;
+const MOBILE_DEFAULT_BBOX = "29.893801749868373,-2.414548841003537,30.3470216455205,-1.5786872357282675";
 
 interface BrowsePageProps {
   mode: "buy" | "rent";
 }
 
 export function BrowsePage({ mode }: BrowsePageProps) {
-  const [showMobileMap, setShowMobileMap] = useState(false);
+  const [showMobileMap, setShowMobileMap] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cards, setCards] = useState<BrowseMapCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,8 +78,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   // see listings immediately without waiting for the hidden map to initialise.
   useEffect(() => {
     const apiMode = mode === "buy" ? "sale" : "rent";
-    const KIGALI_BBOX = "29.90,-2.05,30.25,-1.80";
-    fetch(`/api/public/browse/map?mode=${apiMode}&bbox=${KIGALI_BBOX}`)
+    fetch(`/api/public/browse/map?mode=${apiMode}&bbox=${MOBILE_DEFAULT_BBOX}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.cards?.length) {

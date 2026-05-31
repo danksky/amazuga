@@ -23,6 +23,10 @@ const OFF_MARKET_MIN_ZOOM = 16;
 const ZOOM_REFETCH_THRESHOLD = 1;
 const FETCH_DEBOUNCE_MS = 300;
 const MOBILE_BREAKPOINT = 1100;
+const MOBILE_DEFAULT_BOUNDS: [[number, number], [number, number]] = [
+  [29.893801749868373, -2.414548841003537],
+  [30.3470216455205, -1.5786872357282675],
+];
 
 const PILL_W = 54; // fixed width — all pills the same size
 const PILL_H = 24;
@@ -395,6 +399,8 @@ export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, sel
 
     // ---- Map instance --------------------------------------------------
 
+    const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+
     const map = new maplibregl.Map({
       container,
       style: {
@@ -402,8 +408,15 @@ export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, sel
         sources,
         layers,
       },
-      center: [30.06, -1.94],
-      zoom: 12,
+      ...(isMobile
+        ? {
+            bounds: MOBILE_DEFAULT_BOUNDS,
+            fitBoundsOptions: { padding: 24, maxZoom: 12 },
+          }
+        : {
+            center: [30.06, -1.94] as [number, number],
+            zoom: 12,
+          }),
     });
 
     mapInstanceRef.current = map;
