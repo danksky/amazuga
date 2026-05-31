@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { submitAgentApplicationAction } from "@/features/auth/actions";
 import { AgencyPicker } from "@/features/auth/agency-picker";
+import { IdPhotoUploader } from "@/features/auth/id-photo-uploader";
 import { routes } from "@/lib/routes";
 import type { Agency } from "@/types/domain";
 
@@ -37,15 +38,7 @@ export function AgentApplicationForm({ agencies }: { agencies: Agency[] }) {
 
           <div className={styles.field}>
             <div className={styles.label}>National ID photo</div>
-            <div className={styles.uploadBox}>
-              <div className={styles.uploadTitle}>Upload required document</div>
-              <div className={styles.uploadBody}>
-                Add a clear photo of your National ID. This is required for admin review and agent approval.
-              </div>
-              <Button type="button" variant="secondary">
-                Upload ID photo
-              </Button>
-            </div>
+            <IdPhotoUploader />
           </div>
 
           <div className={styles.actions}>

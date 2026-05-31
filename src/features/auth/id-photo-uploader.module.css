@@ -1,0 +1,99 @@
+.root {
+  display: grid;
+  gap: 10px;
+}
+
+.fileInput {
+  display: none;
+}
+
+.uploadBox {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.uploadTitle {
+  font-weight: 600;
+}
+
+.uploadBody {
+  color: var(--foreground-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.uploadBtn {
+  align-self: start;
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.uploadBtn:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.uploadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.previewImg {
+  width: 72px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.previewMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.previewLabel {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.replaceBtn {
+  align-self: start;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--foreground-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.replaceBtn:hover {
+  color: var(--foreground);
+}
+
+.error {
+  font-size: 0.88rem;
+  color: var(--destructive);
+}
