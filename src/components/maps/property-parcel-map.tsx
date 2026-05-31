@@ -155,6 +155,7 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
       },
       center: centroid,
       zoom: 17,
+      attributionControl: false,
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -212,5 +213,16 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
     };
   }, [parcelKey, property, propertyBbox]);
 
-  return <div ref={mapRef} className={styles.map} />;
+  return (
+    <div className={styles.mapWrap}>
+      <div ref={mapRef} className={styles.map} />
+      <div className={styles.attribution}>
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a>
+        {" · "}
+        <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">© CARTO</a>
+        {" · "}
+        <a href="https://maplibre.org" target="_blank" rel="noopener noreferrer">MapLibre</a>
+      </div>
+    </div>
+  );
 }

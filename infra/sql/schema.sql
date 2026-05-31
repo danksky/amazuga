@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS listing (
   -- parcel location without a join through property_asset.
   parcel_id           TEXT NOT NULL,
   property_asset_id   TEXT NOT NULL REFERENCES property_asset(id),
-  agency_id           TEXT NOT NULL REFERENCES agency(id),
+  agency_id           TEXT REFERENCES agency(id),
   agent_user_id       UUID NOT NULL REFERENCES app_user(id),
   status              TEXT NOT NULL CHECK (status IN ('draft', 'active', 'inactive', 'archived')),
   marketing_type      TEXT NOT NULL CHECK (marketing_type IN ('sale', 'rent')),
@@ -967,7 +967,7 @@ SELECT
 FROM listing l
 JOIN property_asset_surface pas
   ON pas.property_asset_id = l.property_asset_id
-JOIN agency a
+LEFT JOIN agency a
   ON a.id = l.agency_id
 JOIN app_user u
   ON u.id = l.agent_user_id
