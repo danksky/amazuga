@@ -35,6 +35,7 @@ interface DetailItem {
 }
 
 interface PrimaryInfoStat {
+  label?: string;
   value?: string;
 }
 
@@ -188,32 +189,32 @@ function buildPrimaryInfoStats(property: Property, propertyKind?: PropertyKind):
 
   switch (propertyKind) {
     case "land":
-      return [{}, {}, { value: parcelValue }];
+      return [{ label: "Land area", value: parcelValue }, {}, {}];
     case "apartment_unit":
       return [
-        { value: bedroomValue },
-        { value: bathroomValue },
-        { value: interiorValue },
+        { label: "Beds", value: bedroomValue },
+        { label: "Baths", value: bathroomValue },
+        { label: "Interior", value: interiorValue },
       ];
     case "apartment_building":
     case "commercial_building":
       return [
-        { value: interiorValue },
-        { value: parcelValue },
-        { value: yearBuiltValue },
+        { label: "Interior", value: interiorValue },
+        { label: "Land area", value: parcelValue },
+        { label: "Built", value: yearBuiltValue },
       ];
     case "commercial_unit":
       return [
-        { value: interiorValue },
-        { value: bathroomValue },
-        { value: parcelValue },
+        { label: "Interior", value: interiorValue },
+        { label: "Baths", value: bathroomValue },
+        { label: "Land area", value: parcelValue },
       ];
     case "house":
     default:
       return [
-        { value: bedroomValue },
-        { value: bathroomValue },
-        { value: interiorValue },
+        { label: "Beds", value: bedroomValue },
+        { label: "Baths", value: bathroomValue },
+        { label: "Interior", value: interiorValue },
       ];
   }
 }
@@ -458,6 +459,7 @@ export function PropertyPage({
             <div className={styles.primaryInfoStats}>
               {primaryInfoStats.map((stat, index) => (
                 <div className={styles.primaryInfoStat} key={`${propertyKind}-${index}`}>
+                  {stat.label ? <div className={styles.eyebrow}>{stat.label}</div> : null}
                   {stat.value ? <span>{stat.value}</span> : null}
                 </div>
               ))}
