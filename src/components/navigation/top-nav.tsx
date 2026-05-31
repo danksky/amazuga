@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -84,7 +85,7 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
     <div className={styles.navWrap}>
       <div className={`container ${styles.nav}`}>
         <Link className={styles.brand} href={routes.public.buy}>
-          Amazuga
+          <Image src="/amazuga-logo-icon-text.png" alt="Amazuga" height={32} width={160} priority />
         </Link>
         <div className={styles.links}>
           {marketingLinks.map((item) => (
@@ -175,7 +176,9 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
         {menuOpen ? (
           <div className={styles.mobileOverlay}>
             <div className={styles.mobileOverlayHeader}>
-              <div className={styles.brand}>Amazuga</div>
+              <div className={styles.brand}>
+                <Image src="/amazuga-logo-icon-text.png" alt="Amazuga" height={32} width={160} priority />
+              </div>
               <button
                 aria-label="Close navigation menu"
                 className={styles.menuButton}
