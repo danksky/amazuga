@@ -9,11 +9,17 @@ import styles from "./agency-picker.module.css";
 interface AgencyPickerProps {
   agencies: Agency[];
   initialAgencyId?: string;
+  onChange?: (agencyId: string) => void;
 }
 
-export function AgencyPicker({ agencies, initialAgencyId }: AgencyPickerProps) {
+export function AgencyPicker({ agencies, initialAgencyId, onChange }: AgencyPickerProps) {
   const [query, setQuery] = useState("");
   const [selectedAgencyId, setSelectedAgencyId] = useState(initialAgencyId ?? "");
+
+  function updateSelectedAgencyId(id: string) {
+    setSelectedAgencyId(id);
+    onChange?.(id);
+  }
   const searchId = useId();
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -45,7 +51,7 @@ export function AgencyPicker({ agencies, initialAgencyId }: AgencyPickerProps) {
             aria-label="Clear selected agency"
             className={styles.clearButton}
             onClick={() => {
-              setSelectedAgencyId("");
+              updateSelectedAgencyId("");
               setQuery("");
             }}
             type="button"
@@ -75,7 +81,7 @@ export function AgencyPicker({ agencies, initialAgencyId }: AgencyPickerProps) {
                   className={`${styles.option} ${isSelected ? styles.optionSelected : ""}`}
                   key={agency.id}
                   onClick={() => {
-                    setSelectedAgencyId(agency.id);
+                    updateSelectedAgencyId(agency.id);
                     setQuery("");
                   }}
                   type="button"

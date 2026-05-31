@@ -161,7 +161,7 @@ export interface ManagerTransferRequest {
 export interface AgentApplication {
   id: string;
   userId: string;
-  nationalIdPhotoUrl: string;
+  nationalIdPhotoKey: string;
   selectedAgencyId?: string;
   status: SubmissionStatus;
   createdAt: string;

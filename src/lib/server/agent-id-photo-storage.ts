@@ -2,11 +2,12 @@ import "server-only";
 
 import { createHmac, randomUUID } from "node:crypto";
 
-// ID photos are uploaded to the same listing media bucket and worker,
-// scoped under the "agent-id-photos" path prefix instead of a listing ID.
-// The storage key becomes: listing-images/agent-id-photos/{imageId}/gallery.jpg
-// Files are publicly accessible via media.amazuga.com but URLs are UUID-based
-// and unguessable — acceptable for MVP.
+// Agent ID photos are uploaded via the listing-media worker but written to a
+// separate private R2 bucket (amazuga-agent-id-photos) with no public domain.
+// The worker returns a storageKey ("agent-id-photos/{uuid}/gallery.jpg") which
+// is stored in agent_application.national_id_photo_key.
+// Admin reads go through /api/admin/id-photo/[...key], authenticated server-side
+// via AGENT_ID_PHOTO_ADMIN_READ_SECRET → listing-media worker /admin-read/ endpoint.
 
 const AGENT_ID_PHOTO_CONTEXT = "agent-id-photos";
 const MAX_ID_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -33,17 +34,15 @@ function createSignedToken(payload: Record<string, unknown>, secret: string) {
 export function isAgentIdPhotoUploadConfigured() {
   return Boolean(
     getRequiredEnv("LISTING_IMAGE_UPLOAD_URL") &&
-    getRequiredEnv("LISTING_IMAGES_PUBLIC_BASE_URL") &&
     getRequiredEnv("LISTING_IMAGE_UPLOAD_SECRET"),
   );
 }
 
 export function createAgentIdPhotoUploadIntent(userId: string) {
   const uploadUrl = getRequiredEnv("LISTING_IMAGE_UPLOAD_URL");
-  const publicBaseUrl = getRequiredEnv("LISTING_IMAGES_PUBLIC_BASE_URL");
   const signingSecret = getRequiredEnv("LISTING_IMAGE_UPLOAD_SECRET");
 
-  if (!uploadUrl || !publicBaseUrl || !signingSecret) {
+  if (!uploadUrl || !signingSecret) {
     throw new Error("Agent ID photo upload is not configured.");
   }
 

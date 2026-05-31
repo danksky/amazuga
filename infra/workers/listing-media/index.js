@@ -119,8 +119,52 @@ function buildPublicUrl(env, storageKey) {
   return `${env.PUBLIC_BASE_URL.replace(/\/+$/, "")}/${storageKey}`;
 }
 
+// Server-to-server read endpoint for private agent ID photos.
+// Called by the Next.js admin proxy route; never exposed to browsers.
+async function handleAdminRead(request, env) {
+  if (!env.AGENT_ID_PHOTOS_BUCKET || !env.ADMIN_READ_SECRET) {
+    return json({ error: "Admin read is not configured." }, { status: 503 });
+  }
+
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || authHeader !== `Bearer ${env.ADMIN_READ_SECRET}`) {
+    return json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const ADMIN_READ_PREFIX = "/admin-read/";
+  const key = url.pathname.startsWith(ADMIN_READ_PREFIX)
+    ? url.pathname.slice(ADMIN_READ_PREFIX.length)
+    : null;
+
+  if (!key) {
+    return json({ error: "Missing object key." }, { status: 400 });
+  }
+
+  const object = await env.AGENT_ID_PHOTOS_BUCKET.get(key);
+  if (!object) {
+    return json({ error: "Not found." }, { status: 404 });
+  }
+
+  return new Response(object.body, {
+    status: 200,
+    headers: {
+      "content-type": object.httpMetadata?.contentType || "image/jpeg",
+      "cache-control": "private, no-store",
+      "content-length": String(object.size),
+    },
+  });
+}
+
+const AGENT_ID_PHOTO_LISTING_ID = "agent-id-photos";
+
 const listingMediaWorker = {
   async fetch(request, env) {
+    // Admin read: server-to-server only, no CORS involved.
+    if (request.method === "GET") {
+      return handleAdminRead(request, env);
+    }
+
     const corsHeaders = buildCorsHeaders(request, env);
 
     if (request.method === "OPTIONS") {
@@ -134,7 +178,7 @@ const listingMediaWorker = {
       return json({ error: "Method not allowed." }, { status: 405, headers: corsHeaders });
     }
 
-    if (!env.LISTING_MEDIA_BUCKET || !env.PUBLIC_BASE_URL || !env.UPLOAD_SHARED_SECRET) {
+    if (!env.LISTING_MEDIA_BUCKET || !env.AGENT_ID_PHOTOS_BUCKET || !env.PUBLIC_BASE_URL || !env.UPLOAD_SHARED_SECRET) {
       return json({ error: "Worker is not configured." }, { status: 500, headers: corsHeaders });
     }
 
@@ -150,9 +194,12 @@ const listingMediaWorker = {
         return json({ error: "Delete token payload is invalid." }, { status: 400, headers: corsHeaders });
       }
 
-      await env.LISTING_MEDIA_BUCKET.delete(payload.storageKey);
+      // Route delete to the correct bucket based on the storage key prefix.
+      const isAgentIdPhoto = payload.storageKey.startsWith(`${AGENT_ID_PHOTO_LISTING_ID}/`);
+      const bucket = isAgentIdPhoto ? env.AGENT_ID_PHOTOS_BUCKET : env.LISTING_MEDIA_BUCKET;
+      await bucket.delete(payload.storageKey);
 
-      if (env.CLOUDFLARE_ZONE_ID && env.CLOUDFLARE_API_TOKEN) {
+      if (!isAgentIdPhoto && env.CLOUDFLARE_ZONE_ID && env.CLOUDFLARE_API_TOKEN) {
         const publicUrl = buildPublicUrl(env, payload.storageKey);
         await fetch(
           `https://api.cloudflare.com/client/v4/zones/${env.CLOUDFLARE_ZONE_ID}/purge_cache`,
@@ -203,7 +250,30 @@ const listingMediaWorker = {
       return json({ error: "Processed upload exceeded the maximum allowed size." }, { status: 400, headers: corsHeaders });
     }
 
+    const isAgentIdPhoto = payload.listingId === AGENT_ID_PHOTO_LISTING_ID;
     const imageId = crypto.randomUUID();
+
+    if (isAgentIdPhoto) {
+      // Agent ID photos go into the private bucket, no public URL.
+      const storageKey = `${AGENT_ID_PHOTO_LISTING_ID}/${imageId}/gallery.jpg`;
+      await env.AGENT_ID_PHOTOS_BUCKET.put(storageKey, file.stream(), {
+        httpMetadata: {
+          contentType: "image/jpeg",
+          cacheControl: "private, no-store",
+        },
+        customMetadata: {
+          userId: String(payload.userId),
+          intentId: String(payload.intentId),
+        },
+      });
+
+      return json(
+        { storageKey },
+        { status: 201, headers: corsHeaders },
+      );
+    }
+
+    // Listing photos go into the public bucket.
     const storageKey = `listing-images/${payload.listingId}/${imageId}/gallery.jpg`;
     await env.LISTING_MEDIA_BUCKET.put(storageKey, file.stream(), {
       httpMetadata: {

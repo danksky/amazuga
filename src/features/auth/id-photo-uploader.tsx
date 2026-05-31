@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import styles from "./id-photo-uploader.module.css";
 
@@ -47,11 +47,33 @@ interface UploadIntent {
   uploadUrl: string;
 }
 
-export function IdPhotoUploader({ name = "nationalIdPhotoUrl" }: { name?: string }) {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+export function IdPhotoUploader({ name = "nationalIdPhotoKey", onChange }: { name?: string; onChange?: (key: string) => void }) {
+  // storageKey is the R2 object key stored in the DB and passed in the hidden input.
+  // previewUrl is a local object URL (never stored or sent anywhere) used only for
+  // the thumbnail preview — it is revoked when replaced or on unmount.
+  const [storageKey, setStorageKey] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Revoke object URL on unmount to avoid memory leaks.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function clearAndReplace() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    setStorageKey(null);
+    onChange?.("");
+    inputRef.current?.click();
+  }
 
   async function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -63,28 +85,40 @@ export function IdPhotoUploader({ name = "nationalIdPhotoUrl" }: { name?: string
     try {
       const normalized = await normalizeToJpeg(file);
 
+      // Create a local preview URL from the processed file — used only in the browser,
+      // never stored anywhere. The bucket is private so there is no public URL to show.
+      const localPreview = URL.createObjectURL(normalized);
+
       // Get signed upload intent
       const intentRes = await fetch("/api/onboarding/agent-applications/id-photo-intent", {
         method: "POST",
       });
       const intentPayload = await intentRes.json().catch(() => null);
       if (!intentRes.ok || !intentPayload?.intent) {
+        URL.revokeObjectURL(localPreview);
         throw new Error(intentPayload?.error || "Could not create upload intent.");
       }
       const intent = intentPayload.intent as UploadIntent;
 
-      // Upload to Cloudflare Worker
+      // Upload to Cloudflare Worker (writes to private bucket, returns storageKey only)
       const formData = new FormData();
       formData.append("token", intent.token);
       formData.append("file", normalized);
 
       const uploadRes = await fetch(intent.uploadUrl, { method: "POST", body: formData });
       const uploadPayload = await uploadRes.json().catch(() => null);
-      if (!uploadRes.ok || !uploadPayload?.imageUrl) {
+      if (!uploadRes.ok || !uploadPayload?.storageKey) {
+        URL.revokeObjectURL(localPreview);
         throw new Error(uploadPayload?.error || "Upload failed.");
       }
 
-      setPhotoUrl(uploadPayload.imageUrl as string);
+      // Revoke previous preview URL if replacing.
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+
+      const key = uploadPayload.storageKey as string;
+      setStorageKey(key);
+      setPreviewUrl(localPreview);
+      onChange?.(key);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -95,18 +129,18 @@ export function IdPhotoUploader({ name = "nationalIdPhotoUrl" }: { name?: string
 
   return (
     <div className={styles.root}>
-      {/* Hidden input carries the URL into the server action */}
-      <input type="hidden" name={name} value={photoUrl ?? ""} />
+      {/* Hidden input carries the storage key into the server action */}
+      <input type="hidden" name={name} value={storageKey ?? ""} />
 
-      {photoUrl ? (
+      {storageKey && previewUrl ? (
         <div className={styles.preview}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img alt="ID photo preview" className={styles.previewImg} src={photoUrl} />
+          <img alt="ID photo preview" className={styles.previewImg} src={previewUrl} />
           <div className={styles.previewMeta}>
             <span className={styles.previewLabel}>ID photo uploaded</span>
             <button
               className={styles.replaceBtn}
-              onClick={() => inputRef.current?.click()}
+              onClick={clearAndReplace}
               type="button"
             >
               Replace

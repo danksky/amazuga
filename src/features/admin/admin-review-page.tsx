@@ -11,6 +11,7 @@ interface ReviewItem {
   meta: string[];
   kind: "agency" | "agent" | "valuator" | "valuation" | "property_claim";
   details: Array<{ label: string; value: string }>;
+  documentLinks?: Array<{ label: string; url: string }>;
   reviewNote: string;
   approvalBlockedReason?: string;
 }
@@ -74,6 +75,25 @@ export function AdminReviewPage({ title, body, active, items, empty }: AdminRevi
                         </div>
                       ))}
                     </div>
+                    {item.documentLinks && item.documentLinks.length > 0 ? (
+                      <div className={styles.docList}>
+                        {item.documentLinks.map((doc) => (
+                          <div className={styles.docItem} key={doc.label}>
+                            <div className={styles.docLabel}>{doc.label}</div>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img alt={doc.label} className={styles.docImg} src={doc.url} />
+                            <a
+                              className={styles.docLink}
+                              href={doc.url}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              Open full size ↗
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className={styles.reviewNote}>
                       <div className={styles.reviewNoteLabel}>Approval effect</div>
                       <div>{item.reviewNote}</div>

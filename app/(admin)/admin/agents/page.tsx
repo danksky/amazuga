@@ -12,7 +12,10 @@ export default async function AdminAgentsPage() {
       id: application.id,
       kind: "agent" as const,
       title: application.userId,
-      meta: ["National ID photo received", `Submitted ${formatDate(application.createdAt)}`],
+      meta: [
+        application.nationalIdPhotoKey ? "National ID photo received" : "No National ID photo",
+        `Submitted ${formatDate(application.createdAt)}`,
+      ],
       details: [
         { label: "Application ID", value: application.id },
         {
@@ -22,8 +25,10 @@ export default async function AdminAgentsPage() {
             application.selectedAgencyId ??
             "Unknown",
         },
-        { label: "National ID", value: "Received" },
       ],
+      documentLinks: application.nationalIdPhotoKey
+        ? [{ label: "National ID photo", url: `/api/admin/id-photo/${application.nationalIdPhotoKey}` }]
+        : undefined,
       reviewNote:
         "Approving this application grants agent approval and activates membership in the selected approved agency. If this user is also the pending manager candidate for an approved agency, manager access activates at the same time.",
     }));

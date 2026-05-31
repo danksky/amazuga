@@ -110,6 +110,17 @@
   line-height: 1.5;
 }
 
+.fieldError {
+  border-radius: 12px;
+  outline: 2px solid var(--destructive);
+  outline-offset: 2px;
+}
+
+.errorMessage {
+  font-size: 0.88rem;
+  color: var(--destructive);
+}
+
 .actions {
   display: flex;
   gap: 12px;

@@ -50,11 +50,11 @@ export async function submitAgencyRegistrationAction(formData: FormData) {
 export async function submitAgentApplicationAction(formData: FormData) {
   const currentUser = await requireCurrentUser(routes.onboarding.agentApplicationNew);
   const selectedAgencyId = getRequiredString(formData, "agencyId");
-  const nationalIdPhotoUrl = getRequiredString(formData, "nationalIdPhotoUrl");
+  const nationalIdPhotoKey = getRequiredString(formData, "nationalIdPhotoKey");
 
   const application = await createAgentApplicationInDb({
     userId: currentUser.id,
-    nationalIdPhotoUrl,
+    nationalIdPhotoKey,
     selectedAgencyId,
   });
 

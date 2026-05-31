@@ -314,6 +314,21 @@ resource "vercel_project_environment_variable" "off_market_pmtiles_url" {
   comment    = "Public Worker-backed PMTiles URL for off-market parcel discoverability dots."
 }
 
+resource "cloudflare_r2_bucket" "agent_id_photos" {
+  account_id    = var.cloudflare_account_id
+  name          = var.cloudflare_agent_id_photos_bucket_name
+  location      = var.cloudflare_agent_id_photos_bucket_location
+  storage_class = "Standard"
+  # No cloudflare_r2_custom_domain or cloudflare_r2_managed_domain attached —
+  # this bucket is intentionally private; access goes through the listing-media
+  # worker's /admin-read/ endpoint, authenticated via ADMIN_READ_SECRET.
+}
+
+resource "random_password" "agent_id_photo_admin_read_secret" {
+  length  = 48
+  special = false
+}
+
 resource "cloudflare_r2_bucket" "listing_media" {
   account_id    = var.cloudflare_account_id
   name          = var.cloudflare_listing_media_bucket_name
@@ -353,6 +368,16 @@ resource "cloudflare_workers_script" "listing_media" {
       name        = "LISTING_MEDIA_BUCKET"
       type        = "r2_bucket"
       bucket_name = cloudflare_r2_bucket.listing_media.name
+    },
+    {
+      name        = "AGENT_ID_PHOTOS_BUCKET"
+      type        = "r2_bucket"
+      bucket_name = cloudflare_r2_bucket.agent_id_photos.name
+    },
+    {
+      name = "ADMIN_READ_SECRET"
+      type = "secret_text"
+      text = random_password.agent_id_photo_admin_read_secret.result
     },
     {
       name = "ALLOWED_ORIGINS"
@@ -464,6 +489,16 @@ resource "vercel_project_environment_variable" "listing_image_upload_secret" {
   sensitive  = true
   target     = ["production", "preview"]
   comment    = "Shared secret used to sign listing image upload intents."
+}
+
+resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AGENT_ID_PHOTO_ADMIN_READ_SECRET"
+  value      = random_password.agent_id_photo_admin_read_secret.result
+  sensitive  = true
+  target     = ["production", "preview"]
+  comment    = "Shared secret for server-side admin reads of private agent ID photos via the listing-media worker."
 }
 
 resource "vercel_project_environment_variable" "cron_secret" {

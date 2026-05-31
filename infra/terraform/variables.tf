@@ -168,6 +168,18 @@ variable "cloudflare_off_market_tiles_worker_rate_limit_namespace_id" {
   default     = "41002"
 }
 
+variable "cloudflare_agent_id_photos_bucket_name" {
+  description = "Bucket name for private agent ID photos. No public domain is attached — access is server-side only."
+  type        = string
+  default     = "amazuga-agent-id-photos"
+}
+
+variable "cloudflare_agent_id_photos_bucket_location" {
+  description = "Preferred location hint for the agent ID photos bucket."
+  type        = string
+  default     = "enam"
+}
+
 variable "cloudflare_listing_media_bucket_name" {
   description = "Bucket name for listing photos."
   type        = string

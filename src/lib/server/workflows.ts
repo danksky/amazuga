@@ -56,7 +56,7 @@ interface AgencyApplicationRow {
 interface AgentApplicationRow {
   id: string;
   user_id: string;
-  national_id_photo_url: string;
+  national_id_photo_key: string;
   selected_agency_id: string | null;
   status: SubmissionStatus;
   created_at: string;
@@ -244,7 +244,7 @@ function toAgentApplication(row: AgentApplicationRow): AgentApplication {
   return {
     id: row.id,
     userId: row.user_id,
-    nationalIdPhotoUrl: row.national_id_photo_url,
+    nationalIdPhotoKey: row.national_id_photo_key,
     selectedAgencyId: row.selected_agency_id || undefined,
     status: row.status,
     createdAt: row.created_at,
@@ -896,7 +896,7 @@ async function getLatestAgentApplicationForUser(userId: string) {
       SELECT
         id,
         user_id,
-        national_id_photo_url,
+        national_id_photo_key,
         selected_agency_id,
         status,
         created_at::TEXT
@@ -917,7 +917,7 @@ async function getAgentApplicationById(applicationId: string) {
       SELECT
         id,
         user_id,
-        national_id_photo_url,
+        national_id_photo_key,
         selected_agency_id,
         status,
         created_at::TEXT
@@ -1031,7 +1031,7 @@ export async function listAgentApplicationsFromDb() {
       SELECT
         id,
         user_id,
-        national_id_photo_url,
+        national_id_photo_key,
         selected_agency_id,
         status,
         created_at::TEXT
@@ -1410,7 +1410,7 @@ export async function createAgencyApplicationInDb(input: {
 
 export async function createAgentApplicationInDb(input: {
   userId: string;
-  nationalIdPhotoUrl: string;
+  nationalIdPhotoKey: string;
   selectedAgencyId?: string;
 }) {
   const id = createRecordId("agent-application");
@@ -1419,7 +1419,7 @@ export async function createAgentApplicationInDb(input: {
       INSERT INTO agent_application (
         id,
         user_id,
-        national_id_photo_url,
+        national_id_photo_key,
         selected_agency_id,
         status,
         seed_source
@@ -1428,12 +1428,12 @@ export async function createAgentApplicationInDb(input: {
       RETURNING
         id,
         user_id,
-        national_id_photo_url,
+        national_id_photo_key,
         selected_agency_id,
         status,
         created_at::TEXT
     `,
-    [id, input.userId, input.nationalIdPhotoUrl, input.selectedAgencyId || null],
+    [id, input.userId, input.nationalIdPhotoKey, input.selectedAgencyId || null],
   );
 
   return toAgentApplication(result.rows[0]);
