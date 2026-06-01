@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { routes } from "@/lib/routes";
-import { listAgenciesFromDb, listAgentApplicationsFromDb, listValuatorApplicationsFromDb } from "@/lib/server/workflows";
+import { getLatestAgentApplicationForUser, listAgenciesFromDb, listValuatorApplicationsFromDb } from "@/lib/server/workflows";
 import type { User } from "@/types/domain";
 
 import styles from "./portal-overview.module.css";
@@ -11,9 +11,9 @@ function getLatestForUser<T extends { userId: string }>(items: T[], userId: stri
 }
 
 export async function PortalOverview({ currentUser }: { currentUser: User }) {
-  const [agencies, agentApplications, valuatorApplications] = await Promise.all([
+  const [agencies, latestAgentApplication, valuatorApplications] = await Promise.all([
     listAgenciesFromDb(),
-    listAgentApplicationsFromDb(),
+    getLatestAgentApplicationForUser(currentUser.id),
     listValuatorApplicationsFromDb(),
   ]);
 
@@ -22,7 +22,6 @@ export async function PortalOverview({ currentUser }: { currentUser: User }) {
   const pendingManagedAgency = agencies.find(
     (agency) => agency.pendingManagerUserId === currentUser.id && agency.managerUserId !== currentUser.id,
   );
-  const latestAgentApplication = getLatestForUser(agentApplications, currentUser.id);
   const latestValuatorApplication = getLatestForUser(valuatorApplications, currentUser.id);
   const canManageAgency = Boolean(activeManagedAgency);
   const hasAgentMembership = Boolean(activeMemberAgency) && !canManageAgency;

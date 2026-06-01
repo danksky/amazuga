@@ -4,7 +4,7 @@ import { ApplicationStatus } from "@/features/auth/application-status";
 import { requireCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import { listAgenciesFromDb, listAgencyApplicationsFromDb, listAgentApplicationsFromDb } from "@/lib/server/workflows";
+import { getLatestAgentApplicationForUser, listAgenciesFromDb, listAgencyApplicationsFromDb } from "@/lib/server/workflows";
 
 function getStatusCopy(
   status: "pending" | "approved" | "denied",
@@ -56,10 +56,9 @@ export default async function AgencyRegistrationRequestPage({
 }) {
   const currentUser = await requireCurrentUser();
   const { requestId } = await params;
-  const [applications, agencies, agentApplications] = await Promise.all([
+  const [applications, agencies] = await Promise.all([
     listAgencyApplicationsFromDb(),
     listAgenciesFromDb(),
-    listAgentApplicationsFromDb(),
   ]);
   const application = applications.find((entry) => entry.id === requestId);
 
@@ -71,10 +70,10 @@ export default async function AgencyRegistrationRequestPage({
     notFound();
   }
 
-  const linkedAgency = agencies.find((agency) => agency.createdFromApplicationId === application.id);
-  const latestAgentApplication = [...agentApplications]
-    .reverse()
-    .find((entry) => entry.userId === application.createdByUserId);
+  const [linkedAgency, latestAgentApplication] = [
+    agencies.find((agency) => agency.createdFromApplicationId === application.id),
+    await getLatestAgentApplicationForUser(currentUser.id),
+  ];
   const statusCopy = getStatusCopy(application.status, {
     managerActivated: linkedAgency?.managerUserId === application.createdByUserId,
     agentApproved: latestAgentApplication?.status === "approved",

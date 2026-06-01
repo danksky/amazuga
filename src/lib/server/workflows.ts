@@ -890,7 +890,7 @@ async function ensureAgencyMembership(input: {
   );
 }
 
-async function getLatestAgentApplicationForUser(userId: string) {
+export async function getLatestAgentApplicationForUser(userId: string) {
   const result = await getPgPool().query<AgentApplicationRow>(
     `
       SELECT
@@ -911,7 +911,7 @@ async function getLatestAgentApplicationForUser(userId: string) {
   return result.rows[0] ? toAgentApplication(result.rows[0]) : undefined;
 }
 
-async function getAgentApplicationById(applicationId: string) {
+export async function getAgentApplicationById(applicationId: string) {
   const result = await getPgPool().query<AgentApplicationRow>(
     `
       SELECT
