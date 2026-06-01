@@ -133,6 +133,14 @@
   line-height: 1.5;
 }
 
+.fieldHintWarning {
+  color: #8a4b09;
+}
+
+.fieldHintSuccess {
+  color: #2f6b2f;
+}
+
 .claimAction {
   display: inline-flex;
   align-items: center;
@@ -590,6 +598,10 @@
 }
 
 @media (max-width: 900px) {
+  .claimForm {
+    grid-template-columns: 1fr;
+  }
+
   .stats {
     grid-template-columns: 1fr;
   }
