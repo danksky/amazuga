@@ -25,7 +25,7 @@ export default async function SellPortalValuationNewRoute({
     redirect(getPortalEntryHref(access));
   }
 
-  const properties = await listPortalValuationPropertyOptions();
+  const properties = await listPortalValuationPropertyOptions(currentUser.id);
 
   return (
     <PortalShell access={access}>

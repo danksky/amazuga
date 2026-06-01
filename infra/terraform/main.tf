@@ -703,6 +703,30 @@ resource "vercel_project_environment_variable" "telnyx_phone_number" {
   comment    = "Telnyx outbound number in E.164 format (+12762530653)."
 }
 
+# --- WAF rate limiting ---
+
+resource "cloudflare_ruleset" "by_upi_rate_limit" {
+  zone_id     = data.cloudflare_zone.amazuga.id
+  name        = "amazuga-by-upi-rate-limit"
+  kind        = "zone"
+  phase       = "http_ratelimit"
+
+  rules = [
+    {
+      action      = "block"
+      expression  = "(http.request.uri.path eq \"/api/properties/by-upi\")"
+      description = "Rate limit anonymous property UPI lookup endpoint"
+      enabled     = true
+      ratelimit = {
+        characteristics     = ["ip.src"]
+        period              = 60
+        requests_per_period = var.by_upi_rate_limit_requests_per_minute
+        mitigation_timeout  = 60
+      }
+    }
+  ]
+}
+
 # --- Email forwarding (Forward Email) ---
 
 resource "cloudflare_dns_record" "mx_forwardemail_1" {

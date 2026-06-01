@@ -168,6 +168,12 @@ variable "cloudflare_off_market_tiles_worker_rate_limit_namespace_id" {
   default     = "41002"
 }
 
+variable "by_upi_rate_limit_requests_per_minute" {
+  description = "Max requests per IP per 60-second window to /api/properties/by-upi before Cloudflare blocks with 429."
+  type        = number
+  default     = 30
+}
+
 variable "cloudflare_agent_id_photos_bucket_name" {
   description = "Bucket name for private agent ID photos. No public domain is attached — access is server-side only."
   type        = string

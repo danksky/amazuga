@@ -240,11 +240,11 @@ function SignupDetailsStep({
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="firstName">First name</label>
-                <input autoComplete="given-name" className={styles.input} id="firstName" name="firstName" placeholder="Amara" type="text" />
+                <input autoComplete="given-name" className={styles.input} id="firstName" name="firstName" placeholder="Amara" required type="text" />
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="lastName">Last name</label>
-                <input autoComplete="family-name" className={styles.input} id="lastName" name="lastName" placeholder="Ndiaye" type="text" />
+                <input autoComplete="family-name" className={styles.input} id="lastName" name="lastName" placeholder="Ndiaye" required type="text" />
               </div>
             </div>
             <div className={styles.field}>

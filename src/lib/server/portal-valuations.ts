@@ -352,7 +352,11 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
   };
 }
 
-export async function listPortalValuationPropertyOptions(): Promise<PortalValuationPropertyOption[]> {
+// userId is required to make the access context explicit at the call site.
+// The query itself returns all properties (intentional — valuators may submit for any property),
+// but callers must supply the authenticated user's ID so this can never be called without
+// thinking about who is requesting the data.
+export async function listPortalValuationPropertyOptions(_userId: string): Promise<PortalValuationPropertyOption[]> {
   const result = await getPgPool().query<PortalValuationPropertyOptionRow>(
     `
       SELECT
