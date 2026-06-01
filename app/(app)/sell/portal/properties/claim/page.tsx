@@ -41,6 +41,7 @@ export default async function SellPortalPropertyClaimPage({
     <PortalShell access={access}>
       <ClaimDetailsForm
         upi={trimmedUpi}
+        propertyRouteId={claimParcelContext.propertyRouteId}
         existingAssetKind={claimParcelContext?.existingAssetKind}
         representativeSize={claimParcelContext?.representativeSize}
         zoning={claimParcelContext?.zoning}

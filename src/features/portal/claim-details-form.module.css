@@ -36,13 +36,19 @@
 }
 
 .upiDisplay {
-  display: flex;
-  align-items: baseline;
+  display: grid;
   gap: 12px;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface) 90%, white);
+}
+
+.identifierRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  justify-content: space-between;
 }
 
 .upiLabel {

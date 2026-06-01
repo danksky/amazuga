@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
-import { createPropertyClaimRequestAction, toggleSavePropertyAction } from "@/features/properties/actions";
+import { startPropertyClaimAction, toggleSavePropertyAction } from "@/features/properties/actions";
 import { formatAreaSqm, formatCurrency, formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { Agency, Listing, Property, PropertyKind, ValuationSubmission } from "@/types/domain";
@@ -505,20 +505,12 @@ export function PropertyPage({
                   </>
                 ) : claimState === "pending" ? (
                   <Button disabled>Claim pending review</Button>
-                ) : property.internalId ? (
-                  <form action={createPropertyClaimRequestAction}>
+                ) : (
+                  <form action={startPropertyClaimAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
-                    <input name="propertyId" type="hidden" value={property.id} />
-                    <input name="propertyInternalId" type="hidden" value={property.internalId} />
-                    <input name="parcelId" type="hidden" value={property.parcelId} />
-                    <input name="upi" type="hidden" value={property.upi} />
-                    <input name="propertyKind" type="hidden" value={property.facts.propertyKind || ""} />
-                    <input name="unitLabel" type="hidden" value={property.unitLabel || ""} />
                     <Button type="submit">{behavior.claimLabel}</Button>
                   </form>
-                ) : (
-                  <Button disabled>{behavior.claimLabel}</Button>
                 )}
                 <form action={toggleSavePropertyAction}>
                   <input name="propertyRouteId" type="hidden" value={propertyRouteId} />

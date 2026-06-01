@@ -4,9 +4,8 @@ import { redirect } from "next/navigation";
 
 import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
+import { getPublicPropertyPageData } from "@/lib/server/public-listings";
 import { toggleSavedPropertyForUserInDb } from "@/lib/server/users";
-import { createPropertyClaimRequestInDb } from "@/lib/server/workflows";
-import { revalidatePath } from "next/cache";
 
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -35,41 +34,16 @@ export async function toggleSavePropertyAction(formData: FormData) {
   redirect(`${propertyPath}?saved=${result.didSave ? "1" : "0"}`);
 }
 
-export async function createPropertyClaimRequestAction(formData: FormData) {
+export async function startPropertyClaimAction(formData: FormData) {
   const propertyRouteId = getRequiredString(formData, "propertyRouteId");
   const propertyPath = getRequiredString(formData, "propertyPath");
-  const propertyId = getRequiredString(formData, "propertyId");
-  const propertyInternalId = getRequiredString(formData, "propertyInternalId");
-  const parcelId = getRequiredString(formData, "parcelId");
-  const upi = getRequiredString(formData, "upi");
-  const rawPropertyKind = formData.get("propertyKind");
-  const propertyKind = typeof rawPropertyKind === "string" ? rawPropertyKind : "";
-  const rawUnitLabel = formData.get("unitLabel");
-  const unitLabel = typeof rawUnitLabel === "string" ? rawUnitLabel.trim() : "";
   const currentUser = await requireCurrentUser(propertyPath);
-  const claimScope = propertyKind === "apartment_unit" || propertyKind === "commercial_unit" ? "unit_partial" : "full_parcel";
+  const propertyPageData = await getPublicPropertyPageData(propertyRouteId, currentUser.id);
 
-  const result = await createPropertyClaimRequestInDb({
-    userId: currentUser.id,
-    upi,
-    claimScope,
-    unitLabel: unitLabel || undefined,
-    tenureType: "unspecified",
-    tenureSource: "unspecified",
-    propertyId,
-    propertyInternalId,
-    parcelId,
-  });
-  revalidatePath(routes.app.portal);
-  revalidatePath(routes.app.portalListings);
-  revalidatePath(routes.app.portalProperties);
-  revalidatePath(propertyPath);
+  if (!propertyPageData) {
+    redirect(propertyPath);
+  }
 
-  const claimState =
-    result.outcome === "already_owned"
-      ? "owned"
-      : result.outcome === "existing_pending"
-        ? "pending"
-        : "created";
-  redirect(`${propertyPath}?claim=${claimState}`);
+  const params = new URLSearchParams({ upi: propertyPageData.property.upi });
+  redirect(`${routes.app.portalPropertyClaim}?${params.toString()}`);
 }

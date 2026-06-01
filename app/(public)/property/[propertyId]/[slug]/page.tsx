@@ -4,7 +4,7 @@ import { PropertyPage } from "@/components/property/property-page";
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getPublicPropertyPageData } from "@/lib/server/public-listings";
-import { getUserPropertyRelationship } from "@/lib/server/workflows";
+import { getUserPropertyRelationship, listPropertyClaimRequestsForUser } from "@/lib/server/workflows";
 import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
@@ -49,10 +49,27 @@ export default async function PropertySlugDetailsPage({ params, searchParams }: 
   }
 
   const propertyRouteId = propertyPageData.property.id;
-  const propertyRelationship =
-    currentUser && propertyPageData.property.internalId
-      ? await getUserPropertyRelationship(currentUser.id, propertyPageData.property.internalId)
-      : undefined;
+  const propertyKind = propertyPageData.property.facts.propertyKind;
+  const claimScope = propertyKind === "apartment_unit" || propertyKind === "commercial_unit" ? "unit_partial" : "full_parcel";
+  const [propertyRelationship, parcelClaimRequests] = currentUser
+    ? await Promise.all([
+        propertyPageData.property.internalId
+          ? getUserPropertyRelationship(currentUser.id, propertyPageData.property.internalId)
+          : Promise.resolve(undefined),
+        propertyPageData.property.internalId
+          ? Promise.resolve([])
+          : listPropertyClaimRequestsForUser(currentUser.id),
+      ])
+    : [undefined, []];
+  const parcelPendingClaim = propertyPageData.property.internalId
+    ? undefined
+    : parcelClaimRequests.find(
+        (claimRequest) =>
+          claimRequest.parcelId === propertyPageData.property.parcelId &&
+          claimRequest.claimScope === claimScope &&
+          (claimScope !== "unit_partial" || (claimRequest.unitLabel || "") === (propertyPageData.property.unitLabel || "")) &&
+          claimRequest.status === "pending",
+      );
   const isSaved = Boolean(currentUser?.savedPropertyIds.includes(propertyRouteId));
   const statusMessage =
     saved === "1"
@@ -74,7 +91,7 @@ export default async function PropertySlugDetailsPage({ params, searchParams }: 
       claimState={
         propertyRelationship?.ownership
           ? "owned"
-          : propertyRelationship?.latestClaimRequest?.status === "pending"
+          : propertyRelationship?.latestClaimRequest?.status === "pending" || parcelPendingClaim
             ? "pending"
             : "claimable"
       }

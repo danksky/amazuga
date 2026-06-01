@@ -197,6 +197,7 @@ export interface PortalEditablePropertyRecord {
 }
 
 export interface PortalClaimParcelContext {
+  propertyRouteId: string;
   existingAssetKind?: PropertyKind;
   representativeSize?: number;
   zoning?: string;
@@ -637,12 +638,16 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
 
 export async function getPortalClaimParcelContextByUpi(upi: string): Promise<PortalClaimParcelContext | null> {
   const result = await getPgPool().query<{
+    parcel_public_id: string;
+    property_public_id: string | null;
     asset_type: PropertyKind | null;
     representative_size: number | string | null;
     zoning: string | null;
   }>(
     `
       SELECT
+        COALESCE(p.public_id, p.parcel_id) AS parcel_public_id,
+        pa.public_id AS property_public_id,
         pa.asset_type,
         p.representative_size,
         p.zoning
@@ -668,6 +673,7 @@ export async function getPortalClaimParcelContextByUpi(upi: string): Promise<Por
   }
 
   return {
+    propertyRouteId: row.property_public_id || row.parcel_public_id,
     existingAssetKind: row.asset_type || undefined,
     representativeSize: toNumber(row.representative_size),
     zoning: normalizeZoningLabel(row.zoning),

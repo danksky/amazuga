@@ -89,11 +89,13 @@ function formatZoning(value?: string) {
 
 export function ClaimDetailsForm({
   upi,
+  propertyRouteId,
   existingAssetKind,
   representativeSize,
   zoning,
 }: {
   upi: string;
+  propertyRouteId: string;
   existingAssetKind?: PropertyKind;
   representativeSize?: number;
   zoning?: string;
@@ -112,8 +114,14 @@ export function ClaimDetailsForm({
         </div>
 
         <div className={styles.upiDisplay}>
-          <span className={styles.upiLabel}>UPI</span>
-          <span className={styles.upiValue}>{upi}</span>
+          <div className={styles.identifierRow}>
+            <span className={styles.upiLabel}>UPI</span>
+            <span className={styles.upiValue}>{upi}</span>
+          </div>
+          <div className={styles.identifierRow}>
+            <span className={styles.upiLabel}>Property ID</span>
+            <span className={styles.upiValue}>{propertyRouteId}</span>
+          </div>
         </div>
 
         <form action={routes.app.portalPropertyClaimSubmit} className={styles.form} method="post">
@@ -122,7 +130,7 @@ export function ClaimDetailsForm({
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="claim-type">
-              What kind of property is here?
+              What kind of property are you claiming?
             </label>
             <select
               className={styles.select}
