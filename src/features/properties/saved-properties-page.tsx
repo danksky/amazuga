@@ -17,7 +17,6 @@ export function SavedPropertiesPage({ currentUser, savedEntries, unresolvedCount
         <div className={styles.header}>
           <div className={styles.eyebrow}>Saved</div>
           <h1 className={styles.title}>Saved properties</h1>
-          <div className={styles.body}>Saved properties now use current public property IDs from the preview DB.</div>
         </div>
 
         {savedEntries.length > 0 ? (
@@ -34,7 +33,7 @@ export function SavedPropertiesPage({ currentUser, savedEntries, unresolvedCount
         ) : (
           <div className={styles.empty}>
             {currentUser.savedPropertyIds.length > 0
-              ? "Some saved properties could not be loaded from the current preview dataset."
+              ? "Some saved properties could not be loaded."
               : "You have not saved any asset-backed properties yet."}
           </div>
         )}
