@@ -205,6 +205,17 @@ export async function requestSignUpOtpAction(formData: FormData) {
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
 
+  // If an account already exists for this number, treat as sign-in — don't touch their profile.
+  const existing = await getUserByPhoneFromDb(phone);
+  if (existing) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.signInWithOtp({ phone });
+    if (error) {
+      redirect(`${routes.auth.login}?error=otp-send-failed&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+    }
+    redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({ phone });
 
@@ -248,6 +259,12 @@ export async function requestMockSignUpOtpAction(formData: FormData) {
   const rawPhone = getRequiredString(formData, "phone");
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
+
+  // If an account already exists, drop them into the login verify flow — no profile changes.
+  const existing = await getUserByPhoneFromDb(phone);
+  if (existing) {
+    redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+  }
 
   redirect(
     `${routes.auth.signup}?step=verify&phone=${encodeURIComponent(phone)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&next=${encodeURIComponent(next)}`,
