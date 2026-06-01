@@ -191,7 +191,7 @@ export async function toggleSavedPropertyForUserInDb(input: {
     `
       SELECT id
       FROM saved_property
-      WHERE user_id = $1
+      WHERE user_id = $1::UUID
         AND property_route_id = $2
       LIMIT 1
     `,
@@ -219,13 +219,13 @@ export async function toggleSavedPropertyForUserInDb(input: {
         seed_source
       )
       VALUES (
-        'svp_' || SUBSTR(MD5($1 || ':' || $2 || ':' || NOW()::TEXT), 1, 20),
-        $1,
+        'svp_' || SUBSTR(MD5($1::TEXT || ':' || $2 || ':' || NOW()::TEXT), 1, 20),
+        $3::UUID,
         $2,
         'manual_save_v1'
       )
     `,
-    [input.userId, input.propertyRouteId],
+    [input.userId, input.propertyRouteId, input.userId],
   );
 
   return { didSave: true };
