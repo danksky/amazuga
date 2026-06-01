@@ -207,12 +207,18 @@ function SignupDetailsStep({
   isMock?: boolean;
   phone?: string;
 }) {
-  const errorMessage =
-    error === "otp-send-failed"
+  const phoneExistsError = error === "phone-exists";
+  const errorMessage = phoneExistsError
+    ? null
+    : error === "otp-send-failed"
       ? "Something went wrong sending your code. Please try again."
       : error
         ? "Something went wrong. Try again."
         : null;
+
+  const loginHref = phone
+    ? `${next ? `/login?phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}` : `/login?phone=${encodeURIComponent(phone)}`}`
+    : next ? `/login?next=${encodeURIComponent(next)}` : "/login";
 
   return (
     <div className={`container ${styles.page}`}>
@@ -221,6 +227,12 @@ function SignupDetailsStep({
           <div className={styles.eyebrow}>Create account</div>
           <h1 className={styles.title}>Sign up</h1>
           <div className={styles.body}>{"We'll send a one-time code to verify your number."}</div>
+          {phoneExistsError ? (
+            <div className={styles.phoneExistsNotice}>
+              <span>An account already exists for this number.</span>
+              <a className={styles.phoneExistsLink} href={loginHref}>Sign in instead</a>
+            </div>
+          ) : null}
           {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
           {isMock ? <div className={styles.devHint}>Dev mode — use code <strong>000000</strong> on the next step</div> : null}
 

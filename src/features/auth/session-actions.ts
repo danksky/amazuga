@@ -205,15 +205,10 @@ export async function requestSignUpOtpAction(formData: FormData) {
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
 
-  // If an account already exists for this number, treat as sign-in — don't touch their profile.
+  // If an account already exists, send them back to sign-up with a prompt to sign in instead.
   const existing = await getUserByPhoneFromDb(phone);
   if (existing) {
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    if (error) {
-      redirect(`${routes.auth.login}?error=otp-send-failed&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
-    }
-    redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+    redirect(`${routes.auth.signup}?error=phone-exists&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -260,10 +255,10 @@ export async function requestMockSignUpOtpAction(formData: FormData) {
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
 
-  // If an account already exists, drop them into the login verify flow — no profile changes.
+  // If an account already exists, send them back to sign-up with a prompt to sign in instead.
   const existing = await getUserByPhoneFromDb(phone);
   if (existing) {
-    redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+    redirect(`${routes.auth.signup}?error=phone-exists&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
   }
 
   redirect(

@@ -43,6 +43,28 @@
   color: #8c2b2b;
 }
 
+.phoneExistsNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  color: #0c4a6e;
+  font-size: 0.95rem;
+}
+
+.phoneExistsLink {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: #0369a1;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
 .devHint {
   margin-top: 16px;
   padding: 10px 14px;
