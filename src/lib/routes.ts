@@ -8,6 +8,7 @@ export const routes = {
     rent: "/rent",
     sell: "/sell",
     sellPrivate: "/sell/private",
+    propertyWhatsapp: (propertyId: string) => `/property/${propertyId}/whatsapp`,
     property: (
       propertyId: string,
       propertyContext?:

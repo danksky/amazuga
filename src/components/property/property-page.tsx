@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
@@ -127,16 +126,6 @@ function formatBedsBaths(property: Property) {
 
 function formatArea(value?: number) {
   return value ? formatAreaSqm(value) : "Unknown";
-}
-
-function buildWhatsappUrl(phone?: string) {
-  const normalizedPhone = phone?.replace(/\D/g, "");
-
-  if (!normalizedPhone) {
-    return undefined;
-  }
-
-  return `https://wa.me/${normalizedPhone}`;
 }
 
 function buildFactItems(property: Property, propertyKind?: PropertyKind): FactItem[] {
@@ -304,7 +293,6 @@ export function PropertyPage({
   claimState = "claimable",
   canCreateListing = false,
 }: PropertyPageProps) {
-  const [showWhatsapp, setShowWhatsapp] = useState(false);
   const latestValuation = valuations[0];
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
     .filter(Boolean)
@@ -326,7 +314,6 @@ export function PropertyPage({
   const listingStateLabel = buildListingStateLabel(listing);
   const primaryInfoMetaLabel = `${listingStateLabel} | ${behavior.kindLabel}`;
   const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
-  const whatsappUrl = buildWhatsappUrl(agency?.whatsappPhone);
   const primaryPrice = listing
     ? formatCurrency(listing.askingPrice, listing.currency)
     : latestValuation
@@ -477,15 +464,14 @@ export function PropertyPage({
                   </div>
                 </div>
                 <div className={styles.ctaGroup}>
-                  {showWhatsapp && whatsappUrl ? (
-                    <a className={styles.whatsappAction} href={whatsappUrl} rel="noreferrer" target="_blank">
-                      Message on WhatsApp
-                    </a>
-                  ) : (
-                    <Button disabled={!whatsappUrl} onClick={() => setShowWhatsapp(true)}>
-                      {whatsappUrl ? "Reveal WhatsApp" : "WhatsApp unavailable"}
-                    </Button>
-                  )}
+                  <a
+                    className={styles.whatsappAction}
+                    href={routes.public.propertyWhatsapp(propertyRouteId)}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Inquire via WhatsApp
+                  </a>
                   <form action={toggleSavePropertyAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />

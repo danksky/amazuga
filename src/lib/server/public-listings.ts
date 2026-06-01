@@ -8,6 +8,8 @@ import type {
   ValuationSubmission,
 } from "@/types/domain";
 
+import { buildPublicPropertyPath } from "@/lib/property-slug";
+
 import { getPgPool } from "./postgres";
 
 type MarketingType = "sale" | "rent";
@@ -44,6 +46,7 @@ interface ListingParcelRow {
   agency_id: string | null;
   agent_user_id: string | null;
   agent_full_name: string | null;
+  agent_phone: string | null;
   listing_status: Listing["status"] | null;
   listing_visibility: Listing["visibility"] | null;
   marketing_type: Listing["marketingType"] | null;
@@ -86,6 +89,18 @@ interface ValuationRow {
   currency: ValuationSubmission["currency"];
   status: ValuationSubmission["status"];
   created_at: string;
+}
+
+interface PropertyWhatsappRow {
+  listing_id: string | null;
+  agency_id: string | null;
+  agent_phone: string | null;
+  public_id: string;
+  display_id: string | null;
+  property_public_id: string | null;
+  property_kind: PropertyKind | null;
+  property_type: string | null;
+  property_unit_label: string | null;
 }
 
 export interface PublicListingCardData {
@@ -306,6 +321,21 @@ function buildValuationFromRow(row: ValuationRow): ValuationSubmission {
   };
 }
 
+function buildWhatsappUrl(phone?: string | null, message?: string) {
+  const normalizedPhone = phone?.replace(/\D/g, "");
+
+  if (!normalizedPhone) {
+    return undefined;
+  }
+
+  const baseUrl = new URL(`https://wa.me/${normalizedPhone}`);
+  if (message?.trim()) {
+    baseUrl.searchParams.set("text", message.trim());
+  }
+
+  return baseUrl.toString();
+}
+
 async function getListingImages(listingId: string) {
   const result = await getPgPool().query<ListingImageRow>(
     `
@@ -427,6 +457,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.agency_id,
         l.agent_user_id,
         agent.full_name AS agent_full_name,
+        agent.phone AS agent_phone,
         l.status AS listing_status,
         l.visibility AS listing_visibility,
         l.marketing_type,
@@ -535,6 +566,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.agency_id,
         l.agent_user_id,
         agent.full_name AS agent_full_name,
+        agent.phone AS agent_phone,
         l.status AS listing_status,
         l.visibility AS listing_visibility,
         l.marketing_type,
@@ -638,4 +670,107 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
     contactName,
     valuations,
   };
+}
+
+export async function getPublicPropertyWhatsappUrl(
+  propertyId: string,
+  viewerUserId?: string,
+  host?: string,
+): Promise<string | undefined> {
+  const result = await getPgPool().query<PropertyWhatsappRow>(
+    `
+      WITH target_parcel AS (
+        SELECT p.parcel_id
+        FROM parcel_app_ready_seed_preview p
+        WHERE p.public_id = $1
+        UNION
+        SELECT pa.parcel_id
+        FROM property_asset pa
+        WHERE pa.public_id = $1
+        UNION
+        SELECT pap.parcel_id
+        FROM parcel_anchor_point_preview pap
+        WHERE pap.public_id = $1
+        LIMIT 1
+      )
+      SELECT
+        l.id AS listing_id,
+        l.agency_id,
+        agent.phone AS agent_phone,
+        parcel_anchor.public_id,
+        p.display_id,
+        pa.public_id AS property_public_id,
+        pa.asset_type AS property_kind,
+        property_profile.property_type,
+        to_jsonb(pa)->>'unit_label' AS property_unit_label
+      FROM target_parcel tp
+      JOIN parcel_anchor_point_preview parcel_anchor
+        ON parcel_anchor.parcel_id = tp.parcel_id
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = tp.parcel_id
+      LEFT JOIN LATERAL (
+        SELECT pa_inner.id
+             , pa_inner.public_id
+             , pa_inner.asset_type
+             , pa_inner.unit_label
+        FROM property_asset pa_inner
+        WHERE pa_inner.parcel_id = parcel_anchor.parcel_id
+        ORDER BY
+          CASE
+            WHEN pa_inner.public_id = $1 THEN 0
+            WHEN parcel_anchor.public_id = $1 AND pa_inner.is_primary_for_parcel THEN 1
+            WHEN pa_inner.is_primary_for_parcel THEN 2
+            ELSE 3
+          END,
+          pa_inner.created_at ASC,
+          pa_inner.id ASC
+        LIMIT 1
+      ) pa
+        ON TRUE
+      LEFT JOIN listing l
+        ON l.property_asset_id = pa.id
+       AND l.status = 'active'
+       AND (
+         l.visibility = 'public'
+         OR l.visibility = 'unlisted'
+         OR (
+           l.visibility = 'private'
+           AND $2::TEXT IS NOT NULL
+           AND (
+             l.agent_user_id::TEXT = $2::TEXT
+             OR EXISTS (
+               SELECT 1 FROM listing_access_grant lag
+               WHERE lag.listing_id = l.id
+                 AND lag.granted_to_user_id::TEXT = $2::TEXT
+             )
+           )
+         )
+       )
+      LEFT JOIN app_user agent
+        ON agent.id = l.agent_user_id
+      LEFT JOIN property_asset_profile property_profile
+        ON property_profile.property_asset_id = pa.id
+      LIMIT 1
+    `,
+    [propertyId, viewerUserId ?? null],
+  );
+
+  const row = result.rows[0];
+  if (!row?.listing_id) {
+    return undefined;
+  }
+
+  const agency = row.agency_id ? await getAgencyByIdFromDb(row.agency_id) : undefined;
+  const assetType = row.property_type || propertyKindToPropertyType(row.property_kind) || "property";
+  const propertyRouteId = row.property_public_id || row.public_id;
+  const propertyPath = buildPublicPropertyPath(propertyRouteId, {
+    propertyTitle: row.display_id,
+    parcelDisplayId: row.display_id,
+    propertyKind: row.property_kind,
+    unitLabel: row.property_unit_label,
+  });
+  const resolvedHost = host || "amazuga.vercel.app";
+  const message = `I saw the ${assetType} at ${resolvedHost}${propertyPath} and would like to know more about the property!`;
+
+  return buildWhatsappUrl(agency?.whatsappPhone || row.agent_phone, message);
 }
