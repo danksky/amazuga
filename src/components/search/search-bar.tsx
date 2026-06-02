@@ -78,6 +78,16 @@ export function SearchBar({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationSuggestion | undefined>();
   const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  function checkScrollBounds() {
+    const el = suggestionsRef.current;
+    if (!el) return;
+    setCanScrollUp(el.scrollTop > 0);
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  }
 
   // Filter dropdowns
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -171,6 +181,15 @@ export function SearchBar({
       if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
     };
   }, [query]);
+
+  // Re-check scroll bounds whenever the visible suggestion list changes.
+  useEffect(() => {
+    if (showSuggestions && suggestions.length > 0) {
+      setCanScrollUp(false);
+      requestAnimationFrame(checkScrollBounds);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSuggestions, suggestions]);
 
   function selectSuggestion(suggestion: LocationSuggestion) {
     setQuery(suggestion.name);
@@ -513,7 +532,15 @@ export function SearchBar({
                 value={query}
               />
               {showSuggestions && suggestions.length > 0 ? (
-                <div className={styles.suggestions}>
+                <div
+                  className={[
+                    styles.suggestions,
+                    canScrollUp && styles.fadeTop,
+                    canScrollDown && styles.fadeBottom,
+                  ].filter(Boolean).join(" ")}
+                  onScroll={checkScrollBounds}
+                  ref={suggestionsRef}
+                >
                   {suggestions.map((s, i) => (
                     <button
                       className={styles.suggestionItem}
