@@ -26,6 +26,14 @@ const LEVEL_LABEL: Record<string, string> = {
   district: "District in",
 };
 
+function formatLocationChip(s: LocationSuggestion): string {
+  if (!s.parentName) return s.name;
+  const context = (s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
+    ? `${s.parentName} · ${s.district}`
+    : s.parentName;
+  return `${s.name} · ${LEVEL_LABEL[s.level]} ${context}`;
+}
+
 function parseBedValue(val: string): number | undefined {
   if (val === "Any") return undefined;
   return parseFloat(val.replace("+", ""));
@@ -480,7 +488,7 @@ export function SearchBar({
         <div className={styles.inputWrap} ref={inputWrapRef}>
           {selectedLocation ? (
             <div className={styles.locationChip}>
-              <span className={styles.locationChipText}>{selectedLocation.name}</span>
+              <span className={styles.locationChipText}>{formatLocationChip(selectedLocation)}</span>
               <button
                 aria-label="Clear location"
                 className={styles.locationChipClear}
