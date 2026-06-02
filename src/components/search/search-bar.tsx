@@ -27,11 +27,12 @@ const LEVEL_LABEL: Record<string, string> = {
 };
 
 function formatLocationChip(s: LocationSuggestion): string {
-  if (!s.parentName) return s.name;
-  const context = (s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
-    ? `${s.parentName} · ${s.district}`
-    : s.parentName;
-  return `${s.name} · ${LEVEL_LABEL[s.level]} ${context}`;
+  const levelWord = s.level.charAt(0).toUpperCase() + s.level.slice(1); // "Village", "Cell", etc.
+  if (!s.parentName) return `${levelWord} ${s.name}`;
+  const hasDistrict = (s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName;
+  return hasDistrict
+    ? `${levelWord} ${s.name} in ${s.parentName}, ${s.district}`
+    : `${levelWord} ${s.name} in ${s.parentName}`;
 }
 
 function parseBedValue(val: string): number | undefined {
