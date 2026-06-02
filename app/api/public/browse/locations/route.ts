@@ -17,7 +17,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") ?? "").trim();
 
-  if (q.length < 2) {
+  // Split on first space: "Rubona Bur" → namePart="Rubona", contextPart="Bur"
+  const spaceIdx = q.indexOf(" ");
+  const namePart    = spaceIdx === -1 ? q : q.slice(0, spaceIdx);
+  const contextPart = spaceIdx === -1 ? "" : q.slice(spaceIdx + 1).trim();
+
+  if (namePart.length < 2) {
     return NextResponse.json({ suggestions: [] });
   }
 
@@ -27,6 +32,13 @@ export async function GET(request: Request) {
       SELECT level, name, parent_name, district, sector, cell
       FROM browse_location_mv
       WHERE lower(name) LIKE lower($1) || '%'
+        AND (
+          $2 = ''
+          OR lower(district)    LIKE lower($2) || '%'
+          OR lower(sector)      LIKE lower($2) || '%'
+          OR lower(cell)        LIKE lower($2) || '%'
+          OR lower(parent_name) LIKE lower($2) || '%'
+        )
       ORDER BY
         CASE level
           WHEN 'district' THEN 1
@@ -38,7 +50,7 @@ export async function GET(request: Request) {
         name
       LIMIT 15
       `,
-      [q],
+      [namePart, contextPart],
     );
 
     return NextResponse.json({

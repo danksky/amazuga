@@ -19,6 +19,13 @@ interface SearchBarProps {
 
 const PROPERTY_TYPE_OPTIONS = ["House", "Apartment", "Land parcel"];
 
+const LEVEL_LABEL: Record<string, string> = {
+  village:  "Village in",
+  cell:     "Cell in",
+  sector:   "Sector in",
+  district: "District in",
+};
+
 function parseBedValue(val: string): number | undefined {
   if (val === "Any") return undefined;
   return parseFloat(val.replace("+", ""));
@@ -505,7 +512,7 @@ export function SearchBar({
                   <span className={styles.suggestionName}>{s.name}</span>
                   {s.parentName ? (
                     <span className={styles.suggestionMeta}>
-                      {s.parentName}
+                      {LEVEL_LABEL[s.level]} {s.parentName}
                       {(s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
                         ? ` · ${s.district}`
                         : null}
