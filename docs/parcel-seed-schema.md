@@ -161,6 +161,52 @@ The reproducible SQL lives in:
 
 - `/Users/danielkawalsky/Documents/Code/AfricaPropertyPortal/scrape-rwanda-parcels/sql/parcel_app_ready_seed_indexes.sql`
 
+## Post-Seed Derived Tables
+
+After each parcel seed, the following tables must be rebuilt. They are derived
+from `parcel_app_ready_seed_preview` and are not part of the seed itself.
+
+`run_preview_seed.sh` runs all of these automatically at the end of the seed.
+
+---
+
+### `browse_location_mv`
+
+A deduplicated ~24k-row table of every unique administrative location name
+across all four levels (district → sector → cell → village), used to power
+the browse-page location autocomplete.
+
+Each row stores:
+
+| Column | Description |
+|---|---|
+| `level` | `district` / `sector` / `cell` / `village` |
+| `name` | Title-cased display name (the matched level) |
+| `parent_name` | One level up, for display: "Village Rubona in Nemba, Burera" |
+| `district` | Raw district value for ILIKE filtering |
+| `sector` | Raw sector value for ILIKE filtering |
+| `cell` | Raw cell value for ILIKE filtering |
+| `parcel_count` | Parcel count — used to rank denser areas first in suggestions |
+
+**Indexes:**
+- `browse_location_mv_name_idx` — `lower(name) text_pattern_ops` for fast case-insensitive prefix matching
+- `browse_location_mv_level_idx` — btree on `level`
+
+**Rebuild script:**
+
+```bash
+DATABASE_URL=<url> python3 infra/scripts/build_browse_locations.py
+```
+
+The script reads only the 4 location columns from `parcel-app-ready.parquet`
+locally via pyarrow, deduplicates in Python, then uploads via a single
+`COPY FROM STDIN`. Takes ~10 seconds. Requires `pyarrow`, `pandas`,
+`psycopg2-binary` in the venv (already installed in `scrape-rwanda-parcels/.venv`).
+
+**DDL reference:** `infra/sql/preview_browse_location_mv.sql`
+
+---
+
 ## Source Pipeline
 
 The seed data is derived from the processed parcel pipeline in `scrape-rwanda-parcels`, especially:
