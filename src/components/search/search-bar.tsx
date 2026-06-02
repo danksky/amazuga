@@ -478,50 +478,55 @@ export function SearchBar({
     <div className={styles.root}>
       <form className={styles.wrap} onSubmit={handleSearchSubmit}>
         <div className={styles.inputWrap} ref={inputWrapRef}>
-          <input
-            autoComplete="off"
-            className={styles.input}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (selectedLocation) setSelectedLocation(undefined);
-              if (searchMessage) setSearchMessage(null);
-            }}
-            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-            placeholder={placeholder}
-            value={query}
-          />
           {selectedLocation ? (
-            <button
-              aria-label="Clear location"
-              className={styles.clearButton}
-              onClick={clearLocation}
-              type="button"
-            >
-              ×
-            </button>
-          ) : null}
-          {showSuggestions && suggestions.length > 0 ? (
-            <div className={styles.suggestions}>
-              {suggestions.map((s, i) => (
-                <button
-                  className={styles.suggestionItem}
-                  key={`${s.level}-${s.name}-${i}`}
-                  onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
-                  type="button"
-                >
-                  <span className={styles.suggestionName}>{s.name}</span>
-                  {s.parentName ? (
-                    <span className={styles.suggestionMeta}>
-                      {LEVEL_LABEL[s.level]} {s.parentName}
-                      {(s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
-                        ? ` · ${s.district}`
-                        : null}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+            <div className={styles.locationChip}>
+              <span className={styles.locationChipText}>{selectedLocation.name}</span>
+              <button
+                aria-label="Clear location"
+                className={styles.locationChipClear}
+                onClick={clearLocation}
+                type="button"
+              >
+                ×
+              </button>
             </div>
-          ) : null}
+          ) : (
+            <>
+              <input
+                autoComplete="off"
+                className={styles.input}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (searchMessage) setSearchMessage(null);
+                }}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                placeholder={placeholder}
+                value={query}
+              />
+              {showSuggestions && suggestions.length > 0 ? (
+                <div className={styles.suggestions}>
+                  {suggestions.map((s, i) => (
+                    <button
+                      className={styles.suggestionItem}
+                      key={`${s.level}-${s.name}-${i}`}
+                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                      type="button"
+                    >
+                      <span className={styles.suggestionName}>{s.name}</span>
+                      {s.parentName ? (
+                        <span className={styles.suggestionMeta}>
+                          {LEVEL_LABEL[s.level]} {s.parentName}
+                          {(s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
+                            ? ` · ${s.district}`
+                            : null}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
         <div className={styles.controls}>
           <Button type="submit">Search</Button>

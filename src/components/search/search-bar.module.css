@@ -32,21 +32,41 @@
   font-size: 1rem;
 }
 
-.clearButton {
+.locationChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 12px;
+  background: var(--foreground);
+  color: var(--background);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.locationChipText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locationChipClear {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
   border-radius: 50%;
-  background: var(--surface-muted);
-  color: var(--foreground-muted);
+  background: rgba(128, 128, 128, 0.3);
+  color: inherit;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
-  padding: 0;
 }
 
 .suggestions {
