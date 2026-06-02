@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/search/search-bar";
 import { BrowseMap } from "@/components/maps/browse-map";
 import type { BrowseMapCard } from "@/components/maps/browse-map";
 import { BrowseListingCard } from "@/components/property/browse-listing-card";
+import type { BrowseFilters } from "@/lib/browse-types";
 
 import styles from "./browse-page.module.css";
 
@@ -23,11 +24,12 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   const [cards, setCards] = useState<BrowseMapCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<BrowseFilters>({});
   // Holds the last rich batch so we can fill in when the current view is sparse.
   const fallbackRef = useRef<BrowseMapCard[]>([]);
 
   const title = mode === "buy" ? "Homes for sale in Rwanda" : "Homes for rent in Rwanda";
-  const filters = ["Price", "Beds & baths", "Property type", "More filters"];
+  const filters = ["Price", "Beds & baths", "Property type"];
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -111,12 +113,14 @@ export function BrowsePage({ mode }: BrowsePageProps) {
         <SearchBar
           filters={filters}
           onFiltersOpenChange={setFiltersOpen}
+          onFiltersChange={setActiveFilters}
         />
         <div className={`${styles.layout} ${showMobileMap ? styles.mobileMapVisible : ""}`}>
           <div className={styles.mapCard}>
             <BrowseMap
               mode={mode}
               visible={showMobileMap}
+              filters={activeFilters}
               onResultsChange={handleResultsChange}
               onLoadingChange={setIsLoading}
               selectedListingId={selectedListingId}

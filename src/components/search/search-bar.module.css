@@ -15,6 +15,13 @@
   background: transparent;
 }
 
+.inputWrap {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
 .input {
   width: 100%;
   min-width: 0;
@@ -23,6 +30,71 @@
   background: transparent;
   color: var(--foreground);
   font-size: 1rem;
+}
+
+.clearButton {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--foreground-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.suggestionItem {
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestionItem:last-child {
+  border-bottom: 0;
+}
+
+.suggestionItem:hover {
+  background: var(--surface-muted);
+}
+
+.suggestionName {
+  font-weight: 500;
+}
+
+.suggestionMeta {
+  font-size: 0.82rem;
+  color: var(--foreground-muted);
+  text-transform: capitalize;
+  flex-shrink: 0;
 }
 
 .controls {

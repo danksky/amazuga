@@ -81,14 +81,75 @@ function buildTitle(row: BrowseMapRow): string {
   return `Parcel ${row.parcel_public_id}`;
 }
 
+interface BrowseMapFilters {
+  minPriceRwf?: number;
+  maxPriceRwf?: number;
+  propertyTypes?: string[];
+  district?: string;
+  sector?: string;
+  cell?: string;
+  village?: string;
+  minBedrooms?: number;
+  minBathrooms?: number;
+  exactBedrooms?: boolean;
+}
+
 export async function getBrowseMapData(params: {
   mode: "sale" | "rent";
   minLng: number;
   minLat: number;
   maxLng: number;
   maxLat: number;
+  filters?: BrowseMapFilters;
 }): Promise<BrowseMapResult> {
-  const { mode, minLng, minLat, maxLng, maxLat } = params;
+  const { mode, minLng, minLat, maxLng, maxLat, filters } = params;
+
+  const queryParams: (string | number | boolean)[] = [mode, minLng, minLat, maxLng, maxLat];
+  const extraClauses: string[] = [];
+
+  if (filters?.minPriceRwf !== undefined && filters.minPriceRwf > 0) {
+    queryParams.push(filters.minPriceRwf);
+    extraClauses.push(`AND l.asking_price_rwf >= $${queryParams.length}`);
+  }
+  if (filters?.maxPriceRwf !== undefined) {
+    queryParams.push(filters.maxPriceRwf);
+    extraClauses.push(`AND l.asking_price_rwf <= $${queryParams.length}`);
+  }
+  if (filters?.district) {
+    queryParams.push(filters.district);
+    extraClauses.push(`AND p.district ILIKE $${queryParams.length}`);
+  }
+  if (filters?.sector) {
+    queryParams.push(filters.sector);
+    extraClauses.push(`AND p.sector ILIKE $${queryParams.length}`);
+  }
+  if (filters?.cell) {
+    queryParams.push(filters.cell);
+    extraClauses.push(`AND p.cell ILIKE $${queryParams.length}`);
+  }
+  if (filters?.village) {
+    queryParams.push(filters.village);
+    extraClauses.push(`AND p.village ILIKE $${queryParams.length}`);
+  }
+  if (filters?.propertyTypes?.length) {
+    const typeConditions: string[] = [];
+    if (filters.propertyTypes.includes("House")) typeConditions.push("pa.asset_type = 'house'");
+    if (filters.propertyTypes.includes("Apartment")) typeConditions.push("pa.asset_type IN ('apartment_building', 'apartment_unit')");
+    if (filters.propertyTypes.includes("Land parcel")) typeConditions.push("(pa.id IS NULL OR pa.asset_type = 'land')");
+    if (typeConditions.length) extraClauses.push(`AND (${typeConditions.join(" OR ")})`);
+  }
+  if (filters?.minBedrooms !== undefined) {
+    queryParams.push(filters.minBedrooms);
+    extraClauses.push(
+      filters.exactBedrooms
+        ? `AND property_profile.bedrooms = $${queryParams.length}`
+        : `AND property_profile.bedrooms >= $${queryParams.length}`,
+    );
+  }
+  if (filters?.minBathrooms !== undefined) {
+    queryParams.push(filters.minBathrooms);
+    extraClauses.push(`AND property_profile.bathrooms >= $${queryParams.length}`);
+  }
 
   const result = await getPgPool().query<BrowseMapRow>(
     `
@@ -142,10 +203,11 @@ export async function getBrowseMapData(params: {
         AND l.marketing_type = $1
         AND parcel_anchor.anchor_lon BETWEEN $2 AND $4
         AND parcel_anchor.anchor_lat BETWEEN $3 AND $5
+        ${extraClauses.join("\n        ")}
       ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
       LIMIT 200
     `,
-    [mode, minLng, minLat, maxLng, maxLat],
+    queryParams,
   );
 
   const pins: BrowseMapPin[] = [];

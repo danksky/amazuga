@@ -6,6 +6,7 @@ import maplibregl from "maplibre-gl";
 import { PMTiles, Protocol } from "pmtiles";
 
 import type { BrowseMapCard, BrowseMapPin, BrowseMapResult } from "@/lib/server/browse-map";
+import type { BrowseFilters } from "@/lib/browse-types";
 
 import styles from "./browse-map.module.css";
 
@@ -47,6 +48,7 @@ const PIN_COLOR_SELECTED = "#16a34a";
 interface BrowseMapProps {
   mode: "buy" | "rent";
   visible?: boolean;
+  filters?: BrowseFilters;
   onResultsChange: (cards: BrowseMapCard[]) => void;
   onLoadingChange?: (loading: boolean) => void;
   selectedListingId: string | null;
@@ -126,7 +128,7 @@ function createPillSprite(label: string, color: string): ImageData {
   return ctx.getImageData(0, 0, w + gutter * 2, h + gutter * 2);
 }
 
-export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, selectedListingId, onSelectListing }: BrowseMapProps) {
+export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingChange, selectedListingId, onSelectListing }: BrowseMapProps) {
   const router = useRouter();
   const routerRef = useRef(router);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -143,6 +145,7 @@ export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, sel
   const lastPinsRef = useRef<BrowseMapPin[]>([]);
   const selectedListingIdRef = useRef<string | null>(selectedListingId);
   const selectedParcelIdRef = useRef<string | null>(null);
+  const filtersRef = useRef(filters);
 
   useEffect(() => {
     onResultsChangeRef.current = onResultsChange;
@@ -159,6 +162,17 @@ export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, sel
   useEffect(() => {
     routerRef.current = router;
   });
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  });
+
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    if (fetchBrowseDataRef.current) void fetchBrowseDataRef.current();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   // Re-measure the map canvas whenever it becomes visible (e.g. mobile toggle).
   useEffect(() => {
@@ -251,8 +265,27 @@ export function BrowseMap({ mode, visible, onResultsChange, onLoadingChange, sel
       setIsFetching(true);
 
       try {
+        const urlParams = new URLSearchParams({ mode: apiMode, bbox });
+        const f = filtersRef.current;
+        const loc = f?.location;
+        if (loc) {
+          // Always pass the full hierarchy so the server can narrow precisely.
+          // e.g. selecting village "Isangano" in cell "Kibagabaga" won't match
+          // a different "Isangano" elsewhere.
+          if (loc.district) urlParams.set("district", loc.district);
+          if (loc.sector)   urlParams.set("sector",   loc.sector);
+          if (loc.cell)     urlParams.set("cell",     loc.cell);
+          if (loc.level === "village") urlParams.set("village", loc.name);
+        }
+        if (f?.minPriceRwf !== undefined) urlParams.set("minPrice", String(f.minPriceRwf));
+        if (f?.maxPriceRwf !== undefined) urlParams.set("maxPrice", String(f.maxPriceRwf));
+        if (f?.propertyTypes?.length) urlParams.set("types", f.propertyTypes.join(","));
+        if (f?.minBedrooms !== undefined) urlParams.set("minBeds", String(f.minBedrooms));
+        if (f?.minBathrooms !== undefined) urlParams.set("minBaths", String(f.minBathrooms));
+        if (f?.exactBedrooms) urlParams.set("exactBeds", "true");
+
         const res = await fetch(
-          `/api/public/browse/map?mode=${apiMode}&bbox=${bbox}`,
+          `/api/public/browse/map?${urlParams}`,
           { signal: controller.signal },
         );
         if (!res.ok) {

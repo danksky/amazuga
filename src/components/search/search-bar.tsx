@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
+import type { BrowseFilters, LocationSuggestion } from "@/lib/browse-types";
 
 import styles from "./search-bar.module.css";
 
@@ -13,14 +14,15 @@ interface SearchBarProps {
   helperText?: string;
   filters?: string[];
   onFiltersOpenChange?: (isOpen: boolean) => void;
+  onFiltersChange?: (filters: BrowseFilters) => void;
 }
 
-const filterOptions: Record<string, string[]> = {
-  "For sale": ["For sale", "New construction", "Recently listed"],
-  "For rent": ["For rent", "Long term", "Short term"],
-  "Property type": ["House", "Apartment", "Land parcel"],
-  "More filters": ["Parking", "Furnished", "Garden", "Pet friendly"],
-};
+const PROPERTY_TYPE_OPTIONS = ["House", "Apartment", "Land parcel"];
+
+function parseBedValue(val: string): number | undefined {
+  if (val === "Any") return undefined;
+  return parseFloat(val.replace("+", ""));
+}
 
 function Chevron({ direction = "down" }: { direction?: "down" | "up" }) {
   return (
@@ -43,33 +45,58 @@ function Chevron({ direction = "down" }: { direction?: "down" | "up" }) {
 }
 
 export function SearchBar({
-  placeholder = "Search by UPI, listing, district, or sector",
+  placeholder = "Search by location, district, or sector",
   helperText,
   filters = [],
   onFiltersOpenChange,
+  onFiltersChange,
 }: SearchBarProps) {
   const router = useRouter();
+
+  // Text input & UPI search
   const [query, setQuery] = useState("");
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
+
+  // Location autocomplete
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<LocationSuggestion | undefined>();
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Filter dropdowns
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeDesktopFilter, setActiveDesktopFilter] = useState<string | null>(null);
   const [activeMobileFilter, setActiveMobileFilter] = useState<string | null>(null);
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(10000000);
+  const desktopFiltersRef = useRef<HTMLDivElement>(null);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
+
+  // Price state (RWF)
+  const [minPrice, setMinPrice] = useState<number | undefined>();
+  const [maxPrice, setMaxPrice] = useState<number | undefined>();
+
+  // Beds & baths
   const [bedroomSelection, setBedroomSelection] = useState("Any");
   const [bathroomSelection, setBathroomSelection] = useState("Any");
   const [useExactMatch, setUseExactMatch] = useState(false);
-  const desktopFiltersRef = useRef<HTMLDivElement>(null);
-  const priceRangeMax = 10000000;
-  const minPercent = (minPrice / priceRangeMax) * 100;
-  const maxPercent = (maxPrice / priceRangeMax) * 100;
 
-  function formatPriceInput(value: number) {
-    if (value <= 0) {
-      return "";
-    }
+  // Property type
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
-    return value.toLocaleString("en-US");
+  function buildFilters(overrides?: Partial<BrowseFilters>): BrowseFilters {
+    return {
+      location: selectedLocation,
+      minPriceRwf: minPrice,
+      maxPriceRwf: maxPrice,
+      propertyTypes: selectedTypes.length ? selectedTypes : undefined,
+      minBedrooms: parseBedValue(bedroomSelection),
+      minBathrooms: parseBedValue(bathroomSelection),
+      exactBedrooms: useExactMatch,
+      ...overrides,
+    };
+  }
+
+  function applyFilters(overrides?: Partial<BrowseFilters>) {
+    onFiltersChange?.(buildFilters(overrides));
   }
 
   function openFilters() {
@@ -83,54 +110,412 @@ export function SearchBar({
     onFiltersOpenChange?.(false);
   }
 
+  // Close desktop dropdowns on outside click
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
-      if (!desktopFiltersRef.current?.contains(event.target as Node)) {
+      if (
+        !desktopFiltersRef.current?.contains(event.target as Node) &&
+        !inputWrapRef.current?.contains(event.target as Node)
+      ) {
         setActiveDesktopFilter(null);
+        setShowSuggestions(false);
       }
     }
-
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
+  // Autocomplete: debounce fetch on query change
+  useEffect(() => {
+    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    suggestDebounceRef.current = setTimeout(() => {
+      fetch(`/api/public/browse/locations?q=${encodeURIComponent(trimmed)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { suggestions: LocationSuggestion[] } | null) => {
+          if (data?.suggestions?.length) {
+            setSuggestions(data.suggestions);
+            setShowSuggestions(true);
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
+        })
+        .catch(() => undefined);
+    }, 300);
+
+    return () => {
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    };
+  }, [query]);
+
+  function selectSuggestion(suggestion: LocationSuggestion) {
+    setQuery(suggestion.name);
+    setSelectedLocation(suggestion);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    applyFilters({ location: suggestion });
+  }
+
+  function clearLocation() {
+    setSelectedLocation(undefined);
+    setQuery("");
+    applyFilters({ location: undefined });
+  }
+
   async function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setShowSuggestions(false);
 
     const normalizedQuery = query.trim();
     if (!normalizedQuery) {
       setSearchMessage(null);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/properties/by-upi?upi=${encodeURIComponent(normalizedQuery)}`);
-      if (response.ok) {
-        const payload = (await response.json()) as { propertyId: string | null };
-        if (payload.propertyId) {
-          setSearchMessage(null);
-          router.push(routes.public.property(payload.propertyId));
-          return;
-        }
+      if (selectedLocation) {
+        setSelectedLocation(undefined);
+        applyFilters({ location: undefined });
       }
-    } catch {
-      setSearchMessage("Search is temporarily unavailable.");
       return;
     }
 
-    const looksLikeUpi = normalizedQuery.includes("/");
-    setSearchMessage(looksLikeUpi ? "No property matched that UPI." : null);
+    if (normalizedQuery.includes("/")) {
+      try {
+        const response = await fetch(`/api/properties/by-upi?upi=${encodeURIComponent(normalizedQuery)}`);
+        if (response.ok) {
+          const payload = (await response.json()) as { propertyId: string | null };
+          if (payload.propertyId) {
+            setSearchMessage(null);
+            router.push(routes.public.property(payload.propertyId));
+            return;
+          }
+        }
+      } catch {
+        setSearchMessage("Search is temporarily unavailable.");
+        return;
+      }
+      setSearchMessage("No property matched that UPI.");
+      return;
+    }
+
+    // Treat as location search — pick first suggestion if available
+    if (suggestions.length > 0) {
+      selectSuggestion(suggestions[0]);
+    } else {
+      // Trigger a fresh lookup and pick the first result
+      try {
+        const response = await fetch(`/api/public/browse/locations?q=${encodeURIComponent(normalizedQuery)}`);
+        if (response.ok) {
+          const data = (await response.json()) as { suggestions: LocationSuggestion[] };
+          if (data.suggestions.length > 0) {
+            selectSuggestion(data.suggestions[0]);
+            return;
+          }
+        }
+      } catch {
+        // fall through
+      }
+      setSearchMessage("No matching location found.");
+    }
+  }
+
+  function formatPriceDisplay(value: number | undefined) {
+    if (value === undefined) return "";
+    return value.toLocaleString("en-US");
+  }
+
+  function parsePriceInput(raw: string): number | undefined {
+    const stripped = raw.replace(/,/g, "").trim();
+    if (!stripped) return undefined;
+    const n = Number(stripped);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+
+  function toggleType(type: string) {
+    setSelectedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+  }
+
+  // --- Desktop filter dropdown render ---
+  function renderDesktopPanel(filter: string) {
+    if (filter === "Price") {
+      return (
+        <div className={`${styles.desktopDropdown} ${styles.priceDropdown}`}>
+          <div className={styles.priceFieldLabel}>Price range (RWF)</div>
+          <div className={styles.priceInputs}>
+            <label className={styles.priceField}>
+              <span className={styles.priceFieldLabel}>Min</span>
+              <input
+                className={styles.priceInput}
+                onChange={(e) => setMinPrice(parsePriceInput(e.target.value))}
+                placeholder="No min"
+                type="text"
+                value={formatPriceDisplay(minPrice)}
+              />
+            </label>
+            <span className={styles.priceSeparator}>–</span>
+            <label className={styles.priceField}>
+              <span className={styles.priceFieldLabel}>Max</span>
+              <input
+                className={styles.priceInput}
+                onChange={(e) => setMaxPrice(parsePriceInput(e.target.value))}
+                placeholder="No max"
+                type="text"
+                value={formatPriceDisplay(maxPrice)}
+              />
+            </label>
+          </div>
+          <div className={styles.filterActions}>
+            <button
+              className={styles.filterApply}
+              onClick={() => { setActiveDesktopFilter(null); applyFilters(); }}
+              type="button"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (filter === "Beds & baths") {
+      return (
+        <div className={`${styles.desktopDropdown} ${styles.bedsDropdown}`}>
+          <div className={styles.filterSection}>
+            <div className={styles.filterSectionTitle}>Bedrooms</div>
+            <div className={styles.segmentedRow}>
+              {["Any", "1+", "2+", "3+", "4+", "5+"].map((option) => (
+                <button
+                  className={`${styles.segmentButton} ${bedroomSelection === option ? styles.segmentButtonSelected : ""}`}
+                  key={`bedroom-${option}`}
+                  onClick={() => setBedroomSelection(option)}
+                  type="button"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <label className={styles.checkboxRow}>
+              <input
+                checked={useExactMatch}
+                onChange={(e) => setUseExactMatch(e.target.checked)}
+                type="checkbox"
+              />
+              <span>Use exact match</span>
+            </label>
+          </div>
+          <div className={styles.filterSection}>
+            <div className={styles.filterSectionTitle}>Bathrooms</div>
+            <div className={styles.segmentedRow}>
+              {["Any", "1+", "1.5+", "2+", "3+", "4+"].map((option) => (
+                <button
+                  className={`${styles.segmentButton} ${bathroomSelection === option ? styles.segmentButtonSelected : ""}`}
+                  key={`bathroom-${option}`}
+                  onClick={() => setBathroomSelection(option)}
+                  type="button"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.filterActions}>
+            <button
+              className={styles.filterApply}
+              onClick={() => { setActiveDesktopFilter(null); applyFilters(); }}
+              type="button"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (filter === "Property type") {
+      return (
+        <div className={styles.desktopDropdown}>
+          <div className={styles.checkboxList}>
+            {PROPERTY_TYPE_OPTIONS.map((option) => (
+              <label className={styles.checkboxOption} key={option}>
+                <input
+                  checked={selectedTypes.includes(option)}
+                  onChange={() => toggleType(option)}
+                  type="checkbox"
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+          <div className={styles.filterActions}>
+            <button
+              className={styles.filterApply}
+              onClick={() => { setActiveDesktopFilter(null); applyFilters(); }}
+              type="button"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  // --- Mobile filter panel render ---
+  function renderMobilePanel(filter: string) {
+    if (filter === "Price") {
+      return (
+        <>
+          <div className={styles.priceFieldLabel}>Price range (RWF)</div>
+          <div className={styles.priceInputs}>
+            <label className={styles.priceField}>
+              <span className={styles.priceFieldLabel}>Min</span>
+              <input
+                className={styles.priceInput}
+                onChange={(e) => setMinPrice(parsePriceInput(e.target.value))}
+                placeholder="No min"
+                type="text"
+                value={formatPriceDisplay(minPrice)}
+              />
+            </label>
+            <span className={styles.priceSeparator}>–</span>
+            <label className={styles.priceField}>
+              <span className={styles.priceFieldLabel}>Max</span>
+              <input
+                className={styles.priceInput}
+                onChange={(e) => setMaxPrice(parsePriceInput(e.target.value))}
+                placeholder="No max"
+                type="text"
+                value={formatPriceDisplay(maxPrice)}
+              />
+            </label>
+          </div>
+        </>
+      );
+    }
+
+    if (filter === "Beds & baths") {
+      return (
+        <>
+          <div className={styles.filterSection}>
+            <div className={styles.filterSectionTitle}>Bedrooms</div>
+            <div className={styles.segmentedRow}>
+              {["Any", "1+", "2+", "3+", "4+", "5+"].map((option) => (
+                <button
+                  className={`${styles.segmentButton} ${bedroomSelection === option ? styles.segmentButtonSelected : ""}`}
+                  key={`mobile-bedroom-${option}`}
+                  onClick={() => setBedroomSelection(option)}
+                  type="button"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <label className={styles.checkboxRow}>
+              <input
+                checked={useExactMatch}
+                onChange={(e) => setUseExactMatch(e.target.checked)}
+                type="checkbox"
+              />
+              <span>Use exact match</span>
+            </label>
+          </div>
+          <div className={styles.filterSection}>
+            <div className={styles.filterSectionTitle}>Bathrooms</div>
+            <div className={styles.segmentedRow}>
+              {["Any", "1+", "1.5+", "2+", "3+", "4+"].map((option) => (
+                <button
+                  className={`${styles.segmentButton} ${bathroomSelection === option ? styles.segmentButtonSelected : ""}`}
+                  key={`mobile-bathroom-${option}`}
+                  onClick={() => setBathroomSelection(option)}
+                  type="button"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (filter === "Property type") {
+      return (
+        <div className={styles.checkboxList}>
+          {PROPERTY_TYPE_OPTIONS.map((option) => (
+            <label className={styles.checkboxOption} key={`mobile-type-${option}`}>
+              <input
+                checked={selectedTypes.includes(option)}
+                onChange={() => toggleType(option)}
+                type="checkbox"
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    return null;
   }
 
   return (
     <div className={styles.root}>
       <form className={styles.wrap} onSubmit={handleSearchSubmit}>
-        <input
-          className={styles.input}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={placeholder}
-          value={query}
-        />
+        <div className={styles.inputWrap} ref={inputWrapRef}>
+          <input
+            autoComplete="off"
+            className={styles.input}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (selectedLocation) setSelectedLocation(undefined);
+              if (searchMessage) setSearchMessage(null);
+            }}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            placeholder={placeholder}
+            value={query}
+          />
+          {selectedLocation ? (
+            <button
+              aria-label="Clear location"
+              className={styles.clearButton}
+              onClick={clearLocation}
+              type="button"
+            >
+              ×
+            </button>
+          ) : null}
+          {showSuggestions && suggestions.length > 0 ? (
+            <div className={styles.suggestions}>
+              {suggestions.map((s, i) => (
+                <button
+                  className={styles.suggestionItem}
+                  key={`${s.level}-${s.name}-${i}`}
+                  onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                  type="button"
+                >
+                  <span className={styles.suggestionName}>{s.name}</span>
+                  {s.parentName ? (
+                    <span className={styles.suggestionMeta}>
+                      {s.parentName}
+                      {(s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
+                        ? ` · ${s.district}`
+                        : null}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className={styles.controls}>
           <Button type="submit">Search</Button>
           <button className={styles.mobileFiltersButton} onClick={openFilters} type="button">
@@ -150,171 +535,17 @@ export function SearchBar({
                     <Chevron direction="down" />
                   </span>
                 </button>
-                {activeDesktopFilter === filter ? (
-                  filter === "Price" ? (
-                    <div className={`${styles.desktopDropdown} ${styles.priceDropdown}`}>
-                      <div className={styles.priceSliderBlock}>
-                        <div className={styles.priceFieldLabel}>Price range</div>
-                        <div className={styles.priceSlider}>
-                          <div className={styles.priceTrack} />
-                          <div
-                            className={styles.priceActiveTrack}
-                            style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
-                          />
-                          <input
-                            className={styles.rangeInput}
-                            max={Math.max(maxPrice - 100000, 0)}
-                            min={0}
-                            onChange={(event) => setMinPrice(Number(event.target.value))}
-                            step={100000}
-                            type="range"
-                            value={minPrice}
-                          />
-                          <input
-                            className={styles.rangeInput}
-                            max={priceRangeMax}
-                            min={Math.min(minPrice + 100000, priceRangeMax)}
-                            onChange={(event) => setMaxPrice(Number(event.target.value))}
-                            step={100000}
-                            type="range"
-                            value={maxPrice}
-                          />
-                          <span className={styles.priceHandle} style={{ left: `${minPercent}%` }} />
-                          <span className={styles.priceHandle} style={{ left: `${maxPercent}%` }} />
-                        </div>
-                        <div className={styles.priceRangeMeta}>
-                          <span>$0</span>
-                          <span>$10M+</span>
-                        </div>
-                      </div>
-
-                      <div className={styles.priceInputs}>
-                        <label className={styles.priceField}>
-                          <span className={styles.priceFieldLabel}>Min</span>
-                          <input
-                            className={styles.priceInput}
-                            onChange={(event) => {
-                              const numericValue = Number(event.target.value.replace(/,/g, ""));
-                              if (Number.isNaN(numericValue)) {
-                                return;
-                              }
-
-                              setMinPrice(Math.max(0, Math.min(numericValue, maxPrice - 100000)));
-                            }}
-                            placeholder="No min"
-                            type="text"
-                            value={formatPriceInput(minPrice)}
-                          />
-                        </label>
-                        <span className={styles.priceSeparator}>-</span>
-                        <label className={styles.priceField}>
-                          <span className={styles.priceFieldLabel}>Max</span>
-                          <input
-                            className={styles.priceInput}
-                            onChange={(event) => {
-                              const numericValue = Number(event.target.value.replace(/,/g, ""));
-                              if (Number.isNaN(numericValue)) {
-                                return;
-                              }
-
-                              setMaxPrice(Math.min(priceRangeMax, Math.max(numericValue, minPrice + 100000)));
-                            }}
-                            placeholder="No max"
-                            type="text"
-                            value={maxPrice >= priceRangeMax ? "" : formatPriceInput(maxPrice)}
-                          />
-                        </label>
-                      </div>
-                      <div className={styles.filterActions}>
-                        <button className={styles.filterApply} type="button">
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-                  ) : filter === "Beds & baths" ? (
-                    <div className={`${styles.desktopDropdown} ${styles.bedsDropdown}`}>
-                      <div className={styles.filterSection}>
-                        <div className={styles.filterSectionTitle}>Bedrooms</div>
-                        <div className={styles.segmentedRow}>
-                          {["Any", "1+", "2+", "3+", "4+", "5+"].map((option) => (
-                            <button
-                              className={`${styles.segmentButton} ${
-                                bedroomSelection === option ? styles.segmentButtonSelected : ""
-                              }`}
-                              key={`bedroom-${option}`}
-                              onClick={() => setBedroomSelection(option)}
-                              type="button"
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                        <label className={styles.checkboxRow}>
-                          <input
-                            checked={useExactMatch}
-                            onChange={(event) => setUseExactMatch(event.target.checked)}
-                            type="checkbox"
-                          />
-                          <span>Use exact match</span>
-                        </label>
-                      </div>
-
-                      <div className={styles.filterSection}>
-                        <div className={styles.filterSectionTitle}>Bathrooms</div>
-                        <div className={styles.segmentedRow}>
-                          {["Any", "1+", "1.5+", "2+", "3+", "4+"].map((option) => (
-                            <button
-                              className={`${styles.segmentButton} ${
-                                bathroomSelection === option ? styles.segmentButtonSelected : ""
-                              }`}
-                              key={`bathroom-${option}`}
-                              onClick={() => setBathroomSelection(option)}
-                              type="button"
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className={styles.filterActions}>
-                        <button className={styles.filterApply} type="button">
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={styles.desktopDropdown}>
-                      {filter === "Property type" || filter === "More filters" ? (
-                        <div className={styles.checkboxList}>
-                          {(filterOptions[filter] ?? []).map((option) => (
-                            <label className={styles.checkboxOption} key={option}>
-                              <input type="checkbox" />
-                              <span>{option}</span>
-                            </label>
-                          ))}
-                          <div className={styles.filterActions}>
-                            <button className={styles.filterApply} type="button">
-                              Apply
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        (filterOptions[filter] ?? ["Any"]).map((option) => (
-                          <button className={styles.desktopDropdownItem} key={option} type="button">
-                            {option}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )
-                ) : null}
+                {activeDesktopFilter === filter ? renderDesktopPanel(filter) : null}
               </div>
             ))}
           </div>
         </div>
       </form>
-      {searchMessage ? <div className={styles.helper}>{searchMessage}</div> : helperText ? <div className={styles.helper}>{helperText}</div> : null}
+      {searchMessage ? (
+        <div className={styles.helper}>{searchMessage}</div>
+      ) : helperText ? (
+        <div className={styles.helper}>{helperText}</div>
+      ) : null}
       {filtersOpen ? (
         <div className={styles.mobileOverlay}>
           <div className={styles.mobileOverlayHeader}>
@@ -338,153 +569,16 @@ export function SearchBar({
                   </span>
                 </button>
                 {activeMobileFilter === filter ? (
-                  <div className={styles.mobileFilterPanel}>
-                    {filter === "Price" ? (
-                      <>
-                        <div className={styles.priceSliderBlock}>
-                          <div className={styles.priceFieldLabel}>Price range</div>
-                          <div className={styles.priceSlider}>
-                            <div className={styles.priceTrack} />
-                            <div
-                              className={styles.priceActiveTrack}
-                              style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
-                            />
-                            <input
-                              className={styles.rangeInput}
-                              max={Math.max(maxPrice - 100000, 0)}
-                              min={0}
-                              onChange={(event) => setMinPrice(Number(event.target.value))}
-                              step={100000}
-                              type="range"
-                              value={minPrice}
-                            />
-                            <input
-                              className={styles.rangeInput}
-                              max={priceRangeMax}
-                              min={Math.min(minPrice + 100000, priceRangeMax)}
-                              onChange={(event) => setMaxPrice(Number(event.target.value))}
-                              step={100000}
-                              type="range"
-                              value={maxPrice}
-                            />
-                            <span className={styles.priceHandle} style={{ left: `${minPercent}%` }} />
-                            <span className={styles.priceHandle} style={{ left: `${maxPercent}%` }} />
-                          </div>
-                          <div className={styles.priceRangeMeta}>
-                            <span>$0</span>
-                            <span>$10M+</span>
-                          </div>
-                        </div>
-
-                        <div className={styles.priceInputs}>
-                          <label className={styles.priceField}>
-                            <span className={styles.priceFieldLabel}>Min</span>
-                            <input
-                              className={styles.priceInput}
-                              onChange={(event) => {
-                                const numericValue = Number(event.target.value.replace(/,/g, ""));
-                                if (Number.isNaN(numericValue)) {
-                                  return;
-                                }
-
-                                setMinPrice(Math.max(0, Math.min(numericValue, maxPrice - 100000)));
-                              }}
-                              placeholder="No min"
-                              type="text"
-                              value={formatPriceInput(minPrice)}
-                            />
-                          </label>
-                          <span className={styles.priceSeparator}>-</span>
-                          <label className={styles.priceField}>
-                            <span className={styles.priceFieldLabel}>Max</span>
-                            <input
-                              className={styles.priceInput}
-                              onChange={(event) => {
-                                const numericValue = Number(event.target.value.replace(/,/g, ""));
-                                if (Number.isNaN(numericValue)) {
-                                  return;
-                                }
-
-                                setMaxPrice(Math.min(priceRangeMax, Math.max(numericValue, minPrice + 100000)));
-                              }}
-                              placeholder="No max"
-                              type="text"
-                              value={maxPrice >= priceRangeMax ? "" : formatPriceInput(maxPrice)}
-                            />
-                          </label>
-                        </div>
-                      </>
-                    ) : filter === "Beds & baths" ? (
-                      <>
-                        <div className={styles.filterSection}>
-                          <div className={styles.filterSectionTitle}>Bedrooms</div>
-                          <div className={styles.segmentedRow}>
-                            {["Any", "1+", "2+", "3+", "4+", "5+"].map((option) => (
-                              <button
-                                className={`${styles.segmentButton} ${
-                                  bedroomSelection === option ? styles.segmentButtonSelected : ""
-                                }`}
-                                key={`mobile-bedroom-${option}`}
-                                onClick={() => setBedroomSelection(option)}
-                                type="button"
-                              >
-                                {option}
-                              </button>
-                            ))}
-                          </div>
-                          <label className={styles.checkboxRow}>
-                            <input
-                              checked={useExactMatch}
-                              onChange={(event) => setUseExactMatch(event.target.checked)}
-                              type="checkbox"
-                            />
-                            <span>Use exact match</span>
-                          </label>
-                        </div>
-
-                        <div className={styles.filterSection}>
-                          <div className={styles.filterSectionTitle}>Bathrooms</div>
-                          <div className={styles.segmentedRow}>
-                            {["Any", "1+", "1.5+", "2+", "3+", "4+"].map((option) => (
-                              <button
-                                className={`${styles.segmentButton} ${
-                                  bathroomSelection === option ? styles.segmentButtonSelected : ""
-                                }`}
-                                key={`mobile-bathroom-${option}`}
-                                onClick={() => setBathroomSelection(option)}
-                                type="button"
-                              >
-                                {option}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    ) : filter === "Property type" || filter === "More filters" ? (
-                      <div className={styles.checkboxList}>
-                        {(filterOptions[filter] ?? []).map((option) => (
-                          <label className={styles.checkboxOption} key={`mobile-${filter}-${option}`}>
-                            <input type="checkbox" />
-                            <span>{option}</span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={styles.checkboxList}>
-                        {(filterOptions[filter] ?? []).map((option) => (
-                          <label className={styles.checkboxOption} key={`mobile-${filter}-${option}`}>
-                            <input name={`mobile-${filter}`} type="radio" />
-                            <span>{option}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <div className={styles.mobileFilterPanel}>{renderMobilePanel(filter)}</div>
                 ) : null}
               </div>
             ))}
             <div className={styles.filterActions}>
-              <button className={styles.filterApply} onClick={closeFilters} type="button">
+              <button
+                className={styles.filterApply}
+                onClick={() => { applyFilters(); closeFilters(); }}
+                type="button"
+              >
                 Apply filters
               </button>
             </div>

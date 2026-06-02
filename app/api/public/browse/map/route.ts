@@ -36,6 +36,30 @@ export async function GET(request: Request) {
   const lngPad = (maxLng - minLng) * PAD_FACTOR;
   const latPad = (maxLat - minLat) * PAD_FACTOR;
 
+  const minPrice = searchParams.get("minPrice");
+  const maxPrice = searchParams.get("maxPrice");
+  const typesParam = searchParams.get("types");
+  const district = searchParams.get("district") ?? undefined;
+  const sector = searchParams.get("sector") ?? undefined;
+  const cell = searchParams.get("cell") ?? undefined;
+  const village = searchParams.get("village") ?? undefined;
+  const minBeds = searchParams.get("minBeds");
+  const minBaths = searchParams.get("minBaths");
+  const exactBeds = searchParams.get("exactBeds") === "true";
+
+  const filters = {
+    minPriceRwf: minPrice ? Number(minPrice) : undefined,
+    maxPriceRwf: maxPrice ? Number(maxPrice) : undefined,
+    propertyTypes: typesParam ? typesParam.split(",").filter(Boolean) : undefined,
+    district,
+    sector,
+    cell,
+    village,
+    minBedrooms: minBeds ? Number(minBeds) : undefined,
+    minBathrooms: minBaths ? Number(minBaths) : undefined,
+    exactBedrooms: exactBeds,
+  };
+
   try {
     const result = await getBrowseMapData({
       mode,
@@ -43,6 +67,7 @@ export async function GET(request: Request) {
       minLat: minLat - latPad,
       maxLng: maxLng + lngPad,
       maxLat: maxLat + latPad,
+      filters,
     });
 
     return NextResponse.json(result);
