@@ -547,15 +547,16 @@ export function SearchBar({
                 </button>
               ) : null}
               {showSuggestions && suggestions.length > 0 ? (
-                <div
-                  className={[
-                    styles.suggestions,
-                    canScrollUp && styles.fadeTop,
-                    canScrollDown && styles.fadeBottom,
-                  ].filter(Boolean).join(" ")}
-                  onScroll={checkScrollBounds}
-                  ref={suggestionsRef}
-                >
+                <div className={[
+                  styles.suggestionsOuter,
+                  canScrollUp && styles.fadeTop,
+                  canScrollDown && styles.fadeBottom,
+                ].filter(Boolean).join(" ")}>
+                  <div
+                    className={styles.suggestions}
+                    onScroll={checkScrollBounds}
+                    ref={suggestionsRef}
+                  >
                   {suggestions.map((s, i) => (
                     <button
                       className={styles.suggestionItem}
@@ -574,6 +575,7 @@ export function SearchBar({
                       ) : null}
                     </button>
                   ))}
+                  </div>
                 </div>
               ) : null}
             </>

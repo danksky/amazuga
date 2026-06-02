@@ -92,11 +92,6 @@
 }
 
 .suggestions {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  right: 0;
-  z-index: 30;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -105,20 +100,41 @@
   overflow-y: auto;
 }
 
-.fadeTop {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, black 28px, black 100%);
+.suggestionsOuter {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 30;
 }
 
-.fadeBottom {
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 28px), transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 28px), transparent 100%);
+.suggestionsOuter::before,
+.suggestionsOuter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 32px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
-.fadeTop.fadeBottom {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 28px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 28px), transparent 100%);
+.suggestionsOuter::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--surface), transparent);
+  border-radius: 12px 12px 0 0;
 }
+
+.suggestionsOuter::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--surface), transparent);
+  border-radius: 0 0 12px 12px;
+}
+
+.suggestionsOuter.fadeTop::before  { opacity: 1; }
+.suggestionsOuter.fadeBottom::after { opacity: 1; }
 
 .suggestionItem {
   width: 100%;
