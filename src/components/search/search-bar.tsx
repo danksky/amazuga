@@ -531,6 +531,21 @@ export function SearchBar({
                 placeholder={placeholder}
                 value={query}
               />
+              {query.length > 0 ? (
+                <button
+                  aria-label="Clear search"
+                  className={styles.inputClearButton}
+                  onClick={() => {
+                    setQuery("");
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                    setSearchMessage(null);
+                  }}
+                  type="button"
+                >
+                  ×
+                </button>
+              ) : null}
               {showSuggestions && suggestions.length > 0 ? (
                 <div
                   className={[
