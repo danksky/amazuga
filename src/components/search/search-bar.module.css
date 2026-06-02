@@ -79,7 +79,8 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
-  overflow: hidden;
+  max-height: 264px; /* ~6 items */
+  overflow-y: auto;
 }
 
 .suggestionItem {
