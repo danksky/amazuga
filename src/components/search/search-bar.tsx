@@ -78,6 +78,7 @@ export function SearchBar({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationSuggestion | undefined>();
   const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestAbortRef = useRef<AbortController | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
@@ -163,7 +164,11 @@ export function SearchBar({
     }
 
     suggestDebounceRef.current = setTimeout(() => {
-      fetch(`/api/public/browse/locations?q=${encodeURIComponent(trimmed)}`)
+      suggestAbortRef.current?.abort();
+      const controller = new AbortController();
+      suggestAbortRef.current = controller;
+
+      fetch(`/api/public/browse/locations?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : null))
         .then((data: { suggestions: LocationSuggestion[] } | null) => {
           if (data?.suggestions?.length) {
@@ -174,7 +179,9 @@ export function SearchBar({
             setShowSuggestions(false);
           }
         })
-        .catch(() => undefined);
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name === "AbortError") return;
+        });
     }, 300);
 
     return () => {
@@ -536,6 +543,8 @@ export function SearchBar({
                   aria-label="Clear search"
                   className={styles.inputClearButton}
                   onClick={() => {
+                    suggestAbortRef.current?.abort();
+                    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
                     setQuery("");
                     setSuggestions([]);
                     setShowSuggestions(false);
