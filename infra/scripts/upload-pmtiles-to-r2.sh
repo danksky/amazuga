@@ -14,6 +14,19 @@
 
 set -euo pipefail
 
+# Auto-source .env.infra.local from the amazuga repo root if R2 credentials
+# are not already set in the environment. This allows the script to be run
+# directly without manually exporting credentials each time.
+_AMAZUGA_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+_ENV_FILE="$_AMAZUGA_ROOT/.env.infra.local"
+if [ -f "$_ENV_FILE" ] && [ -z "${CLOUDFLARE_R2_ACCESS_KEY_ID:-}" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$_ENV_FILE"
+  set +a
+fi
+unset _AMAZUGA_ROOT _ENV_FILE
+
 if ! command -v aws >/dev/null 2>&1; then
   echo "aws CLI is required (brew install awscli)." >&2
   exit 1
