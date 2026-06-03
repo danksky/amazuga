@@ -466,16 +466,26 @@ variable "supabase_hook_secret_preview" {
 
 # --- Africa's Talking env vars (Vercel) ---
 
-variable "africas_talking_api_key" {
-  description = "Africa's Talking API key."
+variable "africas_talking_production_api_key" {
+  description = "Production Africa's Talking API key."
   type        = string
   sensitive   = true
 }
 
-variable "africas_talking_username" {
-  description = "Africa's Talking account username ('sandbox' for testing)."
+variable "africas_talking_production_username" {
+  description = "Production Africa's Talking account username."
   type        = string
-  default     = "sandbox"
+}
+
+variable "africas_talking_preview_api_key" {
+  description = "Preview Africa's Talking API key."
+  type        = string
+  sensitive   = true
+}
+
+variable "africas_talking_preview_username" {
+  description = "Preview Africa's Talking account username."
+  type        = string
 }
 
 variable "africas_talking_sandbox" {

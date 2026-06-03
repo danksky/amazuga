@@ -994,20 +994,40 @@ resource "vercel_project_environment_variable" "africas_talking_api_key" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id
   key        = "AFRICAS_TALKING_API_KEY"
-  value      = var.africas_talking_api_key
+  value      = var.africas_talking_production_api_key
   sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "Africa's Talking API key for SMS delivery to +250 numbers."
+  target     = ["production"]
+  comment    = "Production Africa's Talking API key for SMS delivery to +250 numbers."
 }
 
 resource "vercel_project_environment_variable" "africas_talking_username" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id
   key        = "AFRICAS_TALKING_USERNAME"
-  value      = var.africas_talking_username
+  value      = var.africas_talking_production_username
   sensitive  = false
-  target     = ["production", "preview"]
-  comment    = "Africa's Talking account username ('sandbox' for testing, production username for live)."
+  target     = ["production"]
+  comment    = "Production Africa's Talking account username."
+}
+
+resource "vercel_project_environment_variable" "africas_talking_api_key_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AFRICAS_TALKING_API_KEY"
+  value      = var.africas_talking_preview_api_key
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview Africa's Talking API key for SMS delivery to +250 numbers."
+}
+
+resource "vercel_project_environment_variable" "africas_talking_username_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AFRICAS_TALKING_USERNAME"
+  value      = var.africas_talking_preview_username
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Preview Africa's Talking account username."
 }
 
 resource "vercel_project_environment_variable" "africas_talking_sandbox" {
