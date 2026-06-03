@@ -515,10 +515,10 @@ resource "vercel_project_environment_variable" "database_url" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id
   key        = "DATABASE_URL"
-  value      = local.preview_database_url
+  value      = local.production_database_url
   sensitive  = true
   target     = ["production"]
-  comment    = "Current runtime database URL. Production still points at the preview DB until the production schema is brought up to parity."
+  comment    = "Production Neon database URL (default/primary branch)."
 }
 
 resource "vercel_project_environment_variable" "database_url_preview" {

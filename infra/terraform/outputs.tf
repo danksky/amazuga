@@ -1,4 +1,8 @@
 locals {
+  # Production DB URL — uses the Neon project's default branch (production),
+  # which is the primary branch created with the project.
+  production_database_url = neon_project.amazuga.connection_uri
+
   preview_database_url = format(
     "postgresql://%s:%s@%s/%s?sslmode=require",
     neon_role.preview.name,
