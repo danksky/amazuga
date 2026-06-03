@@ -2,8 +2,8 @@ import "server-only";
 
 import { createHmac, randomUUID } from "node:crypto";
 
-// Agent ID photos are uploaded via the listing-media worker but written to a
-// separate private R2 bucket (amazuga-agent-id-photos) with no public domain.
+// Agent ID photos are uploaded via the listing-media worker but written to an
+// environment-specific private R2 bucket with no public domain.
 // The worker returns a storageKey ("agent-id-photos/{uuid}/gallery.jpg") which
 // is stored in agent_application.national_id_photo_key.
 // Admin reads go through /api/admin/id-photo/[...key], authenticated server-side

@@ -42,6 +42,21 @@ provider "supabase" {
   access_token = var.supabase_access_token
 }
 
+moved {
+  from = cloudflare_r2_bucket.agent_id_photos
+  to   = cloudflare_r2_bucket.agent_id_photos_production
+}
+
+moved {
+  from = random_password.agent_id_photo_admin_read_secret
+  to   = random_password.agent_id_photo_admin_read_secret_production
+}
+
+moved {
+  from = vercel_project_environment_variable.agent_id_photo_admin_read_secret
+  to   = vercel_project_environment_variable.agent_id_photo_admin_read_secret_production
+}
+
 locals {
   parcel_tiles_worker_file  = "${path.module}/../workers/parcel-tiles/index.js"
   listing_media_worker_file = "${path.module}/../workers/listing-media/index.js"
@@ -330,17 +345,31 @@ resource "vercel_project_environment_variable" "off_market_pmtiles_url" {
   comment    = "Public Worker-backed PMTiles URL for off-market parcel discoverability dots."
 }
 
-resource "cloudflare_r2_bucket" "agent_id_photos" {
+resource "cloudflare_r2_bucket" "agent_id_photos_production" {
   account_id    = var.cloudflare_account_id
-  name          = var.cloudflare_agent_id_photos_bucket_name
-  location      = var.cloudflare_agent_id_photos_bucket_location
+  name          = var.cloudflare_agent_id_photos_production_bucket_name
+  location      = var.cloudflare_agent_id_photos_production_bucket_location
   storage_class = "Standard"
   # No cloudflare_r2_custom_domain or cloudflare_r2_managed_domain attached —
-  # this bucket is intentionally private; access goes through the listing-media
-  # worker's /admin-read/ endpoint, authenticated via ADMIN_READ_SECRET.
+  # this production bucket is private; access goes through the production
+  # listing-media worker's /admin-read/ endpoint.
 }
 
-resource "random_password" "agent_id_photo_admin_read_secret" {
+resource "cloudflare_r2_bucket" "agent_id_photos_preview" {
+  account_id    = var.cloudflare_account_id
+  name          = var.cloudflare_agent_id_photos_preview_bucket_name
+  location      = var.cloudflare_agent_id_photos_preview_bucket_location
+  storage_class = "Standard"
+  # Preview private ID photos are isolated from production and are only readable
+  # through the preview listing-media worker's /admin-read/ endpoint.
+}
+
+resource "random_password" "agent_id_photo_admin_read_secret_production" {
+  length  = 48
+  special = false
+}
+
+resource "random_password" "agent_id_photo_admin_read_secret_preview" {
   length  = 48
   special = false
 }
@@ -388,12 +417,12 @@ resource "cloudflare_workers_script" "listing_media" {
     {
       name        = "AGENT_ID_PHOTOS_BUCKET"
       type        = "r2_bucket"
-      bucket_name = cloudflare_r2_bucket.agent_id_photos.name
+      bucket_name = cloudflare_r2_bucket.agent_id_photos_production.name
     },
     {
       name = "ADMIN_READ_SECRET"
       type = "secret_text"
-      text = random_password.agent_id_photo_admin_read_secret.result
+      text = random_password.agent_id_photo_admin_read_secret_production.result
     },
     {
       name = "ALLOWED_ORIGINS"
@@ -487,15 +516,14 @@ resource "cloudflare_workers_script" "listing_media_preview" {
       bucket_name = cloudflare_r2_bucket.listing_media_preview.name
     },
     {
-      # Agent ID photos are admin-only reads — shared with prod is fine.
       name        = "AGENT_ID_PHOTOS_BUCKET"
       type        = "r2_bucket"
-      bucket_name = cloudflare_r2_bucket.agent_id_photos.name
+      bucket_name = cloudflare_r2_bucket.agent_id_photos_preview.name
     },
     {
       name = "ADMIN_READ_SECRET"
       type = "secret_text"
-      text = random_password.agent_id_photo_admin_read_secret.result
+      text = random_password.agent_id_photo_admin_read_secret_preview.result
     },
     {
       name = "ALLOWED_ORIGINS"
@@ -643,14 +671,24 @@ resource "vercel_project_environment_variable" "listing_image_upload_secret_prev
   comment    = "Preview shared secret used to sign listing image upload intents."
 }
 
-resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret" {
+resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret_production" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id
   key        = "AGENT_ID_PHOTO_ADMIN_READ_SECRET"
-  value      = random_password.agent_id_photo_admin_read_secret.result
+  value      = random_password.agent_id_photo_admin_read_secret_production.result
   sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "Shared secret for server-side admin reads of private agent ID photos via the listing-media worker."
+  target     = ["production"]
+  comment    = "Production secret for server-side admin reads of private agent ID photos via the production listing-media worker."
+}
+
+resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "AGENT_ID_PHOTO_ADMIN_READ_SECRET"
+  value      = random_password.agent_id_photo_admin_read_secret_preview.result
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview secret for server-side admin reads of private agent ID photos via the preview listing-media worker."
 }
 
 resource "vercel_project_environment_variable" "cron_secret" {

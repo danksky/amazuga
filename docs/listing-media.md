@@ -16,9 +16,17 @@ Current storage path shape:
 
 - `listing-images/<listingId>/<imageId>/gallery.jpg`
 
-Public images are served from:
+Public listing images are served from:
 
 - `https://media.amazuga.com/<storage_key>`
+
+Preview listing images use a separate bucket and public base URL:
+
+- `https://preview-media.amazuga.com/<storage_key>`
+
+Private agent ID photos are stored separately from public listing images and
+have no public R2 domain. Production uses `amazuga-agent-id-photos`; preview
+uses `amazuga-agent-id-photos-preview`.
 
 ## Photo Removal Lifecycle
 
@@ -115,14 +123,17 @@ Both tokens expire after 10 minutes. The Worker validates `exp` against
 
 ## Worker Bindings
 
-The `amazuga-listing-media` Cloudflare Worker requires the following
-bindings, which are managed by Terraform in `infra/terraform/main.tf`.
+The listing media Cloudflare Workers require the following bindings, which are
+managed by Terraform in `infra/terraform/main.tf`. Production uses
+`amazuga-listing-media`; preview uses `amazuga-listing-media-preview`.
 
 | Binding | Type | Value |
 |---|---|---|
-| `LISTING_MEDIA_BUCKET` | R2 bucket | `amazuga-listing-images` |
+| `LISTING_MEDIA_BUCKET` | R2 bucket | `amazuga-listing-images` in production, `amazuga-listing-images-preview` in preview |
+| `AGENT_ID_PHOTOS_BUCKET` | R2 bucket | `amazuga-agent-id-photos` in production, `amazuga-agent-id-photos-preview` in preview |
+| `ADMIN_READ_SECRET` | secret text | Matches `AGENT_ID_PHOTO_ADMIN_READ_SECRET` in the app for the same Vercel target |
 | `ALLOWED_ORIGINS` | plain text | JSON array of allowed CORS origins |
-| `PUBLIC_BASE_URL` | plain text | `https://media.amazuga.com` |
+| `PUBLIC_BASE_URL` | plain text | `https://media.amazuga.com` in production, `https://preview-media.amazuga.com` in preview |
 | `UPLOAD_SHARED_SECRET` | plain text | Matches `LISTING_IMAGE_UPLOAD_SECRET` in the app |
 | `CLOUDFLARE_ZONE_ID` | plain text | Zone ID for the Cache Purge API call on deletion |
 | `CLOUDFLARE_API_TOKEN` | secret text | CF token with **Cache Purge** permission |
@@ -140,6 +151,7 @@ and run `terraform apply` from `infra/terraform/`.
 - `LISTING_IMAGE_UPLOAD_URL`
 - `LISTING_IMAGES_PUBLIC_BASE_URL`
 - `LISTING_IMAGE_UPLOAD_SECRET`
+- `AGENT_ID_PHOTO_ADMIN_READ_SECRET`
 - `CRON_SECRET`
 
 Optional:

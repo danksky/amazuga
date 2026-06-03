@@ -52,8 +52,12 @@ output "cloudflare_off_market_tiles_worker_public_url" {
   value = local.vercel_off_market_pmtiles_url
 }
 
-output "cloudflare_agent_id_photos_bucket_name" {
-  value = cloudflare_r2_bucket.agent_id_photos.name
+output "cloudflare_agent_id_photos_production_bucket_name" {
+  value = cloudflare_r2_bucket.agent_id_photos_production.name
+}
+
+output "cloudflare_agent_id_photos_preview_bucket_name" {
+  value = cloudflare_r2_bucket.agent_id_photos_preview.name
 }
 
 output "cloudflare_listing_media_bucket_name" {

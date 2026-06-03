@@ -174,14 +174,26 @@ variable "by_upi_rate_limit_requests_per_period" {
   default     = 5
 }
 
-variable "cloudflare_agent_id_photos_bucket_name" {
-  description = "Bucket name for private agent ID photos. No public domain is attached — access is server-side only."
+variable "cloudflare_agent_id_photos_production_bucket_name" {
+  description = "Production bucket name for private agent ID photos. No public domain is attached; access is server-side only."
   type        = string
   default     = "amazuga-agent-id-photos"
 }
 
-variable "cloudflare_agent_id_photos_bucket_location" {
-  description = "Preferred location hint for the agent ID photos bucket."
+variable "cloudflare_agent_id_photos_production_bucket_location" {
+  description = "Preferred location hint for the production agent ID photos bucket."
+  type        = string
+  default     = "enam"
+}
+
+variable "cloudflare_agent_id_photos_preview_bucket_name" {
+  description = "Preview bucket name for private agent ID photos. Separate from production to prevent cross-contamination."
+  type        = string
+  default     = "amazuga-agent-id-photos-preview"
+}
+
+variable "cloudflare_agent_id_photos_preview_bucket_location" {
+  description = "Preferred location hint for the preview agent ID photos bucket."
   type        = string
   default     = "enam"
 }
