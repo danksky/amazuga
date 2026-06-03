@@ -39,6 +39,20 @@ output "better_stack_sources" {
   }
 }
 
+output "sms_delivery_callback_urls" {
+  description = "Base SMS delivery callback URLs. Africa's Talking dashboard URLs need the SMS_DELIVERY_CALLBACK_SECRET query parameter from Vercel/Terraform state."
+  value = {
+    production = {
+      africas_talking = "https://amazuga.com/api/auth/sms-delivery/africas-talking"
+      telnyx          = "https://amazuga.com/api/auth/sms-delivery/telnyx"
+    }
+    preview = {
+      africas_talking = "https://preview.amazuga.com/api/auth/sms-delivery/africas-talking"
+      telnyx          = "https://preview.amazuga.com/api/auth/sms-delivery/telnyx"
+    }
+  }
+}
+
 output "cloudflare_r2_bucket_name" {
   value = cloudflare_r2_bucket.parcel_tiles.name
 }

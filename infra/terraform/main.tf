@@ -395,6 +395,16 @@ resource "random_password" "agent_id_photo_admin_read_secret_production" {
   special = false
 }
 
+resource "random_password" "sms_delivery_callback_secret_production" {
+  length  = 48
+  special = false
+}
+
+resource "random_password" "sms_delivery_callback_secret_preview" {
+  length  = 48
+  special = false
+}
+
 resource "random_password" "agent_id_photo_admin_read_secret_preview" {
   length  = 48
   special = false
@@ -942,6 +952,36 @@ resource "vercel_project_environment_variable" "supabase_hook_secret_preview" {
   comment    = "Preview HMAC secret for verifying Supabase webhook signatures."
 }
 
+resource "vercel_project_environment_variable" "sms_delivery_callback_secret" {
+  for_each = {
+    production = random_password.sms_delivery_callback_secret_production.result
+    preview    = random_password.sms_delivery_callback_secret_preview.result
+  }
+
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "SMS_DELIVERY_CALLBACK_SECRET"
+  value      = each.value
+  sensitive  = true
+  target     = [each.key]
+  comment    = "Shared secret for ${each.key} SMS delivery callback endpoints."
+}
+
+resource "vercel_project_environment_variable" "telnyx_delivery_webhook_url" {
+  for_each = {
+    production = "https://amazuga.com/api/auth/sms-delivery/telnyx?secret=${random_password.sms_delivery_callback_secret_production.result}"
+    preview    = "https://preview.amazuga.com/api/auth/sms-delivery/telnyx?secret=${random_password.sms_delivery_callback_secret_preview.result}"
+  }
+
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "TELNYX_DELIVERY_WEBHOOK_URL"
+  value      = each.value
+  sensitive  = true
+  target     = [each.key]
+  comment    = "Per-message Telnyx SMS delivery webhook URL for ${each.key}."
+}
+
 # --- Vercel env vars: Africa's Talking ---
 
 resource "vercel_project_environment_variable" "africas_talking_api_key" {
@@ -994,6 +1034,21 @@ resource "vercel_project_environment_variable" "telnyx_phone_number" {
   sensitive  = false
   target     = ["production", "preview"]
   comment    = "Telnyx outbound number in E.164 format (+12762530653)."
+}
+
+resource "vercel_project_environment_variable" "telnyx_public_key" {
+  for_each = var.telnyx_public_key == null ? {} : {
+    production = var.telnyx_public_key
+    preview    = var.telnyx_public_key
+  }
+
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "TELNYX_PUBLIC_KEY"
+  value      = each.value
+  sensitive  = true
+  target     = [each.key]
+  comment    = "Telnyx Ed25519 public key for verifying ${each.key} delivery webhooks."
 }
 
 # --- WAF rate limiting ---

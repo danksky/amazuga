@@ -497,3 +497,10 @@ variable "telnyx_phone_number" {
   type        = string
   default     = "+12762530653"
 }
+
+variable "telnyx_public_key" {
+  description = "Optional Telnyx Ed25519 public key for webhook signature verification. If omitted, callback URLs fall back to the shared secret query parameter."
+  type        = string
+  default     = null
+  nullable    = true
+}
