@@ -863,6 +863,29 @@ resource "cloudflare_ruleset" "by_upi_rate_limit" {
   ]
 }
 
+# --- Preview environment custom domain ---
+#
+# preview.amazuga.com tracks the `preview` git branch.
+# Keep the preview branch up to date with whatever state you want
+# preview.amazuga.com to serve.
+
+resource "vercel_project_domain" "preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  domain     = "preview.amazuga.com"
+  git_branch = "preview"
+}
+
+resource "cloudflare_dns_record" "vercel_preview_domain" {
+  zone_id = data.cloudflare_zone.amazuga.id
+  name    = "preview"
+  type    = "CNAME"
+  content = "cname.vercel-dns.com"
+  proxied = false
+  ttl     = 1
+  comment = "Vercel preview environment — tracks the `preview` git branch"
+}
+
 # --- Email forwarding (Forward Email) ---
 
 resource "cloudflare_dns_record" "mx_forwardemail_1" {
