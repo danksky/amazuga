@@ -24,6 +24,21 @@ output "neon_project_id" {
   value = neon_project.amazuga.id
 }
 
+output "better_stack_sources" {
+  description = "Managed Better Stack source metadata by environment."
+  value = {
+    for env, source in logtail_source.amazuga : env => {
+      id             = source.id
+      name           = source.name
+      platform       = source.platform
+      data_region    = source.data_region
+      ingesting_host = source.ingesting_host
+      table_name     = source.table_name
+      team_id        = source.team_id
+    }
+  }
+}
+
 output "cloudflare_r2_bucket_name" {
   value = cloudflare_r2_bucket.parcel_tiles.name
 }

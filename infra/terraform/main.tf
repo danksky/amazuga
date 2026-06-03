@@ -14,6 +14,10 @@ terraform {
       source  = "vercel/vercel"
       version = "~> 4.6"
     }
+    logtail = {
+      source  = "BetterStackHQ/logtail"
+      version = "~> 10.10"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
@@ -38,6 +42,10 @@ provider "vercel" {
   team      = var.vercel_team_id
 }
 
+provider "logtail" {
+  api_token = var.logtail_api_token
+}
+
 provider "supabase" {
   access_token = var.supabase_access_token
 }
@@ -58,6 +66,15 @@ moved {
 }
 
 locals {
+  better_stack_sources = {
+    preview = {
+      name = "amazuga-preview"
+    }
+    production = {
+      name = "amazuga-prod"
+    }
+  }
+
   parcel_tiles_worker_file  = "${path.module}/../workers/parcel-tiles/index.js"
   listing_media_worker_file = "${path.module}/../workers/listing-media/index.js"
   cloudflare_tiles_worker_allowed_origins = distinct(
@@ -112,6 +129,15 @@ data "cloudflare_zone" "amazuga" {
     }
     name = var.cloudflare_zone_name
   }
+}
+
+resource "logtail_source" "amazuga" {
+  for_each = local.better_stack_sources
+
+  name        = each.value.name
+  platform    = "javascript"
+  data_region = var.better_stack_data_region
+  team_name   = var.better_stack_team_name
 }
 
 resource "cloudflare_r2_bucket" "parcel_tiles" {
@@ -609,6 +635,21 @@ resource "vercel_project_environment_variable" "parcel_pmtiles_url" {
   sensitive  = false
   target     = ["production", "preview"]
   comment    = "Public Worker-backed PMTiles URL for parcel maps."
+}
+
+resource "vercel_project_environment_variable" "better_stack_source_token" {
+  for_each = {
+    preview    = logtail_source.amazuga["preview"].token
+    production = logtail_source.amazuga["production"].token
+  }
+
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "BETTER_STACK_SOURCE_TOKEN"
+  value      = each.value
+  sensitive  = true
+  target     = [each.key]
+  comment    = "Better Stack source token for ${each.key} runtime logs."
 }
 
 resource "vercel_project_environment_variable" "listing_image_upload_url" {

@@ -1,5 +1,6 @@
 import { Webhook, WebhookVerificationError } from "standardwebhooks";
 import { NextRequest, NextResponse } from "next/server";
+import { getLogger, scheduleLogFlush } from "@/lib/logger";
 
 // Supabase signs hook requests using Standard Webhooks (https://www.standardwebhooks.com).
 // SUPABASE_HOOK_SECRET must be in whsec_<base64> format — set it to the value
@@ -8,6 +9,27 @@ import { NextRequest, NextResponse } from "next/server";
 interface HookPayload {
   user: { phone: string };
   sms: { otp: string };
+}
+
+const routeLogger = getLogger("api/auth/send-sms");
+
+interface AfricasTalkingRecipient {
+  cost?: string;
+  messageId?: string;
+  number?: string;
+  status?: string;
+  statusCode?: number;
+}
+
+interface AfricasTalkingResponse {
+  SMSMessageData?: {
+    Message?: string;
+    Recipients?: AfricasTalkingRecipient[];
+  };
+}
+
+function maskPhone(value: string) {
+  return value.replace(/(\+\d{3})\d+(\d{4})$/, "$1***$2");
 }
 
 async function sendViaAfricasTalking(to: string, message: string): Promise<void> {
@@ -34,6 +56,35 @@ async function sendViaAfricasTalking(to: string, message: string): Promise<void>
     const text = await res.text();
     throw new Error(`Africa's Talking error ${res.status}: ${text}`);
   }
+
+  const responseText = await res.text();
+  let data: AfricasTalkingResponse | null = null;
+
+  try {
+    data = JSON.parse(responseText) as AfricasTalkingResponse;
+  } catch {
+    routeLogger.warn("Africa's Talking returned non-JSON response", {
+      httpStatus: res.status,
+      to: maskPhone(to),
+    });
+  }
+
+  const recipient = data?.SMSMessageData?.Recipients?.[0];
+  const providerStatus = recipient?.status;
+  const providerStatusCode = recipient?.statusCode;
+
+  routeLogger.info("Africa's Talking response", {
+    to: maskPhone(to),
+    messageId: recipient?.messageId,
+    status: providerStatus,
+    statusCode: providerStatusCode,
+  });
+
+  if (!recipient || providerStatus !== "Success") {
+    throw new Error(
+      `Africa's Talking recipient status ${providerStatus ?? "unknown"} (${providerStatusCode ?? "unknown"}) for ${maskPhone(to)}`,
+    );
+  }
 }
 
 async function sendViaTelnyx(to: string, message: string): Promise<void> {
@@ -53,9 +104,16 @@ async function sendViaTelnyx(to: string, message: string): Promise<void> {
     const text = await res.text();
     throw new Error(`Telnyx error ${res.status}: ${text}`);
   }
+
+  routeLogger.info("Telnyx response", {
+    to: maskPhone(to),
+    status: res.status,
+  });
 }
 
 export async function POST(request: NextRequest) {
+  scheduleLogFlush(routeLogger);
+
   const rawBody = await request.text();
 
   const secret = process.env.SUPABASE_HOOK_SECRET;
@@ -94,6 +152,11 @@ export async function POST(request: NextRequest) {
   const message = `Your Amazuga verification code is: ${otp}`;
 
   try {
+    routeLogger.info("Sending OTP SMS", {
+      provider: phone.startsWith("+1") ? "telnyx" : "africas_talking",
+      to: maskPhone(phone),
+    });
+
     if (phone.startsWith("+1")) {
       await sendViaTelnyx(phone, message);
     } else {
@@ -101,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[send-sms hook]", err);
+    routeLogger.error("SMS send failed", { error: err, to: maskPhone(phone) });
     return NextResponse.json({ error: "SMS send failed" }, { status: 500 });
   }
 }

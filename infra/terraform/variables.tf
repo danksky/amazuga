@@ -308,6 +308,27 @@ variable "vercel_public_pmtiles_url" {
   default     = null
 }
 
+# --- Better Stack / Logtail ---
+
+variable "logtail_api_token" {
+  description = "Better Stack Telemetry API token used by Terraform to manage Logtail sources."
+  type        = string
+  sensitive   = true
+}
+
+variable "better_stack_team_name" {
+  description = "Optional Better Stack team name. Useful when authenticating Terraform with a global token."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "better_stack_data_region" {
+  description = "Better Stack data region for Amazuga log sources."
+  type        = string
+  default     = "germany"
+}
+
 variable "neon_api_key" {
   description = "Neon API key."
   type        = string
