@@ -395,6 +395,11 @@ resource "random_password" "agent_id_photo_admin_read_secret_production" {
   special = false
 }
 
+resource "random_password" "vercel_automation_bypass_secret" {
+  length  = 32
+  special = false
+}
+
 resource "random_password" "sms_delivery_callback_secret_production" {
   length  = 48
   special = false
@@ -616,10 +621,11 @@ resource "cloudflare_workers_custom_domain" "listing_media_preview" {
 }
 
 resource "vercel_project" "amazuga" {
-  name            = "amazuga"
-  framework       = "nextjs"
-  node_version    = "24.x"
-  skew_protection = "12 hours"
+  name                                    = "amazuga"
+  framework                               = "nextjs"
+  node_version                            = "24.x"
+  protection_bypass_for_automation        = true
+  protection_bypass_for_automation_secret = random_password.vercel_automation_bypass_secret.result
 
   git_repository = {
     type              = "github"
@@ -844,7 +850,7 @@ resource "supabase_settings" "preview" {
       # Phone OTP via custom SMS hook — preview project, test OTP overrides allowed
       external_phone_enabled = true
       hook_send_sms_enabled  = true
-      hook_send_sms_uri      = var.supabase_hook_send_sms_url_preview
+      hook_send_sms_uri      = "${var.supabase_hook_send_sms_url_preview}?x-vercel-protection-bypass=${random_password.vercel_automation_bypass_secret.result}"
       hook_send_sms_secrets  = "v1,${var.supabase_hook_secret_preview}"
       sms_otp_exp            = 60
       sms_otp_length         = 6
@@ -970,7 +976,7 @@ resource "vercel_project_environment_variable" "sms_delivery_callback_secret" {
 resource "vercel_project_environment_variable" "telnyx_delivery_webhook_url" {
   for_each = {
     production = "https://amazuga.com/api/auth/sms-delivery/telnyx?secret=${random_password.sms_delivery_callback_secret_production.result}"
-    preview    = "https://preview.amazuga.com/api/auth/sms-delivery/telnyx?secret=${random_password.sms_delivery_callback_secret_preview.result}"
+    preview    = "https://preview.amazuga.com/api/auth/sms-delivery/telnyx?secret=${random_password.sms_delivery_callback_secret_preview.result}&x-vercel-protection-bypass=${random_password.vercel_automation_bypass_secret.result}"
   }
 
   project_id = vercel_project.amazuga.id
