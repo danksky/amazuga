@@ -6,7 +6,7 @@ import {
 # Supabase settings (import ID = project ref)
 import {
   to = supabase_settings.production
-  id = "xdjclalffugjziukuqqi"
+  id = "woikgjvycparhtdugbom"
 }
 
 # Vercel env vars — bring under Terraform management

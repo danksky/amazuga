@@ -199,6 +199,10 @@ resource "cloudflare_workers_script" "parcel_tiles" {
       head_sampling_rate = 1
     }
   }
+
+  lifecycle {
+    ignore_changes = [observability]
+  }
 }
 
 resource "cloudflare_workers_script_subdomain" "parcel_tiles" {
@@ -296,6 +300,10 @@ resource "cloudflare_workers_script" "off_market_tiles" {
       invocation_logs    = true
       head_sampling_rate = 1
     }
+  }
+
+  lifecycle {
+    ignore_changes = [observability]
   }
 }
 
@@ -422,6 +430,10 @@ resource "cloudflare_workers_script" "listing_media" {
       head_sampling_rate = 1
     }
   }
+
+  lifecycle {
+    ignore_changes = [observability]
+  }
 }
 
 resource "cloudflare_workers_script_subdomain" "listing_media" {
@@ -519,6 +531,10 @@ resource "cloudflare_workers_script" "listing_media_preview" {
       invocation_logs    = true
       head_sampling_rate = 1
     }
+  }
+
+  lifecycle {
+    ignore_changes = [observability]
   }
 }
 
@@ -716,21 +732,43 @@ resource "neon_endpoint" "preview" {
 resource "supabase_settings" "production" {
   project_ref = var.supabase_project_ref
 
+  auth = jsonencode({
+    # Phone OTP via custom SMS hook — production project, no test OTP overrides
+    external_phone_enabled = true
+    hook_send_sms_enabled  = true
+    hook_send_sms_uri      = var.supabase_hook_send_sms_url
+    hook_send_sms_secrets  = "v1,${var.supabase_hook_secret}"
+    sms_otp_exp            = 60
+    sms_otp_length         = 6
+  })
+
+  lifecycle {
+    ignore_changes = [api, database, network, storage]
+  }
+}
+
+resource "supabase_settings" "preview" {
+  project_ref = var.supabase_project_ref_preview
+
   auth = jsonencode(merge(
     {
-      # Phone OTP via custom SMS hook
-      external_phone_enabled  = true
-      hook_send_sms_enabled   = true
-      hook_send_sms_uri       = var.supabase_hook_send_sms_url
-      hook_send_sms_secrets   = "v1,${var.supabase_hook_secret}"
-      sms_otp_exp             = 60
-      sms_otp_length          = 6
+      # Phone OTP via custom SMS hook — preview project, test OTP overrides allowed
+      external_phone_enabled = true
+      hook_send_sms_enabled  = true
+      hook_send_sms_uri      = var.supabase_hook_send_sms_url_preview
+      hook_send_sms_secrets  = "v1,${var.supabase_hook_secret_preview}"
+      sms_otp_exp            = 60
+      sms_otp_length         = 6
     },
     var.supabase_sms_test_otp != null ? {
-      sms_test_otp           = var.supabase_sms_test_otp
+      sms_test_otp             = var.supabase_sms_test_otp
       sms_test_otp_valid_until = var.supabase_sms_test_otp_valid_until
     } : {}
   ))
+
+  lifecycle {
+    ignore_changes = [api, database, network, storage]
+  }
 }
 
 # --- Vercel env vars: auth ---
@@ -751,8 +789,18 @@ resource "vercel_project_environment_variable" "next_public_supabase_url" {
   key        = "NEXT_PUBLIC_SUPABASE_URL"
   value      = var.next_public_supabase_url
   sensitive  = false
-  target     = ["production", "preview"]
-  comment    = "Supabase project URL."
+  target     = ["production"]
+  comment    = "Production Supabase project URL."
+}
+
+resource "vercel_project_environment_variable" "next_public_supabase_url_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_SUPABASE_URL"
+  value      = var.next_public_supabase_url_preview
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Preview Supabase project URL."
 }
 
 resource "vercel_project_environment_variable" "next_public_supabase_anon_key" {
@@ -761,8 +809,18 @@ resource "vercel_project_environment_variable" "next_public_supabase_anon_key" {
   key        = "NEXT_PUBLIC_SUPABASE_ANON_KEY"
   value      = var.next_public_supabase_anon_key
   sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "Supabase anon/public JWT key."
+  target     = ["production"]
+  comment    = "Production Supabase anon/public JWT key."
+}
+
+resource "vercel_project_environment_variable" "next_public_supabase_anon_key_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  value      = var.next_public_supabase_anon_key_preview
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview Supabase anon/public JWT key."
 }
 
 resource "vercel_project_environment_variable" "supabase_service_role_key" {
@@ -771,8 +829,18 @@ resource "vercel_project_environment_variable" "supabase_service_role_key" {
   key        = "SUPABASE_SERVICE_ROLE_KEY"
   value      = var.supabase_service_role_key
   sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "Supabase service role key (server-only)."
+  target     = ["production"]
+  comment    = "Production Supabase service role key (server-only)."
+}
+
+resource "vercel_project_environment_variable" "supabase_service_role_key_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "SUPABASE_SERVICE_ROLE_KEY"
+  value      = var.supabase_service_role_key_preview
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview Supabase service role key (server-only)."
 }
 
 resource "vercel_project_environment_variable" "supabase_hook_secret" {
@@ -781,8 +849,18 @@ resource "vercel_project_environment_variable" "supabase_hook_secret" {
   key        = "SUPABASE_HOOK_SECRET"
   value      = var.supabase_hook_secret
   sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "HMAC secret for verifying Supabase webhook signatures on /api/auth/send-sms."
+  target     = ["production"]
+  comment    = "Production HMAC secret for verifying Supabase webhook signatures."
+}
+
+resource "vercel_project_environment_variable" "supabase_hook_secret_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "SUPABASE_HOOK_SECRET"
+  value      = var.supabase_hook_secret_preview
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview HMAC secret for verifying Supabase webhook signatures."
 }
 
 # --- Vercel env vars: Africa's Talking ---
@@ -842,10 +920,10 @@ resource "vercel_project_environment_variable" "telnyx_phone_number" {
 # --- WAF rate limiting ---
 
 resource "cloudflare_ruleset" "by_upi_rate_limit" {
-  zone_id     = data.cloudflare_zone.amazuga.id
-  name        = "amazuga-by-upi-rate-limit"
-  kind        = "zone"
-  phase       = "http_ratelimit"
+  zone_id = data.cloudflare_zone.amazuga.id
+  name    = "amazuga-by-upi-rate-limit"
+  kind    = "zone"
+  phase   = "http_ratelimit"
 
   rules = [
     {
@@ -854,10 +932,10 @@ resource "cloudflare_ruleset" "by_upi_rate_limit" {
       description = "Rate limit anonymous property UPI lookup endpoint"
       enabled     = true
       ratelimit = {
-        characteristics     = ["ip.src"]
-        period              = 60
-        requests_per_period = var.by_upi_rate_limit_requests_per_minute
-        mitigation_timeout  = 60
+        characteristics     = ["cf.colo.id", "ip.src"]
+        period              = 10
+        requests_per_period = var.by_upi_rate_limit_requests_per_period
+        mitigation_timeout  = 10
       }
     }
   ]

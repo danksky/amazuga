@@ -168,10 +168,10 @@ variable "cloudflare_off_market_tiles_worker_rate_limit_namespace_id" {
   default     = "41002"
 }
 
-variable "by_upi_rate_limit_requests_per_minute" {
-  description = "Max requests per IP per 60-second window to /api/properties/by-upi before Cloudflare blocks with 429."
+variable "by_upi_rate_limit_requests_per_period" {
+  description = "Max requests per IP per 10-second window to /api/properties/by-upi before Cloudflare blocks."
   type        = number
-  default     = 30
+  default     = 5
 }
 
 variable "cloudflare_agent_id_photos_bucket_name" {
@@ -340,15 +340,27 @@ variable "supabase_access_token" {
 }
 
 variable "supabase_project_ref" {
-  description = "Supabase project reference ID."
+  description = "Production Supabase project reference ID."
+  type        = string
+  default     = "woikgjvycparhtdugbom"
+}
+
+variable "supabase_project_ref_preview" {
+  description = "Preview Supabase project reference ID."
   type        = string
   default     = "xdjclalffugjziukuqqi"
 }
 
 variable "supabase_hook_send_sms_url" {
-  description = "Public URL Supabase will POST to when sending an OTP SMS."
+  description = "Public URL production Supabase will POST to when sending an OTP SMS."
   type        = string
-  default     = "https://amazuga.vercel.app/api/auth/send-sms"
+  default     = "https://amazuga.com/api/auth/send-sms"
+}
+
+variable "supabase_hook_send_sms_url_preview" {
+  description = "Public URL preview Supabase will POST to when sending an OTP SMS."
+  type        = string
+  default     = "https://preview.amazuga.com/api/auth/send-sms"
 }
 
 variable "supabase_sms_test_otp" {
@@ -373,24 +385,48 @@ variable "auth_mode" {
 }
 
 variable "next_public_supabase_url" {
-  description = "Supabase project URL (public)."
+  description = "Production Supabase project URL (public)."
   type        = string
 }
 
 variable "next_public_supabase_anon_key" {
-  description = "Supabase anon/public JWT key."
+  description = "Production Supabase anon/public JWT key."
   type        = string
   sensitive   = true
 }
 
 variable "supabase_service_role_key" {
-  description = "Supabase service role JWT key (server-side only)."
+  description = "Production Supabase service role JWT key (server-side only)."
   type        = string
   sensitive   = true
 }
 
 variable "supabase_hook_secret" {
-  description = "HMAC secret used to verify Supabase webhook signatures on /api/auth/send-sms."
+  description = "HMAC secret used to verify production Supabase webhook signatures on /api/auth/send-sms."
+  type        = string
+  sensitive   = true
+}
+
+variable "next_public_supabase_url_preview" {
+  description = "Preview Supabase project URL (public)."
+  type        = string
+  default     = "https://xdjclalffugjziukuqqi.supabase.co"
+}
+
+variable "next_public_supabase_anon_key_preview" {
+  description = "Preview Supabase anon/public JWT key."
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_service_role_key_preview" {
+  description = "Preview Supabase service role JWT key (server-side only)."
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_hook_secret_preview" {
+  description = "HMAC secret used to verify preview Supabase webhook signatures."
   type        = string
   sensitive   = true
 }
