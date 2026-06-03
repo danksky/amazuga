@@ -863,6 +863,41 @@ resource "cloudflare_ruleset" "by_upi_rate_limit" {
   ]
 }
 
+# --- Production custom domains (amazuga.com + www) ---
+
+resource "vercel_project_domain" "production_apex" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  domain     = "amazuga.com"
+}
+
+resource "vercel_project_domain" "production_www" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  domain     = "www.amazuga.com"
+}
+
+# Cloudflare supports CNAME flattening at the apex, so this works for the root domain.
+resource "cloudflare_dns_record" "vercel_apex" {
+  zone_id = data.cloudflare_zone.amazuga.id
+  name    = "@"
+  type    = "CNAME"
+  content = "cname.vercel-dns.com"
+  proxied = false
+  ttl     = 1
+  comment = "Vercel production — amazuga.com"
+}
+
+resource "cloudflare_dns_record" "vercel_www" {
+  zone_id = data.cloudflare_zone.amazuga.id
+  name    = "www"
+  type    = "CNAME"
+  content = "cname.vercel-dns.com"
+  proxied = false
+  ttl     = 1
+  comment = "Vercel production — www.amazuga.com"
+}
+
 # --- Preview environment custom domain ---
 #
 # preview.amazuga.com tracks the `preview` git branch.
