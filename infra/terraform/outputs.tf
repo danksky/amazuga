@@ -68,6 +68,18 @@ output "cloudflare_listing_media_upload_url" {
   value = local.listing_media_upload_url
 }
 
+output "cloudflare_listing_media_preview_bucket_name" {
+  value = cloudflare_r2_bucket.listing_media_preview.name
+}
+
+output "cloudflare_listing_media_preview_public_url" {
+  value = local.listing_media_preview_public_base_url
+}
+
+output "cloudflare_listing_media_preview_upload_url" {
+  value = local.listing_media_preview_upload_url
+}
+
 output "production_database_url" {
   value     = neon_project.amazuga.connection_uri
   sensitive = true

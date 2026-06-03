@@ -80,6 +80,14 @@ locals {
     "https://%s",
     cloudflare_workers_custom_domain.listing_media.hostname
   )
+  listing_media_preview_public_base_url = format(
+    "https://%s",
+    cloudflare_r2_custom_domain.listing_media_preview.domain
+  )
+  listing_media_preview_upload_url = format(
+    "https://%s",
+    cloudflare_workers_custom_domain.listing_media_preview.hostname
+  )
 }
 
 data "cloudflare_zone" "amazuga" {
@@ -429,6 +437,104 @@ resource "cloudflare_workers_custom_domain" "listing_media" {
   zone_id    = data.cloudflare_zone.amazuga.id
 }
 
+# --- Preview listing media (separate bucket + worker from prod) ---
+
+resource "cloudflare_r2_bucket" "listing_media_preview" {
+  account_id    = var.cloudflare_account_id
+  name          = var.cloudflare_listing_media_preview_bucket_name
+  location      = var.cloudflare_listing_media_preview_bucket_location
+  storage_class = "Standard"
+}
+
+resource "cloudflare_r2_custom_domain" "listing_media_preview" {
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.listing_media_preview.name
+  domain      = var.cloudflare_listing_media_preview_custom_domain
+  enabled     = true
+  min_tls     = "1.2"
+  zone_id     = data.cloudflare_zone.amazuga.id
+}
+
+resource "random_password" "listing_media_upload_secret_preview" {
+  length  = 48
+  special = false
+}
+
+resource "cloudflare_workers_script" "listing_media_preview" {
+  account_id         = var.cloudflare_account_id
+  script_name        = var.cloudflare_listing_media_preview_worker_name
+  content_file       = local.listing_media_worker_file
+  content_sha256     = filesha256(local.listing_media_worker_file)
+  main_module        = "index.js"
+  compatibility_date = "2026-05-24"
+
+  bindings = [
+    {
+      name        = "LISTING_MEDIA_BUCKET"
+      type        = "r2_bucket"
+      bucket_name = cloudflare_r2_bucket.listing_media_preview.name
+    },
+    {
+      # Agent ID photos are admin-only reads — shared with prod is fine.
+      name        = "AGENT_ID_PHOTOS_BUCKET"
+      type        = "r2_bucket"
+      bucket_name = cloudflare_r2_bucket.agent_id_photos.name
+    },
+    {
+      name = "ADMIN_READ_SECRET"
+      type = "secret_text"
+      text = random_password.agent_id_photo_admin_read_secret.result
+    },
+    {
+      name = "ALLOWED_ORIGINS"
+      type = "plain_text"
+      text = jsonencode(local.cloudflare_listing_media_worker_allowed_origins)
+    },
+    {
+      name = "PUBLIC_BASE_URL"
+      type = "plain_text"
+      text = local.listing_media_preview_public_base_url
+    },
+    {
+      name = "UPLOAD_SHARED_SECRET"
+      type = "plain_text"
+      text = random_password.listing_media_upload_secret_preview.result
+    },
+    {
+      name = "CLOUDFLARE_ZONE_ID"
+      type = "plain_text"
+      text = data.cloudflare_zone.amazuga.id
+    },
+    {
+      name = "CLOUDFLARE_API_TOKEN"
+      type = "secret_text"
+      text = coalesce(var.cloudflare_cache_purge_token, var.cloudflare_api_token)
+    },
+  ]
+
+  observability = {
+    enabled = true
+    logs = {
+      enabled            = true
+      invocation_logs    = true
+      head_sampling_rate = 1
+    }
+  }
+}
+
+resource "cloudflare_workers_script_subdomain" "listing_media_preview" {
+  account_id  = var.cloudflare_account_id
+  script_name = cloudflare_workers_script.listing_media_preview.script_name
+  enabled     = true
+}
+
+resource "cloudflare_workers_custom_domain" "listing_media_preview" {
+  account_id = var.cloudflare_account_id
+  hostname   = var.cloudflare_listing_media_preview_worker_hostname
+  service    = cloudflare_workers_script.listing_media_preview.script_name
+  zone_id    = data.cloudflare_zone.amazuga.id
+}
+
 resource "vercel_project" "amazuga" {
   name            = "amazuga"
   framework       = "nextjs"
@@ -467,8 +573,18 @@ resource "vercel_project_environment_variable" "listing_image_upload_url" {
   key        = "LISTING_IMAGE_UPLOAD_URL"
   value      = local.listing_media_upload_url
   sensitive  = false
-  target     = ["production", "preview"]
-  comment    = "Listing media upload worker URL."
+  target     = ["production"]
+  comment    = "Production listing media upload worker URL."
+}
+
+resource "vercel_project_environment_variable" "listing_image_upload_url_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_IMAGE_UPLOAD_URL"
+  value      = local.listing_media_preview_upload_url
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Preview listing media upload worker URL (separate bucket from prod)."
 }
 
 resource "vercel_project_environment_variable" "listing_images_public_base_url" {
@@ -477,8 +593,18 @@ resource "vercel_project_environment_variable" "listing_images_public_base_url" 
   key        = "LISTING_IMAGES_PUBLIC_BASE_URL"
   value      = local.listing_media_public_base_url
   sensitive  = false
-  target     = ["production", "preview"]
-  comment    = "Public base URL for listing media stored in R2."
+  target     = ["production"]
+  comment    = "Production public base URL for listing media stored in R2."
+}
+
+resource "vercel_project_environment_variable" "listing_images_public_base_url_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_IMAGES_PUBLIC_BASE_URL"
+  value      = local.listing_media_preview_public_base_url
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Preview public base URL for listing media stored in R2 (separate bucket from prod)."
 }
 
 resource "vercel_project_environment_variable" "listing_image_upload_secret" {
@@ -487,8 +613,18 @@ resource "vercel_project_environment_variable" "listing_image_upload_secret" {
   key        = "LISTING_IMAGE_UPLOAD_SECRET"
   value      = random_password.listing_media_upload_secret.result
   sensitive  = true
-  target     = ["production", "preview"]
-  comment    = "Shared secret used to sign listing image upload intents."
+  target     = ["production"]
+  comment    = "Production shared secret used to sign listing image upload intents."
+}
+
+resource "vercel_project_environment_variable" "listing_image_upload_secret_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_IMAGE_UPLOAD_SECRET"
+  value      = random_password.listing_media_upload_secret_preview.result
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview shared secret used to sign listing image upload intents."
 }
 
 resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret" {

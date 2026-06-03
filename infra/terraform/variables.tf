@@ -244,6 +244,36 @@ variable "cloudflare_listing_media_preview_allowed_origins" {
   ]
 }
 
+variable "cloudflare_listing_media_preview_bucket_name" {
+  description = "Bucket name for preview listing photos. Separate from prod to prevent cross-contamination."
+  type        = string
+  default     = "amazuga-listing-images-preview"
+}
+
+variable "cloudflare_listing_media_preview_bucket_location" {
+  description = "Preferred location hint for the preview listing media bucket."
+  type        = string
+  default     = "enam"
+}
+
+variable "cloudflare_listing_media_preview_custom_domain" {
+  description = "Custom domain for public preview listing images."
+  type        = string
+  default     = "preview-media.amazuga.com"
+}
+
+variable "cloudflare_listing_media_preview_worker_name" {
+  description = "Worker name for preview listing media uploads."
+  type        = string
+  default     = "amazuga-listing-media-preview"
+}
+
+variable "cloudflare_listing_media_preview_worker_hostname" {
+  description = "Custom hostname for the preview listing media upload worker."
+  type        = string
+  default     = "preview-uploads.amazuga.com"
+}
+
 variable "vercel_token" {
   description = "Vercel API token."
   type        = string
