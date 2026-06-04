@@ -827,15 +827,21 @@ resource "neon_endpoint" "preview" {
 resource "supabase_settings" "production" {
   project_ref = var.supabase_project_ref
 
-  auth = jsonencode({
-    # Phone OTP via custom SMS hook — production project, no test OTP overrides
-    external_phone_enabled = true
-    hook_send_sms_enabled  = true
-    hook_send_sms_uri      = var.supabase_hook_send_sms_url
-    hook_send_sms_secrets  = "v1,${var.supabase_hook_secret}"
-    sms_otp_exp            = 60
-    sms_otp_length         = 6
-  })
+  auth = jsonencode(merge(
+    {
+      # Phone OTP via custom SMS hook — production project
+      external_phone_enabled = true
+      hook_send_sms_enabled  = true
+      hook_send_sms_uri      = var.supabase_hook_send_sms_url
+      hook_send_sms_secrets  = "v1,${var.supabase_hook_secret}"
+      sms_otp_exp            = 60
+      sms_otp_length         = 6
+    },
+    var.supabase_sms_test_otp_production != null ? {
+      sms_test_otp             = var.supabase_sms_test_otp_production
+      sms_test_otp_valid_until = var.supabase_sms_test_otp_valid_until
+    } : {}
+  ))
 
   lifecycle {
     ignore_changes = [api, database, network, storage]

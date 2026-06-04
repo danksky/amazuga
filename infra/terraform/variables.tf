@@ -403,6 +403,13 @@ variable "supabase_sms_test_otp" {
   default     = null
 }
 
+variable "supabase_sms_test_otp_production" {
+  description = "Production comma-separated list of <e164_without_plus>=<code> test phone overrides. Set to null to disable."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 variable "supabase_sms_test_otp_valid_until" {
   description = "ISO-8601 expiry for the sms_test_otp entries."
   type        = string
