@@ -95,6 +95,7 @@ interface ValuationRow {
 interface PropertyWhatsappRow {
   listing_id: string | null;
   agency_id: string | null;
+  marketing_type: Listing["marketingType"] | null;
   agent_phone: string | null;
   public_id: string;
   display_id: string | null;
