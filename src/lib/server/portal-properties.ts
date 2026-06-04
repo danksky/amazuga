@@ -65,16 +65,6 @@ interface PortalClaimRequestRow {
   sector: string | null;
 }
 
-interface PortalClaimableParcelRow {
-  parcel_id: string;
-  upi: string;
-  district: string | null;
-  sector: string | null;
-  asset_count_for_parcel: string | number;
-  active_listing_count: string | number;
-  ownership_conflict_count: string | number;
-}
-
 interface PortalEditablePropertyRow {
   property_internal_id: string;
   property_route_id: string;
@@ -157,20 +147,9 @@ export interface PortalPropertyClaimSummary {
   sector?: string;
 }
 
-export interface PortalClaimableParcelSummary {
-  parcelId: string;
-  upi: string;
-  district: string;
-  sector?: string;
-  assetCount: number;
-  activeListingCount: number;
-  hasOwnershipConflict: boolean;
-}
-
 export interface PortalPropertiesWorkspaceData {
   ownedProperties: PortalOwnedPropertySummary[];
   claimRequests: PortalPropertyClaimSummary[];
-  claimExamples: PortalClaimableParcelSummary[];
 }
 
 export interface PortalEditablePropertyRecord {
@@ -418,7 +397,7 @@ function isListingReadyForAsset(input: {
 }
 
 export async function getPortalPropertiesWorkspaceData(userId: string): Promise<PortalPropertiesWorkspaceData> {
-  const [ownershipResult, claimResult, claimExamplesResult] = await Promise.all([
+  const [ownershipResult, claimResult] = await Promise.all([
     getPgPool().query<PortalOwnedPropertyRow>(
       `
         SELECT
@@ -530,44 +509,6 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       `,
       [userId],
     ),
-    getPgPool().query<PortalClaimableParcelRow>(
-      `
-        SELECT
-          pa.parcel_id,
-          p.upi,
-          p.district,
-          p.sector,
-          1 AS asset_count_for_parcel,
-          COALESCE(lc.active_count, 0) AS active_listing_count,
-          0 AS ownership_conflict_count
-        FROM property_asset pa
-        JOIN parcel_app_ready_seed_preview p
-          ON p.parcel_id = pa.parcel_id
-        LEFT JOIN (
-          SELECT pa2.parcel_id, COUNT(*) AS active_count
-          FROM listing l
-          JOIN property_asset pa2
-            ON pa2.id = l.property_asset_id
-          WHERE l.status = 'active'
-          GROUP BY pa2.parcel_id
-        ) lc ON lc.parcel_id = pa.parcel_id
-        WHERE pa.is_primary_for_parcel = TRUE
-          AND NOT EXISTS (
-            SELECT 1
-            FROM property_ownership po
-            WHERE po.parcel_id = pa.parcel_id
-          )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM property_claim_request pcr
-            WHERE pcr.parcel_id = pa.parcel_id
-              AND pcr.status = 'pending'
-          )
-        ORDER BY p.public_id DESC
-        LIMIT 20
-      `,
-      [],
-    ),
   ]);
 
   return {
@@ -623,15 +564,6 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
       propertyKind: row.property_kind || undefined,
       district: row.district || "Unknown district",
       sector: row.sector || undefined,
-    })),
-    claimExamples: claimExamplesResult.rows.map((row) => ({
-      parcelId: row.parcel_id,
-      upi: row.upi,
-      district: row.district || "Unknown district",
-      sector: row.sector || undefined,
-      assetCount: Number(row.asset_count_for_parcel || 0),
-      activeListingCount: Number(row.active_listing_count || 0),
-      hasOwnershipConflict: Number(row.ownership_conflict_count || 0) > 0,
     })),
   };
 }

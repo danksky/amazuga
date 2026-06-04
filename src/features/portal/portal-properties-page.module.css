@@ -185,67 +185,6 @@
   background: color-mix(in srgb, var(--surface) 82%, #f5e6d1);
 }
 
-.examplesBlock {
-  display: grid;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.examplesHeader {
-  display: grid;
-  gap: 6px;
-}
-
-.examplesTitle {
-  margin: 0;
-  font-size: 1.05rem;
-  letter-spacing: -0.03em;
-}
-
-.examplesMeta {
-  color: var(--foreground-muted);
-  line-height: 1.55;
-}
-
-.exampleGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.exampleCard {
-  display: grid;
-  gap: 12px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  background: var(--surface-muted);
-}
-
-.exampleTop {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.exampleUpi {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.exampleTitle {
-  margin-top: 4px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.exampleMetaLine {
-  margin-top: 4px;
-  color: var(--foreground-muted);
-  line-height: 1.55;
-}
-
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -607,7 +546,6 @@
   }
 
   .claimForm,
-  .exampleGrid,
   .cardTop,
   .detailRow {
     display: grid;

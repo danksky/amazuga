@@ -385,49 +385,6 @@ export function PortalPropertiesPage({
               ) : null}
             </div>
           ) : null}
-
-          <div className={styles.examplesBlock}>
-            <div className={styles.examplesHeader}>
-              <h3 className={styles.examplesTitle}>Demo UPIs</h3>
-              <div className={styles.examplesMeta}>
-                These are ready-to-test parcel examples from Preview. They intentionally foreground UPI and location
-                instead of pre-named property titles.
-              </div>
-            </div>
-            {data.claimExamples.length > 0 ? (
-              <div className={styles.exampleGrid}>
-                {data.claimExamples.map((example) => (
-                  <div className={styles.exampleCard} key={example.upi}>
-                    <div className={styles.exampleTop}>
-                      <div>
-                        <div className={styles.exampleUpi}>{example.upi}</div>
-                        <div className={styles.exampleMetaLine}>
-                          {example.sector ? `${example.sector}, ` : ""}
-                          {example.district}
-                        </div>
-                      </div>
-                      <div className={styles.badges}>
-                        <div className={styles.badge}>
-                          {example.activeListingCount > 0 ? `${example.activeListingCount} active listing` : "Off-market parcel"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      {example.assetCount === 1 ? "Single known property record on this parcel." : `${example.assetCount} known property records on this parcel.`}
-                    </div>
-                    <Link
-                      className={styles.secondaryAction}
-                      href={`${routes.app.portalPropertyClaim}?upi=${encodeURIComponent(example.upi)}`}
-                    >
-                      Claim this UPI
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.empty}>No demo UPIs are available right now.</div>
-            )}
-          </div>
         </section>
 
         <div className={styles.stats}>
