@@ -214,7 +214,7 @@ function buildPropertyPageBehavior(
   listing: Listing | undefined,
   hasGallery: boolean,
 ): PropertyPageBehavior {
-  const mediaMode = !listing || propertyKind === "land" || !hasGallery ? "map" : "gallery";
+  const mediaMode = !listing || !hasGallery ? "map" : "gallery";
   const resolvedKindLabel = formatPropertyKindLabel(propertyKind, property.facts.propertyType);
   const resolvedKindLabelLower = resolvedKindLabel.toLowerCase();
 

@@ -41,7 +41,6 @@ The public property page should be driven by two axes at once:
 - The first media panel should be a photo gallery.
 - The property summary and key details should appear immediately alongside or after that primary media, depending on screen size.
 - The map should appear as the third section, below the initial summary and key details content.
-- Exception: `land` can still lead with the parcel map even when listed, if parcel context is more important than placeholder imagery.
 
 ## Unlisted Property
 
@@ -84,7 +83,6 @@ The public property page should be driven by two axes at once:
 - `land`
   - Lead with parcel feasibility.
   - Prioritize parcel size, zoning, and map context.
-  - This is the main kind that can remain map-first even while listed.
 
 - `building`
   - Lead with the building as the marketable object.
@@ -101,8 +99,6 @@ The public property page should be driven by two axes at once:
 1. Gallery
 2. Property summary and key details
 3. Map
-
-`land` listed pages may intentionally swap `Gallery` for `Parcel outline map` as the first panel.
 
 ### Unlisted
 
