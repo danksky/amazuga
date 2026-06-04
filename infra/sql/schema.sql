@@ -119,6 +119,9 @@ COMMENT ON COLUMN parcel_app_ready_seed_preview.inventory_status IS
 Only approved and provisional parcels are shown on the public browse map and are claimable.
 Zoning is NOT used as a filter — too many legitimate parcels lack DLUP zoning data.';
 
+CREATE INDEX IF NOT EXISTS parcel_app_ready_seed_preview_upi_normalized_idx
+  ON parcel_app_ready_seed_preview ((UPPER(REPLACE(upi, ' ', ''))));
+
 
 -- Per-parcel anchor point for map rendering. A point-on-surface (not centroid)
 -- is used so the dot always falls visually inside the parcel polygon.
