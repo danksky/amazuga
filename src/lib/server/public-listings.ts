@@ -700,6 +700,7 @@ export async function getPublicPropertyWhatsappUrl(
       SELECT
         l.id AS listing_id,
         l.agency_id,
+        l.marketing_type,
         agent.phone AS agent_phone,
         parcel_anchor.public_id,
         p.display_id,
@@ -765,7 +766,8 @@ export async function getPublicPropertyWhatsappUrl(
   }
 
   const agency = row.agency_id ? await getAgencyByIdFromDb(row.agency_id) : undefined;
-  const assetType = row.property_type || propertyKindToPropertyType(row.property_kind) || "property";
+  const assetType = (row.property_type || propertyKindToPropertyType(row.property_kind) || "property").toLowerCase();
+  const listingIntent = row.marketing_type === "rent" ? "for rent" : "for sale";
   const propertyRouteId = row.property_public_id || row.public_id;
   const propertyPath = buildPublicPropertyPath(propertyRouteId, {
     propertyTitle: row.display_id,
@@ -774,7 +776,8 @@ export async function getPublicPropertyWhatsappUrl(
     unitLabel: row.property_unit_label,
   });
   const resolvedHost = host || "amazuga.vercel.app";
-  const message = `I saw the ${assetType} at ${resolvedHost}${propertyPath} and would like to know more about the property!`;
+  const propertyUrl = `https://${resolvedHost}${propertyPath}`;
+  const message = `I saw the ${assetType} ${listingIntent} at ${propertyUrl} and would like to know more about the property.`;
 
   return buildWhatsappUrl(agency?.whatsappPhone || row.agent_phone, message);
 }
