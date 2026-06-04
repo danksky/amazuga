@@ -1,13 +1,83 @@
+import type { Metadata } from "next";
+
 import { notFound, redirect } from "next/navigation";
 
 import { PropertyPage } from "@/components/property/property-page";
 import { getCurrentUser } from "@/lib/auth";
+import { formatCurrency } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { getPublicPropertyPageData } from "@/lib/server/public-listings";
 import { getUserPropertyRelationship, listPropertyClaimRequestsForUser } from "@/lib/server/workflows";
+import type { Listing, Property, PropertyKind } from "@/types/domain";
 import { hasCapability } from "@/types/permissions";
 
+function propertyKindLabel(kind: PropertyKind | undefined): string {
+  switch (kind) {
+    case "house": return "House";
+    case "land": return "Land";
+    case "apartment_building": return "Apartment building";
+    case "commercial_building": return "Commercial building";
+    case "apartment_unit": return "Apartment unit";
+    case "commercial_unit": return "Commercial unit";
+    default: return "Property";
+  }
+}
+
+function buildPropertyOgTitle(property: Property, listing: Listing | undefined): string {
+  const kind = propertyKindLabel(property.facts.propertyKind);
+  const saleLabel = listing ? (listing.marketingType === "rent" ? "for rent" : "for sale") : null;
+  const locationLabel = property.location.village ?? property.location.sector ?? property.location.district;
+  const priceLabel = listing ? formatCurrency(listing.askingPrice, listing.currency) : null;
+
+  const base = saleLabel ? `${kind} ${saleLabel} in ${locationLabel}` : `${kind} in ${locationLabel}`;
+  return priceLabel ? `${base} | ${priceLabel}` : `${base} | Amazuga`;
+}
+
 export const dynamic = "force-dynamic";
+
+interface PropertySlugParams {
+  propertyId: string;
+  slug: string;
+}
+
+export async function generateMetadata({ params }: { params: Promise<PropertySlugParams> }): Promise<Metadata> {
+  const { propertyId } = await params;
+  const propertyPageData = await getPublicPropertyPageData(propertyId);
+
+  if (!propertyPageData) {
+    return {};
+  }
+
+  const { property, listing } = propertyPageData;
+  const firstImageUrl = listing?.imageUrls[0];
+  const ogImage = firstImageUrl
+    ? [{ url: firstImageUrl }]
+    : [{ url: "/opengraph-image.png", width: 1200, height: 630 }];
+
+  const title = buildPropertyOgTitle(property, listing);
+  const description = listing
+    ? `${listing.marketingType === "rent" ? "For rent" : "For sale"}: ${formatCurrency(listing.askingPrice, listing.currency)} — Find property in Rwanda on Amazuga.`
+    : "Find property in Rwanda on Amazuga.";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: ogImage,
+      siteName: "Amazuga",
+      locale: "en_RW",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [firstImageUrl ?? "/opengraph-image.png"],
+    },
+  };
+}
 
 interface PropertySlugRouteProps {
   params: Promise<{
