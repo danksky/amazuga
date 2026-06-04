@@ -13,8 +13,8 @@ export function AgencyRegistrationForm() {
         <div className={styles.eyebrow}>Agency</div>
         <h1 className={styles.title}>Register your agency</h1>
         <div className={styles.body}>
-          Submit your agency for approval. Provide the business name and TIN, and optionally include a website or Google
-          Maps listing.
+          Submit your agency for approval. Provide the business name and TIN, and optionally include a website, Instagram
+          profile, or Google Maps listing.
         </div>
 
         <form action={submitAgencyRegistrationAction} className={styles.form}>
@@ -38,6 +38,19 @@ export function AgencyRegistrationForm() {
               Website <span className={styles.optional}>(optional)</span>
             </label>
             <input className={styles.input} id="website" name="website" placeholder="https://example.com" />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="instagram">
+              Instagram profile <span className={styles.optional}>(optional)</span>
+            </label>
+            <input
+              className={styles.input}
+              id="instagram"
+              name="instagram"
+              placeholder="https://www.instagram.com/agencyname"
+              type="url"
+            />
           </div>
 
           <div className={styles.field}>

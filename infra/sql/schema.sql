@@ -238,6 +238,7 @@ CREATE TABLE IF NOT EXISTS agency (
   whatsapp_phone              TEXT,
   website_url                 TEXT,
   google_maps_url             TEXT,
+  instagram_url               TEXT,
   status                      TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
   -- Temporary reference during the approval workflow before manager_user_id is set.
   pending_manager_user_id     UUID REFERENCES app_user(id),
@@ -597,6 +598,7 @@ CREATE TABLE IF NOT EXISTS agency_application (
   tin                  TEXT NOT NULL,
   website_url          TEXT,
   google_maps_url      TEXT,
+  instagram_url        TEXT,
   status               TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
   seed_source          TEXT NOT NULL DEFAULT 'manual',
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -85,6 +85,7 @@ export default async function AgencyRegistrationRequestPage({
       details={[
         { label: "Business name", value: application.businessName },
         { label: "TIN", value: application.tin },
+        { label: "Instagram", value: application.instagramUrl ?? "Not provided" },
         { label: "Submitted", value: formatDate(application.createdAt) },
         {
           label: "Manager activation",

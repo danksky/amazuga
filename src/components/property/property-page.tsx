@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import Link from "next/link";
 
 import { PropertyParcelMap } from "@/components/maps/property-parcel-map";
@@ -308,6 +310,9 @@ export function PropertyPage({
   const primaryImage = galleryImages[0];
   const secondaryImage = galleryImages[1];
   const tertiaryImage = galleryImages[2];
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+  const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const closeGalleryButtonRef = useRef<HTMLButtonElement | null>(null);
   const propertyKind = inferPropertyKind(property);
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
   const detailItems = buildDetailItems(property, propertyKind);
@@ -326,6 +331,55 @@ export function PropertyPage({
         : "Listing agency"
       : "For sale by owner"
     : undefined;
+  const activeGalleryImage = galleryImages[activeGalleryIndex];
+  const hasMultipleGalleryImages = galleryImages.length > 1;
+
+  function openGalleryModal(imageIndex = 0) {
+    setActiveGalleryIndex(imageIndex);
+    setGalleryModalOpen(true);
+  }
+
+  function showPreviousGalleryImage() {
+    setActiveGalleryIndex((current) => (current - 1 + galleryImages.length) % galleryImages.length);
+  }
+
+  function showNextGalleryImage() {
+    setActiveGalleryIndex((current) => (current + 1) % galleryImages.length);
+  }
+
+  useEffect(() => {
+    if (!galleryModalOpen) {
+      return;
+    }
+
+    closeGalleryButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setGalleryModalOpen(false);
+      }
+
+      if (!hasMultipleGalleryImages) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        setActiveGalleryIndex((current) => (current - 1 + galleryImages.length) % galleryImages.length);
+      }
+
+      if (event.key === "ArrowRight") {
+        setActiveGalleryIndex((current) => (current + 1) % galleryImages.length);
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [galleryModalOpen, hasMultipleGalleryImages, galleryImages.length]);
 
   return (
     <div className={`container ${styles.page}`}>
@@ -344,18 +398,17 @@ export function PropertyPage({
                     </div>
                     <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
                       <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
-                      <button className={styles.galleryCta} type="button">
-                        See all images
-                      </button>
                     </div>
                   </div>
                 ) : secondaryImage ? (
                   <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction} ${styles.gallerySecondaryFull}`}>
                     <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
-                    <button className={styles.galleryCta} type="button">
-                      See all images
-                    </button>
                   </div>
+                ) : null}
+                {hasMultipleGalleryImages ? (
+                  <button className={styles.galleryCta} onClick={() => openGalleryModal(0)} type="button">
+                    See all images
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -530,6 +583,59 @@ export function PropertyPage({
           </div>
         </div>
       </div>
+      {galleryModalOpen && activeGalleryImage ? (
+        <div
+          aria-label={`${property.title} image gallery`}
+          aria-modal="true"
+          className={styles.galleryModalBackdrop}
+          onClick={() => setGalleryModalOpen(false)}
+          role="dialog"
+        >
+          <div className={styles.galleryModal} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.galleryModalHeader}>
+              <div className={styles.galleryModalCounter}>
+                {activeGalleryIndex + 1} / {galleryImages.length}
+              </div>
+              <button
+                aria-label="Close image gallery"
+                className={styles.galleryModalClose}
+                onClick={() => setGalleryModalOpen(false)}
+                ref={closeGalleryButtonRef}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+            <div className={styles.galleryModalImageFrame}>
+              <img
+                alt={`${property.title} view ${activeGalleryIndex + 1}`}
+                className={styles.galleryModalImage}
+                src={activeGalleryImage}
+              />
+              {hasMultipleGalleryImages ? (
+                <>
+                  <button
+                    aria-label="Show previous image"
+                    className={`${styles.galleryModalArrow} ${styles.galleryModalArrowPrevious}`}
+                    onClick={showPreviousGalleryImage}
+                    type="button"
+                  >
+                    &lt;
+                  </button>
+                  <button
+                    aria-label="Show next image"
+                    className={`${styles.galleryModalArrow} ${styles.galleryModalArrowNext}`}
+                    onClick={showNextGalleryImage}
+                    type="button"
+                  >
+                    &gt;
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

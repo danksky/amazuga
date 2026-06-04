@@ -36,6 +36,7 @@ interface AgencyRow {
   whatsapp_phone: string | null;
   website_url: string | null;
   google_maps_url: string | null;
+  instagram_url: string | null;
   status: Agency["status"];
   pending_manager_user_id: string | null;
   manager_user_id: string | null;
@@ -49,6 +50,7 @@ interface AgencyApplicationRow {
   tin: string;
   website_url: string | null;
   google_maps_url: string | null;
+  instagram_url: string | null;
   status: SubmissionStatus;
   created_at: string;
 }
@@ -220,6 +222,7 @@ function toAgency(row: AgencyRow): Agency {
     whatsappPhone: row.whatsapp_phone || undefined,
     websiteUrl: row.website_url || undefined,
     googleMapsUrl: row.google_maps_url || undefined,
+    instagramUrl: row.instagram_url || undefined,
     status: row.status,
     pendingManagerUserId: row.pending_manager_user_id || undefined,
     managerUserId: row.manager_user_id || undefined,
@@ -235,6 +238,7 @@ function toAgencyApplication(row: AgencyApplicationRow): AgencyApplication {
     tin: row.tin,
     websiteUrl: row.website_url || undefined,
     googleMapsUrl: row.google_maps_url || undefined,
+    instagramUrl: row.instagram_url || undefined,
     status: row.status,
     createdAt: row.created_at,
   };
@@ -976,6 +980,7 @@ export async function listAgenciesFromDb() {
         a.whatsapp_phone,
         a.website_url,
         a.google_maps_url,
+        a.instagram_url,
         a.status,
         a.pending_manager_user_id,
         a.manager_user_id,
@@ -995,6 +1000,7 @@ export async function listAgenciesFromDb() {
         a.whatsapp_phone,
         a.website_url,
         a.google_maps_url,
+        a.instagram_url,
         a.status,
         a.pending_manager_user_id,
         a.manager_user_id
@@ -1015,6 +1021,7 @@ export async function listAgencyApplicationsFromDb() {
         tin,
         website_url,
         google_maps_url,
+        instagram_url,
         status,
         created_at::TEXT
       FROM agency_application
@@ -1072,6 +1079,7 @@ export async function listAgenciesForUser(userId: string) {
         a.whatsapp_phone,
         a.website_url,
         a.google_maps_url,
+        a.instagram_url,
         a.status,
         a.pending_manager_user_id,
         a.manager_user_id,
@@ -1097,6 +1105,7 @@ export async function listAgenciesForUser(userId: string) {
         a.whatsapp_phone,
         a.website_url,
         a.google_maps_url,
+        a.instagram_url,
         a.status,
         a.pending_manager_user_id,
         a.manager_user_id
@@ -1377,6 +1386,7 @@ export async function createAgencyApplicationInDb(input: {
   tin: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
+  instagramUrl?: string;
 }) {
   const id = createRecordId("agency-application");
   const result = await getPgPool().query<AgencyApplicationRow>(
@@ -1388,10 +1398,11 @@ export async function createAgencyApplicationInDb(input: {
         tin,
         website_url,
         google_maps_url,
+        instagram_url,
         status,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending', 'manual_workflow_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'manual_workflow_v1')
       RETURNING
         id,
         created_by_user_id,
@@ -1399,10 +1410,19 @@ export async function createAgencyApplicationInDb(input: {
         tin,
         website_url,
         google_maps_url,
+        instagram_url,
         status,
         created_at::TEXT
     `,
-    [id, input.createdByUserId, input.businessName, input.tin, input.websiteUrl || null, input.googleMapsUrl || null],
+    [
+      id,
+      input.createdByUserId,
+      input.businessName,
+      input.tin,
+      input.websiteUrl || null,
+      input.googleMapsUrl || null,
+      input.instagramUrl || null,
+    ],
   );
 
   return toAgencyApplication(result.rows[0]);
@@ -1728,6 +1748,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         tin,
         website_url,
         google_maps_url,
+        instagram_url,
         status,
         created_at::TEXT
       FROM agency_application
@@ -1770,6 +1791,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         tin,
         website_url,
         google_maps_url,
+        instagram_url,
         status,
         pending_manager_user_id,
         manager_user_id,
@@ -1783,9 +1805,10 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         $5,
         $6,
         $7,
-        'approved',
         $8,
+        'approved',
         $9,
+        $10,
         'manual_workflow_v1'
       )
       RETURNING
@@ -1797,6 +1820,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         whatsapp_phone,
         website_url,
         google_maps_url,
+        instagram_url,
         status,
         pending_manager_user_id,
         manager_user_id,
@@ -1810,6 +1834,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
       application.tin,
       application.websiteUrl || null,
       application.googleMapsUrl || null,
+      application.instagramUrl || null,
       application.createdByUserId,
       isApprovedAgent ? application.createdByUserId : null,
     ],

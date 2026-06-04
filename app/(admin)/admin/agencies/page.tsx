@@ -16,6 +16,7 @@ export default async function AdminAgenciesPage() {
         { label: "Request ID", value: application.id },
         { label: "Created by", value: application.createdByUserId },
         { label: "Website", value: application.websiteUrl ?? "Not provided" },
+        { label: "Instagram", value: application.instagramUrl ?? "Not provided" },
         { label: "Google Maps", value: application.googleMapsUrl ?? "Not provided" },
       ],
       reviewNote:

@@ -3,6 +3,9 @@ BEGIN;
 ALTER TABLE agency
 ADD COLUMN IF NOT EXISTS created_from_application_id TEXT;
 
+ALTER TABLE agency
+ADD COLUMN IF NOT EXISTS instagram_url TEXT;
+
 CREATE TABLE IF NOT EXISTS agency_application (
   id TEXT PRIMARY KEY,
   created_by_user_id TEXT NOT NULL REFERENCES app_user(id),
@@ -10,11 +13,15 @@ CREATE TABLE IF NOT EXISTS agency_application (
   tin TEXT NOT NULL,
   website_url TEXT,
   google_maps_url TEXT,
+  instagram_url TEXT,
   status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'denied')),
   seed_source TEXT NOT NULL DEFAULT 'manual',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE agency_application
+ADD COLUMN IF NOT EXISTS instagram_url TEXT;
 
 CREATE TABLE IF NOT EXISTS agent_application (
   id TEXT PRIMARY KEY,
@@ -129,6 +136,7 @@ WITH seeded_agency_applications AS (
         '119000321',
         NULL::TEXT,
         NULL::TEXT,
+        NULL::TEXT,
         'pending',
         'mock_import_listing_surface_v1',
         '2026-03-18T11:00:00.000Z'::TIMESTAMPTZ,
@@ -141,6 +149,7 @@ WITH seeded_agency_applications AS (
         '107839210',
         'https://example.com',
         NULL::TEXT,
+        'https://www.instagram.com/kigalihomesgroup',
         'approved',
         'mock_import_listing_surface_v1',
         '2026-03-15T09:00:00.000Z'::TIMESTAMPTZ,
@@ -153,6 +162,7 @@ WITH seeded_agency_applications AS (
     tin,
     website_url,
     google_maps_url,
+    instagram_url,
     status,
     seed_source,
     created_at,
@@ -166,6 +176,7 @@ INSERT INTO agency_application (
   tin,
   website_url,
   google_maps_url,
+  instagram_url,
   status,
   seed_source,
   created_at,
@@ -179,6 +190,7 @@ SET
   tin = EXCLUDED.tin,
   website_url = EXCLUDED.website_url,
   google_maps_url = EXCLUDED.google_maps_url,
+  instagram_url = EXCLUDED.instagram_url,
   status = EXCLUDED.status,
   seed_source = EXCLUDED.seed_source,
   created_at = EXCLUDED.created_at,

@@ -97,6 +97,18 @@ export function PortalAgencyPage({
                         )}
                       </div>
                     </div>
+                    <div className={styles.detailRow}>
+                      <div className={styles.detailLabel}>Instagram</div>
+                      <div className={styles.detailValue}>
+                        {agency.instagramUrl ? (
+                          <a className={styles.link} href={agency.instagramUrl} rel="noreferrer" target="_blank">
+                            Open profile
+                          </a>
+                        ) : (
+                          "Not provided"
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

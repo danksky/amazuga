@@ -34,6 +34,7 @@ export interface PortalAgencyWorkspace {
   whatsappPhone?: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
+  instagramUrl?: string;
   membershipRole: AgencyMembershipRole;
   totalMembers: number;
   managerName?: string;
@@ -226,6 +227,7 @@ export async function getPortalAgencyWorkspaceData(userId: string): Promise<Port
         whatsappPhone: agency.whatsappPhone,
         websiteUrl: agency.websiteUrl,
         googleMapsUrl: agency.googleMapsUrl,
+        instagramUrl: agency.instagramUrl,
         membershipRole: agency.managerUserId === userId ? "manager" : "agent",
         totalMembers: members.length,
         managerName: managerUser?.fullName,

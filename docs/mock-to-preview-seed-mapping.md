@@ -145,6 +145,7 @@ Target:
 | `whatsappPhone` | `whatsapp_phone` | copy | Optional |
 | `websiteUrl` | `website_url` | copy | Optional |
 | `googleMapsUrl` | `google_maps_url` | copy | Optional |
+| `instagramUrl` | `instagram_url` | copy | Optional |
 | `status` | `status` | copy | Keep current approval state |
 | `pendingManagerUserId` | `pending_manager_user_id` | copy with user ID remap | Must point to seeded preview user ID |
 | `managerUserId` | `manager_user_id` | copy with user ID remap | Must point to seeded preview user ID |
@@ -308,6 +309,7 @@ Candidate target:
 | `tin` | `tin` | copy | Direct |
 | `websiteUrl` | `website_url` | copy | Optional |
 | `googleMapsUrl` | `google_maps_url` | copy | Optional |
+| `instagramUrl` | `instagram_url` | copy | Optional |
 | `status` | `status` | copy | Direct |
 | `createdAt` | `created_at` | copy | Direct |
 

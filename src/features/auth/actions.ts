@@ -41,6 +41,7 @@ export async function submitAgencyRegistrationAction(formData: FormData) {
     businessName: getRequiredString(formData, "businessName"),
     tin: getRequiredString(formData, "tin"),
     websiteUrl: getOptionalString(formData, "website"),
+    instagramUrl: getOptionalString(formData, "instagram"),
     googleMapsUrl: getOptionalString(formData, "googleMapsListing"),
   });
 

@@ -118,6 +118,7 @@ export interface Agency {
   whatsappPhone?: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
+  instagramUrl?: string;
   status: SubmissionStatus;
   pendingManagerUserId?: string;
   managerUserId?: string;
@@ -182,6 +183,7 @@ export interface AgencyApplication {
   tin: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
+  instagramUrl?: string;
   status: SubmissionStatus;
   createdAt: string;
 }
