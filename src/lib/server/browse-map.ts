@@ -218,17 +218,19 @@ export async function getBrowseMapData(params: {
     const anchorLng = toNumber(row.anchor_lon) ?? 0;
     const anchorLat = toNumber(row.anchor_lat) ?? 0;
 
-    pins.push({
-      listingId: row.listing_id,
-      parcelPublicId: row.parcel_public_id ?? undefined,
-      assetPublicId: row.asset_public_id ?? undefined,
-      routeId: row.route_id,
-      priceLabelRwf,
-      marketingType: row.marketing_type,
-      anchorLng,
-      anchorLat,
-      locationSource: row.location_source ?? undefined,
-    });
+    if (!row.location_source || row.location_source === "parcel") {
+      pins.push({
+        listingId: row.listing_id,
+        parcelPublicId: row.parcel_public_id ?? undefined,
+        assetPublicId: row.asset_public_id ?? undefined,
+        routeId: row.route_id,
+        priceLabelRwf,
+        marketingType: row.marketing_type,
+        anchorLng,
+        anchorLat,
+        locationSource: row.location_source ?? undefined,
+      });
+    }
 
     cards.push({
       listingId: row.listing_id,

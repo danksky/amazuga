@@ -17,7 +17,7 @@ export default async function SellPortalListingsRoute({
   const [currentUser, { status }] = await Promise.all([requireCurrentUser(), searchParams]);
   const access = await getPortalAccessState(currentUser.id);
 
-  if (!access.hasAgencyPortalAccess) {
+  if (!access.hasListingPortalAccess) {
     redirect(getPortalEntryHref(access));
   }
 

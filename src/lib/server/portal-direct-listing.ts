@@ -66,20 +66,39 @@ async function resolveVillageCentroid(input: {
 }): Promise<{ centroid_lat: number; centroid_lon: number } | null> {
   if (!input.adminVillage) return null;
 
+  // Primary: admin_village_centroid (NISR boundary data / parcel-seeded)
   const result = await getPgPool().query<{ centroid_lat: number; centroid_lon: number }>(
     `
       SELECT centroid_lat, centroid_lon
       FROM admin_village_centroid
       WHERE district_name ILIKE $1
-        AND ($2::TEXT IS NULL OR sector_name  ILIKE $2)
-        AND ($3::TEXT IS NULL OR cell_name    ILIKE $3)
+        AND ($2::TEXT IS NULL OR sector_name ILIKE $2)
+        AND ($3::TEXT IS NULL OR cell_name   ILIKE $3)
         AND village_name ILIKE $4
       LIMIT 1
     `,
     [input.adminDistrict, input.adminSector ?? null, input.adminCell ?? null, input.adminVillage],
   );
 
-  return result.rows[0] ?? null;
+  if (result.rows[0]) return result.rows[0];
+
+  // Fallback: derive approximate centroid from parcel dataset
+  const fallback = await getPgPool().query<{ centroid_lat: number; centroid_lon: number }>(
+    `
+      SELECT AVG(centroid_lat) AS centroid_lat, AVG(centroid_lon) AS centroid_lon
+      FROM parcel_app_ready_seed_preview
+      WHERE district ILIKE $1
+        AND ($2::TEXT IS NULL OR sector  ILIKE $2)
+        AND ($3::TEXT IS NULL OR cell    ILIKE $3)
+        AND village ILIKE $4
+        AND centroid_lat IS NOT NULL
+        AND centroid_lon IS NOT NULL
+    `,
+    [input.adminDistrict, input.adminSector ?? null, input.adminCell ?? null, input.adminVillage],
+  );
+
+  const row = fallback.rows[0];
+  return row?.centroid_lat != null ? row : null;
 }
 
 export interface AdminUnitLevel {
