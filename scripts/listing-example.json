@@ -1,31 +1,27 @@
 {
-  "format_version": 1,
+  "_comment_upi_mode": "If 'upi' is present, location comes from the parcel — omit admin_* fields.",
+  "_comment_direct_mode": "If no 'upi', supply admin_district (required) + admin_sector/cell/village (optional).",
 
+  "format_version": 1,
   "agent_phone": "+250788123456",
   "agency_id": null,
 
+  "upi": "1/02/09/01/782",
+  "asset_type": "land",
+
   "marketing_type": "sale",
-  "asking_price_rwf": 45000000,
+  "asking_price_rwf": 250000000,
   "visibility": "public",
+  "location_hidden": false,
   "activate": true,
 
-  "property": {
-    "asset_type": "house",
-    "admin_district": "Kigali",
-    "admin_sector": "Gasabo",
-    "admin_cell": "Remera",
-    "admin_village": "Nyabisindu",
-    "pin_lat": null,
-    "pin_lon": null,
-    "bedrooms": 4,
-    "bathrooms": 2,
-    "interior_area_sqm": 180,
-    "year_built": 2018
-  },
+  "bedrooms": null,
+  "bathrooms": null,
+  "interior_area_sqm": null,
+  "year_built": null,
 
   "photos": [
     "photos/01.jpg",
-    "photos/02.jpg",
-    "photos/03.jpg"
+    "photos/02.jpg"
   ]
 }
