@@ -15,10 +15,11 @@ import { getPgPool } from "./postgres";
 type MarketingType = "sale" | "rent";
 
 interface ListingParcelRow {
-  parcel_id: string;
-  public_id: string;
-  upi: string;
+  parcel_id: string | null;
+  public_id: string | null;
+  upi: string | null;
   display_id: string | null;
+  location_source: string | null;
   district: string | null;
   sector: string | null;
   cell: string | null;
@@ -103,6 +104,7 @@ interface PropertyWhatsappRow {
   property_kind: PropertyKind | null;
   property_type: string | null;
   property_unit_label: string | null;
+  marketing_type: Listing["marketingType"] | null;
 }
 
 export interface PublicListingCardData {
@@ -201,7 +203,7 @@ function normalizePropertyTitle(row: ListingParcelRow) {
 }
 
 function buildPropertyFromRow(row: ListingParcelRow): Property {
-  const propertyId = row.property_public_id || row.public_id;
+  const propertyId = row.property_public_id || row.public_id || "";
   const zoningLabel = row.zoning || row.gen_lu || row.zone_code;
   const listingState = row.listing_id ? "listed" : "not_listed";
   const propertyType = row.property_type || propertyKindToPropertyType(row.property_kind) || "Parcel";
@@ -217,13 +219,14 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
   return {
     id: propertyId,
     internalId: row.property_internal_id || undefined,
-    parcelId: row.parcel_id,
-    parcelPublicId: row.public_id,
+    parcelId: row.parcel_id || undefined,
+    parcelPublicId: row.public_id || undefined,
     parcelDisplayId: row.display_id || undefined,
     code: row.property_code || undefined,
     parentInternalId: row.parent_property_internal_id || undefined,
     unitLabel: row.property_unit_label || undefined,
-    upi: row.upi,
+    upi: row.upi || undefined,
+    locationSource: row.location_source as Property["locationSource"] | undefined,
     title,
     location: {
       district: row.district || "Unknown district",
@@ -277,8 +280,8 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
   }
 
   return {
-    id: row.listing_id,
-    propertyId: row.property_public_id || row.public_id,
+    id: row.listing_id ?? "",
+    propertyId: row.property_public_id || row.public_id || "",
     propertyInternalId: row.property_internal_id || undefined,
     agencyId: row.agency_id ?? undefined,
     agentUserId: row.agent_user_id,
@@ -650,7 +653,102 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
     [propertyId, viewerUserId ?? null],
   );
 
-  const row = result.rows[0];
+  let row = result.rows[0];
+
+  // Parcel-based resolution returned nothing — try direct listing path.
+  if (!row) {
+    const directResult = await getPgPool().query<ListingParcelRow>(
+      `
+        SELECT
+          NULL::TEXT                  AS parcel_id,
+          pa.public_id                AS public_id,
+          NULL::TEXT                  AS upi,
+          pa.display_name             AS display_id,
+          pa.location_source,
+          pa.admin_district           AS district,
+          pa.admin_sector             AS sector,
+          pa.admin_cell               AS cell,
+          pa.admin_village            AS village,
+          NULL::DOUBLE PRECISION      AS representative_size,
+          pa.anchor_lon,
+          pa.anchor_lat,
+          NULL::TEXT                  AS anchor_source,
+          NULL::DOUBLE PRECISION      AS centroid_lon,
+          NULL::DOUBLE PRECISION      AS centroid_lat,
+          NULL::DOUBLE PRECISION      AS bbox_min_lon,
+          NULL::DOUBLE PRECISION      AS bbox_min_lat,
+          NULL::DOUBLE PRECISION      AS bbox_max_lon,
+          NULL::DOUBLE PRECISION      AS bbox_max_lat,
+          NULL::TEXT                  AS zoning,
+          NULL::TEXT                  AS zone_code,
+          NULL::TEXT                  AS gen_lu,
+          pa.id                       AS property_internal_id,
+          pa.public_id                AS property_public_id,
+          pa.parent_asset_id          AS parent_property_internal_id,
+          pa.asset_type               AS property_kind,
+          pa.display_code             AS property_code,
+          pa.unit_label               AS property_unit_label,
+          l.id                        AS listing_id,
+          l.agency_id,
+          l.agent_user_id,
+          agent.full_name             AS agent_full_name,
+          agent.phone                 AS agent_phone,
+          l.status                    AS listing_status,
+          l.visibility                AS listing_visibility,
+          l.marketing_type,
+          l.asking_price_rwf,
+          l.currency,
+          l.created_at                AS listing_created_at,
+          l.updated_at                AS listing_updated_at,
+          COALESCE(
+            NULLIF(BTRIM(pap.property_type), ''),
+            CASE pa.asset_type
+              WHEN 'house'               THEN 'House'
+              WHEN 'land'                THEN 'Land'
+              WHEN 'apartment_building'  THEN 'Apartment building'
+              WHEN 'commercial_building' THEN 'Commercial building'
+              WHEN 'apartment_unit'      THEN 'Apartment Unit'
+              WHEN 'commercial_unit'     THEN 'Commercial Unit'
+              ELSE NULL
+            END
+          )                           AS property_type,
+          pap.bedrooms,
+          pap.bathrooms,
+          pap.interior_area_sqm,
+          pap.year_built
+        FROM property_asset pa
+        LEFT JOIN listing l
+          ON l.property_asset_id = pa.id
+         AND l.status = 'active'
+         AND (
+           l.visibility = 'public'
+           OR l.visibility = 'unlisted'
+           OR (
+             l.visibility = 'private'
+             AND $2::TEXT IS NOT NULL
+             AND (
+               l.agent_user_id::TEXT = $2::TEXT
+               OR EXISTS (
+                 SELECT 1 FROM listing_access_grant lag
+                 WHERE lag.listing_id = l.id
+                   AND lag.granted_to_user_id::TEXT = $2::TEXT
+               )
+             )
+           )
+         )
+        LEFT JOIN app_user agent
+          ON agent.id = l.agent_user_id
+        LEFT JOIN property_asset_profile pap
+          ON pap.property_asset_id = pa.id
+        WHERE pa.public_id = $1
+          AND pa.parcel_id IS NULL
+        LIMIT 1
+      `,
+      [propertyId, viewerUserId ?? null],
+    );
+    row = directResult.rows[0];
+  }
+
   if (!row) {
     return undefined;
   }
@@ -761,7 +859,53 @@ export async function getPublicPropertyWhatsappUrl(
     [propertyId, viewerUserId ?? null],
   );
 
-  const row = result.rows[0];
+  let row = result.rows[0];
+
+  if (!row) {
+    const directResult = await getPgPool().query<PropertyWhatsappRow>(
+      `
+        SELECT
+          l.id AS listing_id,
+          l.agency_id,
+          l.marketing_type,
+          agent.phone AS agent_phone,
+          pa.public_id,
+          pa.display_name AS display_id,
+          pa.public_id AS property_public_id,
+          pa.asset_type AS property_kind,
+          pap.property_type,
+          pa.unit_label AS property_unit_label
+        FROM property_asset pa
+        LEFT JOIN listing l
+          ON l.property_asset_id = pa.id
+         AND l.status = 'active'
+         AND (
+           l.visibility = 'public'
+           OR l.visibility = 'unlisted'
+           OR (
+             l.visibility = 'private'
+             AND $2::TEXT IS NOT NULL
+             AND (
+               l.agent_user_id::TEXT = $2::TEXT
+               OR EXISTS (
+                 SELECT 1 FROM listing_access_grant lag
+                 WHERE lag.listing_id = l.id
+                   AND lag.granted_to_user_id::TEXT = $2::TEXT
+               )
+             )
+           )
+         )
+        LEFT JOIN app_user agent ON agent.id = l.agent_user_id
+        LEFT JOIN property_asset_profile pap ON pap.property_asset_id = pa.id
+        WHERE pa.public_id = $1
+          AND pa.parcel_id IS NULL
+        LIMIT 1
+      `,
+      [propertyId, viewerUserId ?? null],
+    );
+    row = directResult.rows[0];
+  }
+
   if (!row?.listing_id) {
     return undefined;
   }

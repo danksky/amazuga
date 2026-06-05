@@ -24,6 +24,7 @@ export interface PortalAccessState {
   hasAgencyPortalAccess: boolean;
   hasPropertyWorkspaceAccess: boolean;
   hasPropertyOwnerListingAccess: boolean;
+  hasListingPortalAccess: boolean;
   hasValuatorPortalAccess: boolean;
   hasAnyPortalAccess: boolean;
   hasPendingManagerActivation: boolean;
@@ -55,6 +56,7 @@ export const getPortalAccessState = cache(async (userId: string): Promise<Portal
   const hasPropertyWorkspaceAccess =
     propertyOwnerships.length > 0 || propertyClaims.some((claim) => claim.status === "pending" || claim.status === "approved");
   const hasPropertyOwnerListingAccess = propertyOwnerships.length > 0;
+  const hasListingPortalAccess = hasAgencyPortalAccess || hasPropertyOwnerListingAccess;
   const hasValuatorPortalAccess = valuatorApplicationStatus === "approved";
   const hasAnyPortalAccess = hasAgencyPortalAccess || hasValuatorPortalAccess || hasPropertyWorkspaceAccess;
   const hasApplicationAttention = [agencyApplicationStatus, agentApplicationStatus, valuatorApplicationStatus].some(
@@ -73,6 +75,7 @@ export const getPortalAccessState = cache(async (userId: string): Promise<Portal
     hasAgencyPortalAccess,
     hasPropertyWorkspaceAccess,
     hasPropertyOwnerListingAccess,
+    hasListingPortalAccess,
     hasValuatorPortalAccess,
     hasAnyPortalAccess,
     hasPendingManagerActivation,
@@ -117,7 +120,7 @@ export function getPortalNavItems(access: PortalAccessState) {
 
   allowedHrefs.add(routes.app.portalProperties);
 
-  if (access.hasAgencyPortalAccess) {
+  if (access.hasListingPortalAccess) {
     allowedHrefs.add(routes.app.portalListings);
   }
 

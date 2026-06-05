@@ -41,9 +41,10 @@ interface PrimaryInfoStat {
 }
 
 interface PropertyPageBehavior {
+  // 'none' means no parcel and no gallery — suppress map entirely
   kind: PropertyKind;
   kindLabel: string;
-  mediaMode: "gallery" | "map";
+  mediaMode: "gallery" | "map" | "none";
   mapTitle: string;
   claimLabel: string;
   nonListedTitle: string;
@@ -216,7 +217,9 @@ function buildPropertyPageBehavior(
   listing: Listing | undefined,
   hasGallery: boolean,
 ): PropertyPageBehavior {
-  const mediaMode = !listing || !hasGallery ? "map" : "gallery";
+  const isParcelLinked = property.locationSource === "parcel" || !property.locationSource;
+  const mediaMode: PropertyPageBehavior["mediaMode"] =
+    hasGallery ? "gallery" : isParcelLinked ? "map" : "none";
   const resolvedKindLabel = formatPropertyKindLabel(propertyKind, property.facts.propertyType);
   const resolvedKindLabelLower = resolvedKindLabel.toLowerCase();
 
@@ -299,6 +302,8 @@ export function PropertyPage({
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
     .filter(Boolean)
     .join(", ");
+  const isParcelLinked = !property.locationSource || property.locationSource === "parcel";
+  const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`;
   const propertyRouteId = property.id;
   const propertyPath = routes.public.property(propertyRouteId, {
     propertyTitle: property.title,
@@ -412,13 +417,13 @@ export function PropertyPage({
                 ) : null}
               </div>
             </div>
-          ) : (
+          ) : behavior.mediaMode === "map" ? (
             <div className={`${styles.panel} ${styles.mapPanel}`}>
               <div className={styles.mapGrid}>
                 <PropertyParcelMap property={property} />
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className={`${styles.panel} ${styles.summary}`}>
             {statusMessage ? <div className={styles.description}>{statusMessage}</div> : null}
@@ -454,7 +459,7 @@ export function PropertyPage({
             </div>
           </div>
 
-          {behavior.mediaMode === "gallery" ? (
+          {behavior.mediaMode === "gallery" && (!property.locationSource || property.locationSource === "parcel") ? (
             <div className={styles.mapSection}>
               <div className={`${styles.panel} ${styles.section}`}>
                 <div className={styles.secondaryMapFrame}>
@@ -530,14 +535,16 @@ export function PropertyPage({
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
-                  <a
-                    className={styles.actionLinkSecondary}
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Get directions
-                  </a>
+                  {isParcelLinked ? (
+                    <a
+                      className={styles.actionLinkSecondary}
+                      href={directionsHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Get directions
+                    </a>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -558,7 +565,7 @@ export function PropertyPage({
                   </>
                 ) : claimState === "pending" ? (
                   <Button disabled>Claim pending review</Button>
-                ) : (
+                ) : property.locationSource && property.locationSource !== "parcel" ? null : (
                   <form action={startPropertyClaimAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
@@ -570,14 +577,16 @@ export function PropertyPage({
                   <input name="propertyPath" type="hidden" value={propertyPath} />
                   <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                 </form>
-                <a
-                  className={styles.actionLinkSecondary}
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Get directions
-                </a>
+                {isParcelLinked ? (
+                  <a
+                    className={styles.actionLinkSecondary}
+                    href={directionsHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Get directions
+                  </a>
+                ) : null}
               </div>
             )}
           </div>

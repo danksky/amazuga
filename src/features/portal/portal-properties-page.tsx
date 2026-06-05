@@ -348,6 +348,13 @@ export function PortalPropertiesPage({
 
           <UpiClaimForm defaultUpi={claimFeedback?.upi} key={claimFeedback?.upi ?? "blank"} />
 
+          <div className={styles.sectionMeta}>
+            Listing a <strong>rental</strong> and the lessor has not shared a UPI?{" "}
+            <Link href={routes.app.portalPropertyListDirect}>
+              Create a listing without UPI instead.
+            </Link>
+          </div>
+
           {claimFeedbackMessage ? (
             <div
               className={`${styles.feedback} ${

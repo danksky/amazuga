@@ -125,6 +125,7 @@ export function ListingForm({
   agencies,
   listing,
   cancelHref = routes.app.portalListings,
+  directListingHref,
   mode,
   propertyOptions = [],
   selectedPropertyRouteId,
@@ -133,6 +134,7 @@ export function ListingForm({
 }: {
   agencies: PortalListingAgencyOption[];
   cancelHref?: string;
+  directListingHref?: string;
   listing?: PortalEditableListing;
   mode: "create" | "edit";
   propertyOptions?: PortalListingPropertyOption[];
@@ -201,8 +203,15 @@ export function ListingForm({
               <Link href={routes.app.portalProperties}>
                 <Button type="button">View owned properties</Button>
               </Link>
+              {directListingHref && (
+                <Link href={directListingHref}>
+                  <Button type="button" variant="secondary">
+                    Create without UPI
+                  </Button>
+                </Link>
+              )}
               <Link href={cancelHref}>
-                <Button type="button" variant="secondary">
+                <Button type="button" variant="ghost">
                   Cancel
                 </Button>
               </Link>

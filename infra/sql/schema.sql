@@ -153,6 +153,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS parcel_anchor_point_preview_upi_idx
   ON parcel_anchor_point_preview (upi);
 
 
+-- Representative centroid points for Rwanda administrative villages.
+-- Loaded from NISR boundary polygon data. Used as map anchor for direct
+-- (no-parcel) listings and for reverse-geocoding user-dropped pins to their
+-- containing village. Primary key is the full hierarchy because village names
+-- are not globally unique across Rwanda.
+CREATE TABLE IF NOT EXISTS admin_village_centroid (
+  district_name  TEXT NOT NULL,
+  sector_name    TEXT NOT NULL,
+  cell_name      TEXT NOT NULL,
+  village_name   TEXT NOT NULL,
+  centroid_lat   DOUBLE PRECISION NOT NULL,
+  centroid_lon   DOUBLE PRECISION NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (district_name, sector_name, cell_name, village_name)
+);
+
+CREATE INDEX IF NOT EXISTS admin_village_centroid_village_idx
+  ON admin_village_centroid (village_name);
+
+CREATE INDEX IF NOT EXISTS admin_village_centroid_sector_idx
+  ON admin_village_centroid (district_name, sector_name);
+
+
 -- =============================================================================
 -- APP TABLES
 -- Written to by app logic. Persist across parcel reloads.
@@ -285,9 +308,9 @@ CREATE TABLE IF NOT EXISTS agency_membership (
 CREATE TABLE IF NOT EXISTS property_asset (
   id               TEXT PRIMARY KEY,
   -- Soft reference to parcel_app_ready_seed_preview.parcel_id.
-  -- No hard FK — parcel tables are rebuilt from parquet; a FK would cascade-
-  -- delete real property data on reload.
-  parcel_id        TEXT NOT NULL,
+  -- NULL for direct (no-UPI) listings. No hard FK — parcel tables are rebuilt
+  -- from parquet; a FK would cascade-delete real property data on reload.
+  parcel_id        TEXT,
   -- Non-null only for unit assets (apartment_unit, commercial_unit).
   -- References the parent building asset on the same parcel.
   parent_asset_id  TEXT REFERENCES property_asset(id) ON DELETE CASCADE,
@@ -312,9 +335,23 @@ CREATE TABLE IF NOT EXISTS property_asset (
   unit_label       TEXT,
   description      TEXT,
   -- TRUE for the single canonical top-level asset for a parcel.
-  -- Enforced by partial unique index. Allows parcel-first lookups to resolve
-  -- to the correct asset without scanning all children.
+  -- Enforced by partial unique index (parcel_id IS NOT NULL only).
+  -- Allows parcel-first lookups to resolve to the correct asset without
+  -- scanning all children.
   is_primary_for_parcel BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Location columns — populated for all assets regardless of path.
+  -- For parcel-linked assets, denormalized from parcel at claim approval.
+  -- For direct listings, supplied by user or derived from pin reverse-geocode.
+  location_source  TEXT CHECK (location_source IN ('parcel', 'admin_unit', 'pin_derived')),
+  display_name     TEXT,   -- used in all UI title expressions
+  admin_district   TEXT,
+  admin_sector     TEXT,
+  admin_cell       TEXT,
+  admin_village    TEXT,
+  anchor_lat       DOUBLE PRECISION,  -- map pin; parcel anchor or village centroid
+  anchor_lon       DOUBLE PRECISION,
+  private_pin_lat  DOUBLE PRECISION,  -- raw dropped pin — never exposed publicly
+  private_pin_lon  DOUBLE PRECISION,
   -- Tracks the origin of this row. Values used in app query filters:
   --   'manual'                        real user / agent action
   --   'claim_approval_v1'             created by admin approving a claim
@@ -344,9 +381,11 @@ COMMENT ON COLUMN property_asset.seed_source IS
 'Tracks the origin of this row. Preview/mock seed values are excluded from production
 queries using NOT IN filters. Real origins: manual, claim_approval_v1.';
 
+-- NULL parcel_id rows (direct listings) are excluded — no uniqueness constraint
+-- applies across direct listings since they have no parcel to collide on.
 CREATE UNIQUE INDEX IF NOT EXISTS property_asset_one_primary_per_parcel_idx
   ON property_asset (parcel_id)
-  WHERE is_primary_for_parcel;
+  WHERE is_primary_for_parcel AND parcel_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS property_asset_parcel_id_idx
   ON property_asset (parcel_id);
@@ -411,7 +450,8 @@ CREATE TABLE IF NOT EXISTS listing (
   -- Soft reference to parcel_app_ready_seed_preview.parcel_id.
   -- Duplicated here from property_asset so map bbox queries can filter on
   -- parcel location without a join through property_asset.
-  parcel_id           TEXT NOT NULL,
+  -- NULL for direct (no-UPI) listings.
+  parcel_id           TEXT,
   property_asset_id   TEXT NOT NULL REFERENCES property_asset(id),
   agency_id           TEXT REFERENCES agency(id),
   agent_user_id       UUID NOT NULL REFERENCES app_user(id),
@@ -761,7 +801,8 @@ CREATE TABLE IF NOT EXISTS property_ownership (
   property_id                  TEXT NOT NULL,
   property_internal_id         TEXT NOT NULL REFERENCES property_asset(id),
   -- Soft reference to parcel_app_ready_seed_preview.parcel_id.
-  parcel_id                    TEXT NOT NULL,
+  -- NULL for direct (no-UPI) listings where no parcel was claimed.
+  parcel_id                    TEXT,
   -- 'full' = owns the entire parcel; 'unit' = owns a specific unit within it.
   ownership_scope              TEXT NOT NULL CHECK (ownership_scope IN ('full', 'unit')),
   created_from_claim_request_id TEXT REFERENCES property_claim_request(id),
@@ -841,6 +882,11 @@ DECLARE
   parent_parcel_id TEXT;
   parent_asset_type TEXT;
 BEGIN
+  -- Direct listings have no parcel; parcel topology rules do not apply.
+  IF NEW.parcel_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
   IF NEW.parent_asset_id IS NULL THEN
     IF NEW.asset_type IN ('apartment_unit', 'commercial_unit') THEN
       RAISE EXCEPTION 'Unit assets must reference a parent building';
@@ -925,13 +971,22 @@ SELECT
   pa.unit_label                       AS property_unit_label,
   pa.description                      AS property_description_override,
   pa.is_primary_for_parcel,
+  pa.location_source,
+  pa.display_name,
+  pa.admin_district,
+  pa.admin_sector,
+  pa.admin_cell,
+  pa.admin_village,
+  pa.anchor_lat,
+  pa.anchor_lon,
+  -- parcel-specific fields — NULL for direct listings
   p.public_id                         AS parcel_public_id,
   p.display_id                        AS parcel_display_id,
   p.upi,
-  p.district,
-  p.sector,
-  p.cell,
-  p.village,
+  COALESCE(pa.admin_district, p.district)   AS district,
+  COALESCE(pa.admin_sector,   p.sector)     AS sector,
+  COALESCE(pa.admin_cell,     p.cell)       AS cell,
+  COALESCE(pa.admin_village,  p.village)    AS village,
   p.centroid_lat,
   p.centroid_lon,
   p.bbox_min_lon,
@@ -961,12 +1016,12 @@ SELECT
   pap.year_built,
   CASE
     WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-      THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-    ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+      THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+    ELSE COALESCE(pa.display_name, pa.public_id)
   END                                 AS property_title,
   COALESCE(pa.description, pap.description) AS resolved_description
 FROM property_asset pa
-JOIN parcel_app_ready_seed_preview p
+LEFT JOIN parcel_app_ready_seed_preview p
   ON p.parcel_id = pa.parcel_id
 LEFT JOIN property_asset_profile pap
   ON pap.property_asset_id = pa.id;
@@ -1037,21 +1092,22 @@ visibility as appropriate for the request context.';
 CREATE OR REPLACE VIEW public_active_listing_map_surface AS
 SELECT
   l.id                                AS listing_id,
-  p.parcel_id,
+  pa.parcel_id,
   p.public_id                         AS parcel_public_id,
-  p.display_id                        AS parcel_display_id,
   pa.id                               AS asset_id,
   pa.public_id                        AS asset_public_id,
   pa.unit_label                       AS asset_unit_label,
-  COALESCE(pa.public_id, p.public_id) AS route_id,
+  pa.public_id                        AS route_id,
+  pa.location_source,
+  pa.display_name,
+  pa.anchor_lon,
+  pa.anchor_lat,
+  pa.admin_district                   AS district,
+  pa.admin_sector                     AS sector,
   l.marketing_type,
   l.asking_price_rwf,
   l.currency,
   l.published_at,
-  parcel_anchor.anchor_lon,
-  parcel_anchor.anchor_lat,
-  p.district,
-  p.sector,
   COALESCE(
     NULLIF(BTRIM(pap.property_type), ''),
     CASE pa.asset_type
@@ -1076,16 +1132,16 @@ SELECT
     LIMIT 1
   )                                   AS hero_image_url
 FROM listing l
-JOIN parcel_app_ready_seed_preview p
-  ON p.parcel_id = l.parcel_id
-JOIN parcel_anchor_point_preview parcel_anchor
-  ON parcel_anchor.parcel_id = p.parcel_id
-LEFT JOIN property_asset pa
+JOIN property_asset pa
   ON pa.id = l.property_asset_id
+LEFT JOIN parcel_app_ready_seed_preview p
+  ON p.parcel_id = l.parcel_id
 LEFT JOIN property_asset_profile pap
   ON pap.property_asset_id = pa.id
 WHERE l.status     = 'active'
-  AND l.visibility = 'public';
+  AND l.visibility = 'public'
+  AND pa.anchor_lon IS NOT NULL
+  AND pa.anchor_lat IS NOT NULL;
 
 COMMENT ON VIEW public_active_listing_map_surface IS
 'Browse map surface: active public listing pins with anchor coordinates.
