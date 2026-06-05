@@ -299,9 +299,14 @@ export function PropertyPage({
   canCreateListing = false,
 }: PropertyPageProps) {
   const latestValuation = valuations[0];
-  const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
+  const locationParts = [property.location.village, property.location.cell, property.location.sector, property.location.district]
     .filter(Boolean)
+    .map((value) => value.trim())
+    .filter((value) => value && value.toLowerCase() !== "unknown district");
+  const locationLabel = locationParts
     .join(", ");
+  const isParcelLinked = !property.locationSource || property.locationSource === "parcel";
+  const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`;
   const propertyRouteId = property.id;
   const propertyPath = routes.public.property(propertyRouteId, {
     propertyTitle: property.title,
@@ -533,14 +538,16 @@ export function PropertyPage({
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
-                  <a
-                    className={styles.actionLinkSecondary}
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Get directions
-                  </a>
+                  {isParcelLinked ? (
+                    <a
+                      className={styles.actionLinkSecondary}
+                      href={directionsHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Get directions
+                    </a>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -573,14 +580,16 @@ export function PropertyPage({
                   <input name="propertyPath" type="hidden" value={propertyPath} />
                   <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                 </form>
-                <a
-                  className={styles.actionLinkSecondary}
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Get directions
-                </a>
+                {isParcelLinked ? (
+                  <a
+                    className={styles.actionLinkSecondary}
+                    href={directionsHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Get directions
+                  </a>
+                ) : null}
               </div>
             )}
           </div>
