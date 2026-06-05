@@ -98,6 +98,11 @@ export function DirectListingNewForm({
 
   const locationReady = location != null;
 
+  // Step 4 is valid when every shown required field has a value (year built is optional).
+  const step4Valid =
+    (!needsInteriorArea(propertyType) || interiorAreaSqm !== "") &&
+    (!needsBedsBaths(propertyType) || (bedrooms !== "" && bathrooms !== ""));
+
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.card}>
@@ -244,7 +249,7 @@ export function DirectListingNewForm({
                   id="interior-area"
                   min="1"
                   onChange={(e) => setInteriorAreaSqm(e.target.value)}
-                  placeholder="Optional"
+                  placeholder="e.g. 120"
                   step="0.01"
                   value={interiorAreaSqm}
                 />
@@ -260,7 +265,7 @@ export function DirectListingNewForm({
                     id="bedrooms"
                     min="0"
                     onChange={(e) => setBedrooms(e.target.value)}
-                    placeholder="Optional"
+                    placeholder="e.g. 3"
                     step="1"
                     value={bedrooms}
                   />
@@ -272,7 +277,7 @@ export function DirectListingNewForm({
                     id="bathrooms"
                     min="0.5"
                     onChange={(e) => setBathrooms(e.target.value)}
-                    placeholder="Optional"
+                    placeholder="e.g. 2"
                     step="0.5"
                     value={bathrooms}
                   />
@@ -300,7 +305,12 @@ export function DirectListingNewForm({
             )}
 
             <div className={styles.actions}>
-              <button className={styles.primaryAction} onClick={() => setStep(5)} type="button">
+              <button
+                className={styles.primaryAction}
+                disabled={!step4Valid}
+                onClick={() => setStep(5)}
+                type="button"
+              >
                 Continue →
               </button>
               <button className={styles.secondaryAction} onClick={() => setStep(3)} type="button">← Back</button>
@@ -366,7 +376,7 @@ export function DirectListingNewForm({
                 min="1"
                 name="askingPriceRwf"
                 onChange={(e) => setAskingPrice(e.target.value)}
-                placeholder="Optional — you can add it later"
+                placeholder="e.g. 45000000"
                 step="1"
                 value={askingPrice}
               />
@@ -398,7 +408,7 @@ export function DirectListingNewForm({
             )}
 
             <div className={styles.actions}>
-              <button className={styles.primaryAction} disabled={isSubmitting} type="submit">
+              <button className={styles.primaryAction} disabled={isSubmitting || !askingPrice} type="submit">
                 {isSubmitting ? "Creating listing…" : "Create listing →"}
               </button>
               <button
