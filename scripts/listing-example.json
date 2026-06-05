@@ -9,8 +9,6 @@
   "visibility": "public",
   "activate": true,
 
-  "description": "Spacious house with large compound, recently renovated. Close to main road.",
-
   "property": {
     "asset_type": "house",
     "admin_district": "Kigali",

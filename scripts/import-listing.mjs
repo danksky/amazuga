@@ -302,10 +302,6 @@ async function run() {
   );
   console.log(`    Visibility : ${spec.visibility ?? "public"}`);
   console.log(`    Activate   : ${spec.activate ? "yes" : "no (will remain draft)"}`);
-  if (spec.description) {
-    console.log(`    Description: ${spec.description.slice(0, 80)}${spec.description.length > 80 ? "…" : ""}`);
-  }
-
   // ── Validate photo paths ───────────────────────────────────────────────────
 
   const photoPaths = (spec.photos ?? []).map((rel) => resolve(listingDir, rel));
@@ -385,8 +381,8 @@ async function run() {
       `INSERT INTO listing (
         id, parcel_id, property_asset_id, agency_id, agent_user_id,
         status, marketing_type, visibility, currency,
-        asking_price_rwf, description, seed_source
-      ) VALUES ($1, NULL, $2, $3, $4, 'draft', $5, $6, 'RWF', $7, $8, 'script_import_v1')`,
+        asking_price_rwf, seed_source
+      ) VALUES ($1, NULL, $2, $3, $4, 'draft', $5, $6, 'RWF', $7, 'script_import_v1')`,
       [
         listingId,
         assetId,
@@ -395,7 +391,6 @@ async function run() {
         spec.marketing_type,
         spec.visibility ?? "public",
         spec.asking_price_rwf ?? null,
-        spec.description ?? null,
       ],
     );
     console.log(`  ✓ listing         : ${listingId}`);
