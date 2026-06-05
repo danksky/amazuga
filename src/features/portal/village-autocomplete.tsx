@@ -39,8 +39,7 @@ export function VillageAutocomplete() {
 
     const trimmed = query.trim();
     if (trimmed.length < 2) {
-      setSuggestions([]);
-      setShowDropdown(false);
+      abortRef.current?.abort();
       return;
     }
 
@@ -66,6 +65,14 @@ export function VillageAutocomplete() {
     };
   }, [query]);
 
+  function updateQuery(value: string) {
+    setQuery(value);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+    }
+  }
+
   function select(s: LocationSuggestion) {
     setSelected(s);
     setQuery("");
@@ -76,6 +83,8 @@ export function VillageAutocomplete() {
   function clear() {
     setSelected(null);
     setQuery("");
+    setSuggestions([]);
+    setShowDropdown(false);
   }
 
   return (
@@ -99,7 +108,7 @@ export function VillageAutocomplete() {
             autoComplete="off"
             className={styles.input}
             name="_villageQuery"
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => updateQuery(e.target.value)}
             onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
             placeholder="e.g. Kimisagara"
             required

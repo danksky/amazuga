@@ -104,7 +104,6 @@ interface PropertyWhatsappRow {
   property_kind: PropertyKind | null;
   property_type: string | null;
   property_unit_label: string | null;
-  marketing_type: Listing["marketingType"] | null;
 }
 
 export interface PublicListingCardData {
