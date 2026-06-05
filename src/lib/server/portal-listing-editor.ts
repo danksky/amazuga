@@ -41,6 +41,8 @@ interface EditableListingRow {
   visibility: ListingVisibility;
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string | null;
+  location_hidden: boolean;
+  location_source: string | null;
   campaign_index: number;
 }
 
@@ -115,6 +117,9 @@ export interface PortalEditableListing {
   visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
+  locationHidden: boolean;
+  /** location_source from the property_asset; 'parcel' or null = parcel-linked. */
+  locationSource?: string | null;
   images: Array<{
     id: string;
     imageUrl: string;
@@ -207,8 +212,8 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         pa.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pap.property_type,
@@ -235,7 +240,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
       WHERE po.user_id = $1
         AND open_listing.id IS NULL
       ORDER BY
-        COALESCE(pa.display_name, pa.public_id) ASC,
+        COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id) ASC,
         pa.public_id ASC
     `,
     [userId],
@@ -278,8 +283,8 @@ async function resolvePropertyTarget(propertyRouteId: string) {
         pa.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title
       FROM property_asset pa
       LEFT JOIN parcel_app_ready_seed_preview p
@@ -310,8 +315,8 @@ async function getEditableListingRow(userId: string, listingId: string) {
         COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pap.property_type,
@@ -323,6 +328,8 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.visibility,
         l.marketing_type,
         l.asking_price_rwf,
+        l.location_hidden,
+        pa.location_source,
         l.campaign_index
       FROM listing l
       LEFT JOIN parcel_app_ready_seed_preview p
@@ -602,6 +609,8 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     visibility: row.visibility,
     marketingType: row.marketing_type,
     askingPrice: toNumber(row.asking_price_rwf),
+    locationHidden: row.location_hidden ?? false,
+    locationSource: row.location_source,
     images,
     priceHistory,
     accessGrants,
@@ -920,6 +929,7 @@ export async function updatePortalListingInDb(input: {
   marketingType: Listing["marketingType"];
   visibility: ListingVisibility;
   askingPrice?: number;
+  locationHidden?: boolean;
 }) {
   const listing = await getEditableListingRow(input.userId, input.listingId);
 
@@ -954,6 +964,7 @@ export async function updatePortalListingInDb(input: {
           marketing_type = $3,
           visibility = $4,
           asking_price_rwf = COALESCE($5, asking_price_rwf),
+          location_hidden = COALESCE($6, location_hidden),
           updated_at = NOW()
         WHERE id = $1
         RETURNING
@@ -965,7 +976,8 @@ export async function updatePortalListingInDb(input: {
           ) AS property_route_id,
           marketing_type
       `,
-      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice],
+      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice,
+       input.locationHidden !== undefined ? input.locationHidden : null],
     );
 
     if (priceChanged) {

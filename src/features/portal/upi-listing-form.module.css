@@ -1,0 +1,511 @@
+.page {
+  padding: 32px 0 48px;
+}
+
+.card {
+  display: grid;
+  gap: 24px;
+  max-width: 640px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 38%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 95%, white), color-mix(in srgb, var(--surface-alt) 74%, white));
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+/* ─── Listing mode toggle ─── */
+
+.listingModeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.listingModeLabel {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--foreground-muted);
+  white-space: nowrap;
+}
+
+.listingModeTabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.listingModeTab {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 130ms ease, color 130ms ease;
+  white-space: nowrap;
+}
+
+.listingModeTab:hover {
+  color: var(--foreground);
+}
+
+.listingModeTabActive {
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Step indicator ─── */
+
+.steps {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--foreground-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.step + .step::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 1px;
+  background: var(--border);
+  margin-right: 6px;
+}
+
+.stepDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.stepDone {
+  color: #2f6b2f;
+}
+
+.stepDone .stepDot {
+  background: color-mix(in srgb, white 60%, #2f6b2f);
+  border-color: #2f6b2f;
+}
+
+.stepActive {
+  color: var(--foreground);
+}
+
+.stepActive .stepDot {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}
+
+.stepLabel {
+  white-space: nowrap;
+}
+
+/* ─── Step body ─── */
+
+.stepBody {
+  display: grid;
+  gap: 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.body {
+  margin: 0;
+  color: var(--foreground-muted);
+  line-height: 1.6;
+}
+
+/* ─── Form fields ─── */
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.label {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 0.97rem;
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.select {
+  appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+}
+
+.input:focus-visible,
+.select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  outline-offset: 2px;
+}
+
+.hint {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hintWarn { color: #8a4b09; }
+.hintOk   { color: #2f6b2f; }
+
+/* ─── Parcel summary card ─── */
+
+.parcelCard {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, white);
+}
+
+.parcelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.parcelKey {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  flex-shrink: 0;
+}
+
+.parcelVal {
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ─── Location toggle ─── */
+
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-alt) 68%, white);
+  cursor: pointer;
+  transition: background 130ms ease;
+}
+
+.toggleRow:hover {
+  background: color-mix(in srgb, var(--surface-alt) 85%, white);
+}
+
+.checkbox {
+  flex-shrink: 0;
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--foreground);
+}
+
+.toggleContent {
+  display: grid;
+  gap: 4px;
+}
+
+.toggleLabel {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.toggleHint {
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ─── Radio group ─── */
+
+.radioGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.radioOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 130ms ease, border-color 130ms ease;
+}
+
+.radioOption:hover {
+  background: var(--surface-muted);
+}
+
+.radioOptionSelected {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}
+
+.radioHidden {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+/* ─── Alerts ─── */
+
+.alertWarn {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 80%, #f5e6d1);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.alertInfo {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 82%, #dcefd5);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+/* ─── Actions ─── */
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.primaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+  text-decoration: none;
+}
+
+.primaryAction:hover:not(:disabled),
+.primaryAction:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 90%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+.primaryAction:focus-visible { outline: none; }
+
+.primaryAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  text-decoration: none;
+}
+
+.secondaryAction:hover:not(:disabled),
+.secondaryAction:focus-visible:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.secondaryAction:focus-visible { outline: none; }
+
+.secondaryAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submitNote {
+  margin: 0;
+  color: var(--foreground-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* ─── No-UPI privacy note (step 3) ─── */
+
+.privacyNote {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-alt) 68%, white);
+}
+
+.privacyIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground-muted);
+  margin-top: 2px;
+}
+
+.privacyTitle {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.privacyBody {
+  color: var(--foreground-muted);
+  font-size: 0.93rem;
+  line-height: 1.55;
+}
+
+.upiPrompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--foreground-muted);
+  font-size: 0.93rem;
+}
+
+.upiPromptLink {
+  font-weight: 700;
+  color: var(--foreground);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.upiPromptLink:hover,
+.upiPromptLink:focus-visible {
+  text-decoration: underline;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 640px) {
+  .card {
+    padding: 22px;
+  }
+
+  .steps {
+    gap: 4px;
+  }
+
+  .stepLabel {
+    display: none;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .radioGroup {
+    flex-direction: column;
+  }
+
+  .radioOption {
+    justify-content: center;
+  }
+}

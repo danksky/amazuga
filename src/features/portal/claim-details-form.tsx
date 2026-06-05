@@ -42,6 +42,10 @@ function needsBedroomsAndBathrooms(propertyType: PropertyType) {
   return propertyType === "house" || propertyType === "apartment_unit";
 }
 
+function needsYearBuilt(propertyType: PropertyType) {
+  return propertyType !== "land";
+}
+
 function needsZoning(propertyType: PropertyType) {
   return propertyType === "land" || propertyType === "apartment_building" || propertyType === "commercial_building" || propertyType === "commercial_unit";
 }
@@ -241,21 +245,23 @@ export function ClaimDetailsForm({
             </div>
           ) : null}
 
-          <div className={styles.fieldGrid}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="claim-year-built">
-                Year built
-              </label>
-              <WheelSafeNumberInput
-                className={styles.input}
-                id="claim-year-built"
-                min="1800"
-                name="yearBuilt"
-                placeholder="Optional"
-                step="1"
-              />
+          {needsYearBuilt(propertyType) ? (
+            <div className={styles.fieldGrid}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="claim-year-built">
+                  Year built
+                </label>
+                <WheelSafeNumberInput
+                  className={styles.input}
+                  id="claim-year-built"
+                  min="1800"
+                  name="yearBuilt"
+                  placeholder="Optional"
+                  step="1"
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className={styles.actions}>
             <button className={styles.submitAction} type="submit">

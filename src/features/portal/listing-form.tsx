@@ -145,6 +145,10 @@ export function ListingForm({
   const [publishAttempted, setPublishAttempted] = useState(false);
   const [askingPriceHasValue, setAskingPriceHasValue] = useState(Boolean(listing?.askingPrice));
   const [photoCount, setPhotoCount] = useState(listing?.images.length ?? 0);
+  const [locationHidden, setLocationHidden] = useState(listing?.locationHidden ?? false);
+
+  // Only parcel-linked listings have a precise location to hide.
+  const isParcelLinked = !listing?.locationSource || listing?.locationSource === "parcel";
 
   const isPrivateListerMode = agencies.length === 0;
   const selectedAgency =
@@ -361,6 +365,29 @@ export function ListingForm({
                     placeholder="Example: 185000000"
                     step="1"
                   />
+                </div>
+              ) : null}
+
+              {mode === "edit" && isParcelLinked ? (
+                <div className={styles.field}>
+                  {/* Reliable boolean submission — checkbox state drives a hidden input */}
+                  <input name="locationHidden" type="hidden" value={locationHidden ? "true" : "false"} />
+                  <label className={styles.locationToggleRow}>
+                    <input
+                      checked={locationHidden}
+                      className={styles.locationToggleCheckbox}
+                      id="location-hidden"
+                      onChange={(e) => setLocationHidden(e.target.checked)}
+                      type="checkbox"
+                    />
+                    <div className={styles.locationToggleContent}>
+                      <span className={styles.locationToggleLabel}>Hide precise location</span>
+                      <span className={styles.locationToggleHint}>
+                        When on, browsers see district / sector / cell only — no map pin or parcel outline.
+                        The listing still appears in search results and the browse panel.
+                      </span>
+                    </div>
+                  </label>
                 </div>
               ) : null}
             </div>

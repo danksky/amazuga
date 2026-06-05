@@ -1,0 +1,31 @@
+{
+  "format_version": 1,
+
+  "agent_phone": "+250788123456",
+  "agency_id": null,
+
+  "marketing_type": "sale",
+  "asking_price_rwf": 45000000,
+  "visibility": "public",
+  "activate": true,
+
+  "property": {
+    "asset_type": "house",
+    "admin_district": "Kigali",
+    "admin_sector": "Gasabo",
+    "admin_cell": "Remera",
+    "admin_village": "Nyabisindu",
+    "pin_lat": null,
+    "pin_lon": null,
+    "bedrooms": 4,
+    "bathrooms": 2,
+    "interior_area_sqm": 180,
+    "year_built": 2018
+  },
+
+  "photos": [
+    "photos/01.jpg",
+    "photos/02.jpg",
+    "photos/03.jpg"
+  ]
+}

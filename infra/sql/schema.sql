@@ -67,8 +67,6 @@ CREATE TABLE IF NOT EXISTS parcel_app_ready_seed_preview (
   -- Public-safe parcel identifier used in URLs and map tile features.
   -- Falls back to this when no property_asset exists for the parcel.
   public_id                TEXT,
-  -- Human-readable parcel reference (e.g. "KG 123 ST").
-  display_id               TEXT,
   -- Rwanda Parcel Identifier — the official RNRA registry string.
   -- Provided by the user at claim time to verify ownership.
   upi                      TEXT,
@@ -122,6 +120,20 @@ Zoning is NOT used as a filter — too many legitimate parcels lack DLUP zoning 
 CREATE INDEX IF NOT EXISTS parcel_app_ready_seed_preview_upi_normalized_idx
   ON parcel_app_ready_seed_preview ((UPPER(REPLACE(upi, ' ', ''))));
 
+-- Human-readable parcel label derived from the UPI parcel number, cell, and sector.
+-- Format: "782 Bibare, Kimironko" — parcel number leads, cell and sector follow.
+-- Agents report that buyers navigate by sector/cell, not village (June 2026).
+-- Using a function rather than a stored column means the format can be changed
+-- in one place; no stored data to reformat across 10M+ rows.
+CREATE OR REPLACE FUNCTION parcel_label(upi TEXT, cell TEXT, sector TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE
+    WHEN upi IS NOT NULL AND cell IS NOT NULL AND sector IS NOT NULL
+    THEN split_part(upi, '/', 5) || ' ' || cell || ', ' || sector
+    ELSE NULL
+  END
+$$;
+
 
 -- Per-parcel anchor point for map rendering. A point-on-surface (not centroid)
 -- is used so the dot always falls visually inside the parcel polygon.
@@ -129,7 +141,6 @@ CREATE TABLE IF NOT EXISTS parcel_anchor_point_preview (
   parcel_id    TEXT PRIMARY KEY,
   public_id    TEXT NOT NULL,
   upi          TEXT NOT NULL,
-  display_id   TEXT,
   -- 'point_on_surface' is preferred; 'centroid_fallback' is used when the
   -- geometry library cannot guarantee an interior point (rare edge cases).
   anchor_source TEXT NOT NULL CHECK (anchor_source IN ('point_on_surface', 'centroid_fallback')),
@@ -467,6 +478,9 @@ CREATE TABLE IF NOT EXISTS listing (
   -- different campaigns can be distinguished.
   campaign_index      INTEGER NOT NULL DEFAULT 1,
   description         TEXT,
+  -- When true, the precise parcel location is suppressed from all public surfaces.
+  -- Only meaningful for UPI-backed listings; direct listings are always village-level.
+  location_hidden     BOOLEAN NOT NULL DEFAULT false,
   seed_source         TEXT NOT NULL DEFAULT 'manual',
   published_at        TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -830,6 +844,39 @@ CREATE INDEX IF NOT EXISTS property_ownership_parcel_id_idx
   ON property_ownership (parcel_id);
 
 
+-- Records a dispute from a second user who believes they own an already-claimed UPI.
+-- Created when a UPI claim is blocked by existing ownership. Admins review contests only;
+-- initial UPI claims are auto-approved synchronously on submission.
+CREATE TABLE IF NOT EXISTS property_ownership_contest (
+  id                         TEXT PRIMARY KEY,
+  upi                        TEXT NOT NULL,
+  contesting_user_id         UUID NOT NULL REFERENCES app_user(id),
+  claimed_property_asset_id  TEXT NOT NULL REFERENCES property_asset(id),
+  claimed_property_id        TEXT NOT NULL,
+  note                       TEXT NOT NULL,
+  status                     TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'resolved_upheld', 'resolved_overturned')),
+  created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE property_ownership_contest IS
+'Dispute submissions from a second claimant who believes they own an already-claimed
+UPI. Created via two entry points: (a) during the UPI claim flow when the UPI is
+already owned, or (b) via the "Dispute ownership" link on the property listing page.
+Reviewed by admins. resolved_upheld = original owner keeps the property;
+resolved_overturned = a separate transfer workflow is needed to reassign ownership.';
+
+CREATE INDEX IF NOT EXISTS property_ownership_contest_status_idx
+  ON property_ownership_contest (status);
+
+CREATE INDEX IF NOT EXISTS property_ownership_contest_contesting_user_id_idx
+  ON property_ownership_contest (contesting_user_id);
+
+CREATE INDEX IF NOT EXISTS property_ownership_contest_upi_idx
+  ON property_ownership_contest (upi);
+
+
 -- =============================================================================
 -- VALUATIONS
 -- =============================================================================
@@ -981,7 +1028,7 @@ SELECT
   pa.anchor_lon,
   -- parcel-specific fields — NULL for direct listings
   p.public_id                         AS parcel_public_id,
-  p.display_id                        AS parcel_display_id,
+  parcel_label(p.upi, p.cell, p.sector) AS parcel_display_id,
   p.upi,
   COALESCE(pa.admin_district, p.district)   AS district,
   COALESCE(pa.admin_sector,   p.sector)     AS sector,
@@ -1016,8 +1063,8 @@ SELECT
   pap.year_built,
   CASE
     WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-      THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-    ELSE COALESCE(pa.display_name, pa.public_id)
+      THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+    ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
   END                                 AS property_title,
   COALESCE(pa.description, pap.description) AS resolved_description
 FROM property_asset pa
@@ -1066,7 +1113,8 @@ SELECT
   a.website_url,
   u.id                                AS agent_user_id,
   u.full_name                         AS agent_full_name,
-  li.image_url                        AS primary_image_url
+  li.image_url                        AS primary_image_url,
+  l.location_hidden
 FROM listing l
 JOIN property_asset_surface pas
   ON pas.property_asset_id = l.property_asset_id
@@ -1138,8 +1186,9 @@ LEFT JOIN parcel_app_ready_seed_preview p
   ON p.parcel_id = l.parcel_id
 LEFT JOIN property_asset_profile pap
   ON pap.property_asset_id = pa.id
-WHERE l.status     = 'active'
-  AND l.visibility = 'public'
+WHERE l.status          = 'active'
+  AND l.visibility      = 'public'
+  AND l.location_hidden = false
   AND pa.anchor_lon IS NOT NULL
   AND pa.anchor_lat IS NOT NULL;
 
@@ -1163,7 +1212,7 @@ SELECT
   p.parcel_id,
   p.public_id     AS parcel_public_id,
   p.public_id     AS route_id,
-  p.display_id,
+  parcel_label(p.upi, p.cell, p.sector) AS display_id,
   p.district,
   p.sector,
   parcel_anchor.anchor_lon,

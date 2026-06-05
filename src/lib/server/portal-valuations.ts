@@ -194,7 +194,7 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           vs.updated_at::TEXT,
           p.parcel_id,
           p.public_id AS parcel_public_id,
-          p.display_id,
+          parcel_label(p.upi, p.cell, p.sector) AS display_id,
           p.district,
           p.sector,
           pa.public_id AS property_public_id,
@@ -202,8 +202,8 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           pap.property_type,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
           END AS property_title,
           listing.id AS listing_id,
           listing.marketing_type,
@@ -246,7 +246,7 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           vs.updated_at::TEXT,
           COALESCE(parcel_from_asset.parcel_id, parcel_direct.parcel_id) AS parcel_id,
           COALESCE(parcel_from_asset.public_id, parcel_direct.public_id) AS parcel_public_id,
-          COALESCE(parcel_from_asset.display_id, parcel_direct.display_id) AS display_id,
+          parcel_label(COALESCE(parcel_from_asset.upi, parcel_direct.upi), COALESCE(parcel_from_asset.cell, parcel_direct.cell), COALESCE(parcel_from_asset.sector, parcel_direct.sector)) AS display_id,
           COALESCE(parcel_from_asset.district, parcel_direct.district) AS district,
           COALESCE(parcel_from_asset.sector, parcel_direct.sector) AS sector,
           COALESCE(property_by_public_id.public_id, primary_asset_for_parcel.public_id) AS property_public_id,
@@ -255,11 +255,11 @@ export async function getPortalValuationsWorkspaceData(userId: string): Promise<
           CASE
             WHEN COALESCE(NULLIF(BTRIM(COALESCE(property_by_public_id.unit_label, primary_asset_for_parcel.unit_label)), ''), NULL) IS NOT NULL
               THEN CONCAT(
-                COALESCE(parcel_from_asset.display_id, parcel_direct.display_id, parcel_from_asset.public_id, parcel_direct.public_id, parcel_from_asset.parcel_id, parcel_direct.parcel_id),
+                COALESCE(parcel_label(COALESCE(parcel_from_asset.upi, parcel_direct.upi), COALESCE(parcel_from_asset.cell, parcel_direct.cell), COALESCE(parcel_from_asset.sector, parcel_direct.sector)), parcel_from_asset.public_id, parcel_direct.public_id, parcel_from_asset.parcel_id, parcel_direct.parcel_id),
                 ' · ',
                 COALESCE(property_by_public_id.unit_label, primary_asset_for_parcel.unit_label)
               )
-            ELSE COALESCE(parcel_from_asset.display_id, parcel_direct.display_id, parcel_from_asset.public_id, parcel_direct.public_id, parcel_from_asset.parcel_id, parcel_direct.parcel_id)
+            ELSE COALESCE(parcel_label(COALESCE(parcel_from_asset.upi, parcel_direct.upi), COALESCE(parcel_from_asset.cell, parcel_direct.cell), COALESCE(parcel_from_asset.sector, parcel_direct.sector)), parcel_from_asset.public_id, parcel_direct.public_id, parcel_from_asset.parcel_id, parcel_direct.parcel_id)
           END AS property_title,
           listing.id AS listing_id,
           listing.marketing_type,
@@ -361,7 +361,7 @@ export async function listPortalValuationPropertyOptions(_userId: string): Promi
     `
       SELECT
         COALESCE(active_listing.property_asset_public_id, primary_asset.public_id, p.public_id) AS route_id,
-        COALESCE(active_listing.property_title, primary_asset.property_title, p.display_id, p.public_id, p.parcel_id) AS property_title,
+        COALESCE(active_listing.property_title, primary_asset.property_title, parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id) AS property_title,
         COALESCE(active_listing.property_kind, primary_asset.property_kind) AS property_kind,
         COALESCE(active_listing.property_type, primary_asset.property_type) AS property_type,
         p.district,
@@ -378,8 +378,8 @@ export async function listPortalValuationPropertyOptions(_userId: string): Promi
           pa.public_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pap.property_type
@@ -397,8 +397,8 @@ export async function listPortalValuationPropertyOptions(_userId: string): Promi
           pa.public_id AS property_asset_public_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pap.property_type,

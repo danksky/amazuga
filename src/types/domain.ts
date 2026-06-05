@@ -105,6 +105,8 @@ export interface Listing {
   marketingType: "sale" | "rent";
   askingPrice: number;
   currency: "RWF";
+  /** When true the precise parcel location is suppressed from public surfaces. */
+  locationHidden: boolean;
   imageUrls: string[];
   createdAt: string;
   updatedAt: string;
@@ -242,5 +244,21 @@ export interface PropertyOwnership {
   propertyInternalId: string;
   parcelId: string;
   ownershipScope: PropertyOwnershipScope;
+  createdAt: string;
+}
+
+export type PropertyOwnershipContestStatus =
+  | "pending"
+  | "resolved_upheld"
+  | "resolved_overturned";
+
+export interface PropertyOwnershipContest {
+  id: string;
+  upi: string;
+  contestingUserId: string;
+  claimedPropertyAssetId: string;
+  claimedPropertyId: string;
+  note: string;
+  status: PropertyOwnershipContestStatus;
   createdAt: string;
 }

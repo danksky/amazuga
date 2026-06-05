@@ -54,3 +54,6 @@ public/tiles/*.pmtiles
 
 # DB backups — kept locally, not committed
 infra/backups/
+
+# Listing import working directories (photos + filled-in JSON) — not committed
+imports/

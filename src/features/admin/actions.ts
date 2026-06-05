@@ -8,11 +8,14 @@ import {
   activateApprovedAgentMembershipInDb,
   activatePendingAgencyManagerInDb,
   ensureAgencyFromApprovedApplicationInDb,
+  resolveOwnershipContestInDb,
   updatePropertyClaimRequestStatusInDb,
   updateValuationSubmissionStatusInDb,
   updateApplicationStatusInDb,
 } from "@/lib/server/workflows";
 import type { SubmissionStatus } from "@/types/domain";
+
+const contestPaths = [routes.admin.contests, routes.admin.dashboard];
 
 const reviewPaths = [
   routes.admin.dashboard,
@@ -27,6 +30,32 @@ const reviewPaths = [
   routes.app.portalValuationNew,
   routes.app.portalListingNew,
 ];
+
+export async function resolveContestAction(formData: FormData) {
+  await requireAdminUser();
+
+  const contestId = formData.get("contestId");
+  const resolution = formData.get("resolution");
+
+  if (
+    typeof contestId !== "string" ||
+    (resolution !== "resolved_upheld" && resolution !== "resolved_overturned")
+  ) {
+    throw new Error("Invalid contest resolution payload");
+  }
+
+  const { claimedPropertyId } = await resolveOwnershipContestInDb(contestId, resolution);
+
+  contestPaths.forEach((p) => revalidatePath(p));
+
+  if (resolution === "resolved_overturned" && claimedPropertyId) {
+    // Overturn removes the owner's listings — revalidate browse and the property page.
+    revalidatePath(routes.app.portalProperties);
+    revalidatePath(routes.public.buy);
+    revalidatePath(routes.public.rent);
+    revalidatePath(routes.public.property(claimedPropertyId));
+  }
+}
 
 export async function reviewApplicationAction(formData: FormData) {
   await requireAdminUser();

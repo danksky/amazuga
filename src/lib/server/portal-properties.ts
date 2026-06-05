@@ -274,8 +274,8 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         child.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(child.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(child.display_name, child.public_id), ' · ', child.unit_label)
-          ELSE COALESCE(child.display_name, child.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), child.display_name, child.public_id), ' · ', child.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), child.display_name, child.public_id)
         END AS property_title,
         child.asset_type AS property_kind,
         child.unit_label AS property_unit_label,
@@ -288,6 +288,8 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         listing.id AS listing_id,
         listing.status AS listing_status
       FROM property_asset child
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = child.parcel_id
       LEFT JOIN property_asset_profile pap
         ON pap.property_asset_id = child.id
       LEFT JOIN property_ownership owner
@@ -411,8 +413,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           COALESCE(pa.public_id, p.public_id) AS property_route_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-            ELSE COALESCE(pa.display_name, pa.public_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pa.unit_label AS property_unit_label,
@@ -483,8 +485,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pcr.upi,
@@ -716,8 +718,8 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
         COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
         END AS property_title,
         pa.asset_type AS property_kind
       FROM property_asset pa
@@ -784,8 +786,8 @@ export async function getPortalEditablePropertyRecord(
         COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pa.unit_label AS property_unit_label,
@@ -1113,4 +1115,69 @@ export async function registerPortalBuildingUnitInDb(input: {
   }
 
   return getPortalEditablePropertyRecord(input.userId, input.buildingRouteId);
+}
+
+/**
+ * Resolves the canonical UPI for a property given its public route ID.
+ * Returns null for direct (no-UPI) listings or unknown IDs.
+ * Used server-side only — the UPI is never surfaced in URLs or UI copy.
+ */
+export async function getUpiForPublicPropertyId(publicPropertyId: string): Promise<string | null> {
+  const result = await getPgPool().query<{ upi: string | null }>(
+    `
+      SELECT p.upi
+      FROM property_asset pa
+      LEFT JOIN parcel_app_ready_seed_preview p ON p.parcel_id = pa.parcel_id
+      WHERE pa.public_id = $1
+      LIMIT 1
+    `,
+    [publicPropertyId],
+  );
+  return result.rows[0]?.upi ?? null;
+}
+
+export interface NewUpiListingParcelData {
+  parcelId: string;
+  upi: string;
+  district?: string;
+  sector?: string;
+  representativeSize?: number;
+  zoning?: string;
+}
+
+/**
+ * Lightweight parcel lookup for the new UPI listing form.
+ * Returns the minimal data needed to populate the parcel-confirm step.
+ */
+export async function getParcelDataForNewUpiListing(upi: string): Promise<NewUpiListingParcelData | null> {
+  const result = await getPgPool().query<{
+    parcel_id: string;
+    upi: string;
+    district: string | null;
+    sector: string | null;
+    representative_size: number | string | null;
+    zoning: string | null;
+  }>(
+    `
+      SELECT parcel_id, upi, district, sector, representative_size, zoning
+      FROM parcel_app_ready_seed_preview
+      WHERE UPPER(REPLACE(upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
+      LIMIT 1
+    `,
+    [upi.trim()],
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  const size = typeof row.representative_size === "string" ? parseFloat(row.representative_size) : row.representative_size;
+
+  return {
+    parcelId: row.parcel_id,
+    upi: row.upi,
+    district: row.district || undefined,
+    sector: row.sector || undefined,
+    representativeSize: size != null && Number.isFinite(size) ? size : undefined,
+    zoning: row.zoning?.trim() || undefined,
+  };
 }

@@ -218,8 +218,10 @@ function buildPropertyPageBehavior(
   hasGallery: boolean,
 ): PropertyPageBehavior {
   const isParcelLinked = property.locationSource === "parcel" || !property.locationSource;
+  // When location_hidden is on, suppress the map even for parcel-linked properties.
+  const locationSuppressed = isParcelLinked && (listing?.locationHidden ?? false);
   const mediaMode: PropertyPageBehavior["mediaMode"] =
-    hasGallery ? "gallery" : isParcelLinked ? "map" : "none";
+    hasGallery ? "gallery" : (isParcelLinked && !locationSuppressed) ? "map" : "none";
   const resolvedKindLabel = formatPropertyKindLabel(propertyKind, property.facts.propertyType);
   const resolvedKindLabelLower = resolvedKindLabel.toLowerCase();
 
@@ -303,6 +305,8 @@ export function PropertyPage({
     .filter(Boolean)
     .join(", ");
   const isParcelLinked = !property.locationSource || property.locationSource === "parcel";
+  // Show directions and map references only when location is precise and not suppressed by owner.
+  const showPreciseLocation = isParcelLinked && !(listing?.locationHidden ?? false);
   const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`;
   const propertyRouteId = property.id;
   const propertyPath = routes.public.property(propertyRouteId, {
@@ -459,7 +463,7 @@ export function PropertyPage({
             </div>
           </div>
 
-          {behavior.mediaMode === "gallery" && (!property.locationSource || property.locationSource === "parcel") ? (
+          {behavior.mediaMode === "gallery" && isParcelLinked && !listing?.locationHidden ? (
             <div className={styles.mapSection}>
               <div className={`${styles.panel} ${styles.section}`}>
                 <div className={styles.secondaryMapFrame}>
@@ -535,7 +539,7 @@ export function PropertyPage({
                     <input name="propertyPath" type="hidden" value={propertyPath} />
                     <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
-                  {isParcelLinked ? (
+                  {showPreciseLocation ? (
                     <a
                       className={styles.actionLinkSecondary}
                       href={directionsHref}
@@ -544,6 +548,14 @@ export function PropertyPage({
                     >
                       Get directions
                     </a>
+                  ) : null}
+                  {isParcelLinked && property.upi ? (
+                    <Link
+                      className={styles.disputeLink}
+                      href={`${routes.app.portalPropertyContest}?property=${encodeURIComponent(propertyRouteId)}`}
+                    >
+                      Dispute ownership
+                    </Link>
                   ) : null}
                 </div>
               </div>
@@ -565,7 +577,7 @@ export function PropertyPage({
                   </>
                 ) : claimState === "pending" ? (
                   <Button disabled>Claim pending review</Button>
-                ) : property.locationSource && property.locationSource !== "parcel" ? null : (
+                ) : !isParcelLinked ? null : (
                   <form action={startPropertyClaimAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
