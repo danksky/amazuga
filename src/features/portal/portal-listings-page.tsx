@@ -66,7 +66,7 @@ export function PortalListingsPage({
               <Link className={styles.secondaryAction} href={routes.app.portalProperties}>
                 View owned properties
               </Link>
-              <Link className={styles.primaryAction} href={routes.app.portalListingNew}>
+              <Link className={styles.primaryAction} href={routes.app.portalPropertyNew}>
                 Create listing
               </Link>
             </div>
@@ -334,7 +334,7 @@ export function PortalListingsPage({
             You do not have any active listings yet.{" "}
             {canCreateListing ? (
               <>
-                <Link className={styles.secondaryAction} href={routes.app.portalListingNew}>
+                <Link className={styles.secondaryAction} href={routes.app.portalPropertyNew}>
                   Create your first draft
                 </Link>{" "}
                 from one of your owned properties.

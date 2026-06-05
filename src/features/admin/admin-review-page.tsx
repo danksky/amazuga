@@ -19,7 +19,7 @@ interface ReviewItem {
 interface AdminReviewPageProps {
   title: string;
   body: string;
-  active: "agencies" | "agents" | "valuators" | "valuations" | "properties";
+  active: "agencies" | "agents" | "valuators" | "valuations" | "properties" | "contests";
   items: ReviewItem[];
   empty: string;
 }
@@ -49,6 +49,9 @@ export function AdminReviewPage({ title, body, active, items, empty }: AdminRevi
           </Link>
           <Link className={`${styles.navLink} ${active === "properties" ? styles.active : ""}`} href={routes.admin.properties}>
             Properties
+          </Link>
+          <Link className={`${styles.navLink} ${active === "contests" ? styles.active : ""}`} href={routes.admin.contests}>
+            Contests
           </Link>
           <Link className={styles.navLink} href={routes.admin.dashboard}>
             Dashboard

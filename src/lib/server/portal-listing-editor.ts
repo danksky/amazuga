@@ -41,6 +41,8 @@ interface EditableListingRow {
   visibility: ListingVisibility;
   marketing_type: Listing["marketingType"];
   asking_price_rwf: number | string | null;
+  location_hidden: boolean;
+  location_source: string | null;
   campaign_index: number;
 }
 
@@ -115,6 +117,9 @@ export interface PortalEditableListing {
   visibility: ListingVisibility;
   marketingType: Listing["marketingType"];
   askingPrice?: number;
+  locationHidden: boolean;
+  /** location_source from the property_asset; 'parcel' or null = parcel-linked. */
+  locationSource?: string | null;
   images: Array<{
     id: string;
     imageUrl: string;
@@ -323,6 +328,8 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.visibility,
         l.marketing_type,
         l.asking_price_rwf,
+        l.location_hidden,
+        pa.location_source,
         l.campaign_index
       FROM listing l
       LEFT JOIN parcel_app_ready_seed_preview p
@@ -602,6 +609,8 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     visibility: row.visibility,
     marketingType: row.marketing_type,
     askingPrice: toNumber(row.asking_price_rwf),
+    locationHidden: row.location_hidden ?? false,
+    locationSource: row.location_source,
     images,
     priceHistory,
     accessGrants,
@@ -920,6 +929,7 @@ export async function updatePortalListingInDb(input: {
   marketingType: Listing["marketingType"];
   visibility: ListingVisibility;
   askingPrice?: number;
+  locationHidden?: boolean;
 }) {
   const listing = await getEditableListingRow(input.userId, input.listingId);
 
@@ -954,6 +964,7 @@ export async function updatePortalListingInDb(input: {
           marketing_type = $3,
           visibility = $4,
           asking_price_rwf = COALESCE($5, asking_price_rwf),
+          location_hidden = COALESCE($6, location_hidden),
           updated_at = NOW()
         WHERE id = $1
         RETURNING
@@ -965,7 +976,8 @@ export async function updatePortalListingInDb(input: {
           ) AS property_route_id,
           marketing_type
       `,
-      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice],
+      [input.listingId, input.agentUserId, input.marketingType, input.visibility, newPrice,
+       input.locationHidden !== undefined ? input.locationHidden : null],
     );
 
     if (priceChanged) {

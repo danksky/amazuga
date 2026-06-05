@@ -19,6 +19,7 @@ export interface DirectListingInput {
   pinLon?: number;
   marketingType: "sale" | "rent";
   visibility: ListingVisibility;
+  askingPriceRwf?: number;
   bedrooms?: number;
   bathrooms?: number;
   interiorAreaSqm?: number;
@@ -241,9 +242,9 @@ export async function createDirectListingInDb(input: DirectListingInput): Promis
       `
         INSERT INTO listing (
           id, parcel_id, property_asset_id, agency_id, agent_user_id,
-          status, marketing_type, visibility, currency, seed_source
+          status, marketing_type, asking_price_rwf, visibility, currency, seed_source
         )
-        VALUES ($1, NULL, $2, $3, $4, 'draft', $5, $6, 'RWF', 'manual_direct_listing_v1')
+        VALUES ($1, NULL, $2, $3, $4, 'draft', $5, $6, $7, 'RWF', 'manual_direct_listing_v1')
       `,
       [
         listingId,
@@ -251,6 +252,7 @@ export async function createDirectListingInDb(input: DirectListingInput): Promis
         input.agencyId ?? null,
         input.agentUserId,
         input.marketingType,
+        input.askingPriceRwf ?? null,
         input.visibility,
       ],
     );

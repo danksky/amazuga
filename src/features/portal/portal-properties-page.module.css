@@ -65,105 +65,31 @@
   background: var(--surface-muted);
 }
 
-.claimForm {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  align-items: end;
+.newListingBar {
+  display: flex;
 }
 
-.field {
-  display: grid;
-  gap: 8px;
-}
-
-.fieldLabel {
-  font-size: 0.92rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--foreground-muted);
-}
-
-.textInput {
-  min-height: 54px;
-  width: 100%;
-  padding: 0 18px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  color: var(--foreground);
-  font: inherit;
-}
-
-.textInput::placeholder {
-  color: var(--foreground-muted);
-}
-
-.textInput:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent);
-  outline-offset: 2px;
-}
-
-.selectInput {
-  min-height: 54px;
-  width: 100%;
-  padding: 0 18px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  color: var(--foreground);
-  font: inherit;
-  appearance: none;
-  padding-right: 42px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 18px center;
-  background-size: 12px;
-}
-
-.selectInput:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--foreground) 20%, transparent);
-  outline-offset: 2px;
-}
-
-.fieldHint {
-  color: var(--foreground-muted);
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.fieldHintWarning {
-  color: #8a4b09;
-}
-
-.fieldHintSuccess {
-  color: #2f6b2f;
-}
-
-.claimAction {
+.newListingButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 54px;
-  padding: 0 20px;
+  min-height: 52px;
+  padding: 0 24px;
   border: 1px solid var(--foreground);
   border-radius: 999px;
   background: var(--foreground);
-  color: var(--surface);
+  color: var(--background);
   font-weight: 700;
-  cursor: pointer;
-  transition: background-color 160ms ease, opacity 160ms ease;
-  grid-column: 1 / -1;
-  justify-self: start;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background-color 160ms ease;
 }
 
-.claimAction:hover,
-.claimAction:focus-visible {
+.newListingButton:hover,
+.newListingButton:focus-visible {
   background: color-mix(in srgb, var(--foreground) 90%, white);
 }
 
-.claimAction:disabled,
 .secondaryAction:disabled {
   cursor: not-allowed;
   opacity: 0.65;

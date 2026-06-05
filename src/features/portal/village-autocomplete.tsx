@@ -15,7 +15,19 @@ function formatOptionMeta(s: LocationSuggestion): string {
   return [s.cell, s.sector, s.district].filter(Boolean).join(" · ");
 }
 
-export function VillageAutocomplete() {
+export interface VillageSelection {
+  village: string;
+  cell?: string;
+  sector?: string;
+  district?: string;
+}
+
+export function VillageAutocomplete({
+  onSelect,
+}: {
+  /** When provided the component calls this instead of rendering hidden inputs. */
+  onSelect?: (selection: VillageSelection | null) => void;
+}) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -71,11 +83,13 @@ export function VillageAutocomplete() {
     setQuery("");
     setSuggestions([]);
     setShowDropdown(false);
+    onSelect?.({ village: s.name, cell: s.cell ?? undefined, sector: s.sector ?? undefined, district: s.district ?? undefined });
   }
 
   function clear() {
     setSelected(null);
     setQuery("");
+    onSelect?.(null);
   }
 
   return (
@@ -88,10 +102,15 @@ export function VillageAutocomplete() {
               ×
             </button>
           </div>
-          <input name="adminVillage" type="hidden" value={selected.name} />
-          <input name="adminCell" type="hidden" value={selected.cell ?? ""} />
-          <input name="adminSector" type="hidden" value={selected.sector ?? ""} />
-          <input name="adminDistrict" type="hidden" value={selected.district ?? ""} />
+          {/* Hidden inputs are only emitted when no onSelect callback — legacy form-post callers */}
+          {!onSelect && (
+            <>
+              <input name="adminVillage" type="hidden" value={selected.name} />
+              <input name="adminCell" type="hidden" value={selected.cell ?? ""} />
+              <input name="adminSector" type="hidden" value={selected.sector ?? ""} />
+              <input name="adminDistrict" type="hidden" value={selected.district ?? ""} />
+            </>
+          )}
         </>
       ) : (
         <div className={styles.inputWrap}>

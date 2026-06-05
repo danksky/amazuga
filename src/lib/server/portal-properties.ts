@@ -1116,3 +1116,68 @@ export async function registerPortalBuildingUnitInDb(input: {
 
   return getPortalEditablePropertyRecord(input.userId, input.buildingRouteId);
 }
+
+/**
+ * Resolves the canonical UPI for a property given its public route ID.
+ * Returns null for direct (no-UPI) listings or unknown IDs.
+ * Used server-side only — the UPI is never surfaced in URLs or UI copy.
+ */
+export async function getUpiForPublicPropertyId(publicPropertyId: string): Promise<string | null> {
+  const result = await getPgPool().query<{ upi: string | null }>(
+    `
+      SELECT p.upi
+      FROM property_asset pa
+      LEFT JOIN parcel_app_ready_seed_preview p ON p.parcel_id = pa.parcel_id
+      WHERE pa.public_id = $1
+      LIMIT 1
+    `,
+    [publicPropertyId],
+  );
+  return result.rows[0]?.upi ?? null;
+}
+
+export interface NewUpiListingParcelData {
+  parcelId: string;
+  upi: string;
+  district?: string;
+  sector?: string;
+  representativeSize?: number;
+  zoning?: string;
+}
+
+/**
+ * Lightweight parcel lookup for the new UPI listing form.
+ * Returns the minimal data needed to populate the parcel-confirm step.
+ */
+export async function getParcelDataForNewUpiListing(upi: string): Promise<NewUpiListingParcelData | null> {
+  const result = await getPgPool().query<{
+    parcel_id: string;
+    upi: string;
+    district: string | null;
+    sector: string | null;
+    representative_size: number | string | null;
+    zoning: string | null;
+  }>(
+    `
+      SELECT parcel_id, upi, district, sector, representative_size, zoning
+      FROM parcel_app_ready_seed_preview
+      WHERE UPPER(REPLACE(upi, ' ', '')) = UPPER(REPLACE($1, ' ', ''))
+      LIMIT 1
+    `,
+    [upi.trim()],
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  const size = typeof row.representative_size === "string" ? parseFloat(row.representative_size) : row.representative_size;
+
+  return {
+    parcelId: row.parcel_id,
+    upi: row.upi,
+    district: row.district || undefined,
+    sector: row.sector || undefined,
+    representativeSize: size != null && Number.isFinite(size) ? size : undefined,
+    zoning: row.zoning?.trim() || undefined,
+  };
+}

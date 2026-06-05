@@ -50,6 +50,10 @@ export const routes = {
     portalProperties: "/sell/portal/properties",
     portalPropertyEdit: (propertyId: string) => `/sell/portal/properties/${propertyId}/details`,
     portalPropertyTransfer: (propertyId: string) => `/sell/portal/properties/${propertyId}/transfer`,
+    portalPropertyNew: "/sell/portal/properties/new",
+    portalPropertyNewUpi: "/sell/portal/properties/new/upi",
+    portalPropertyNewDirect: "/sell/portal/properties/new/direct",
+    portalPropertyContest: "/sell/portal/properties/new/contest",
     portalPropertyClaim: "/sell/portal/properties/claim",
     portalPropertyClaimSubmit: "/sell/portal/properties/claim/submit",
     portalPropertyListDirect: "/sell/portal/properties/list-direct",
@@ -72,6 +76,7 @@ export const routes = {
     valuators: "/admin/valuators",
     valuations: "/admin/valuations",
     properties: "/admin/properties",
+    contests: "/admin/contests",
     listings: "/admin/listings",
   },
 } as const;

@@ -11,6 +11,7 @@ import type {
   PropertyClaimPropertyType,
   PropertyDataSource,
   PropertyClaimRequest,
+  PropertyOwnershipContest,
   PropertyRecordFactsInput,
   PropertyKind,
   PropertyOwnership,
@@ -2612,4 +2613,397 @@ export async function updatePropertyClaimRequestStatusInDb(
   await addRoleToUser(claimRequest.userId, "private_lister");
 
   return claimRequest;
+}
+
+// =============================================================================
+// AUTO-APPROVAL FLOW (new unified listing form, no admin review for initial claims)
+// =============================================================================
+
+export type AutoApproveUpiClaimResult =
+  | { outcome: "created"; listingId: string; propertyId: string; propertyInternalId: string }
+  | { outcome: "already_owned" }
+  | {
+      outcome: "conflict_other_owner";
+      existingOwnerUserId: string;
+      existingPropertyAssetId: string | null;
+      existingPropertyId: string | null;
+    };
+
+/**
+ * Validates a UPI claim, auto-approves it synchronously (no admin review), and
+ * creates the initial draft listing in a single pass. Replaces the old two-step
+ * submit-claim → admin-approve → create-listing flow for new submissions.
+ *
+ * Returns:
+ *   already_owned           – the calling user already owns this parcel/unit
+ *   conflict_other_owner    – a different user owns it; UI should offer contest
+ *   created                 – success; listingId is the new draft listing
+ */
+export async function createAndAutoApproveUpiClaim(input: {
+  userId: string;
+  parcelId: string;
+  upi: string;
+  claimScope: PropertyClaimScope;
+  unitLabel?: string;
+  declaredAssetType: PropertyKind;
+  tenureType: PropertyTenureType;
+  tenureSource: PropertyDataSource;
+  propertyFacts?: PropertyRecordFactsInput;
+  marketingType: "sale" | "rent";
+  askingPriceRwf?: number;
+  locationHidden: boolean;
+  agencyId?: string;
+}): Promise<AutoApproveUpiClaimResult> {
+  const normalizedUnitLabel = normalizeClaimUnitLabel(input.unitLabel);
+  const ownershipScope = getOwnershipScopeForClaimScope(input.claimScope);
+
+  // 1. Check for existing ownership on this parcel/unit (any user).
+  //    We do this before creating any records so the UI can offer the contest
+  //    button without leaving orphan rows behind.
+  const ownershipResult = await getPgPool().query<{
+    user_id: string;
+    property_id: string | null;
+    property_asset_id: string | null;
+  }>(
+    `
+      SELECT po.user_id, po.property_id, pa.id AS property_asset_id
+      FROM property_ownership po
+      JOIN property_asset pa ON pa.id = po.property_internal_id
+      WHERE po.parcel_id = $1
+        AND (
+          $2 = 'full'
+          OR po.ownership_scope = 'full'
+          OR (
+            $2 = 'unit' AND $3::TEXT IS NOT NULL
+            AND UPPER(COALESCE(pa.unit_label, '')) = $3
+          )
+        )
+      LIMIT 1
+    `,
+    [input.parcelId, ownershipScope, normalizedUnitLabel],
+  );
+
+  if (ownershipResult.rows[0]) {
+    const row = ownershipResult.rows[0];
+    if (row.user_id === input.userId) {
+      return { outcome: "already_owned" };
+    }
+    return {
+      outcome: "conflict_other_owner",
+      existingOwnerUserId: row.user_id,
+      existingPropertyAssetId: row.property_asset_id,
+      existingPropertyId: row.property_id,
+    };
+  }
+
+  // 2. Create claim request with status='approved' directly (no pending phase).
+  const claimId = createRecordId("property-claim");
+  await getPgPool().query(
+    `
+      INSERT INTO property_claim_request (
+        id, user_id, parcel_id, upi, claim_scope, unit_label,
+        declared_asset_type, tenure_type, tenure_source,
+        representative_size, zoning, bedrooms, bathrooms,
+        interior_area_sqm, year_built, status, seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'approved', 'auto_approval_v1')
+    `,
+    [
+      claimId,
+      input.userId,
+      input.parcelId,
+      input.upi,
+      input.claimScope,
+      normalizedUnitLabel,
+      input.declaredAssetType,
+      input.tenureType,
+      input.tenureSource,
+      input.propertyFacts?.representativeSize ?? null,
+      input.propertyFacts?.zoning?.trim() || null,
+      input.propertyFacts?.bedrooms ?? null,
+      input.propertyFacts?.bathrooms ?? null,
+      input.propertyFacts?.interiorAreaSqm ?? null,
+      input.propertyFacts?.yearBuilt ?? null,
+    ],
+  );
+
+  // 3. Create property_asset and link it back to the claim request.
+  const { propertyInternalId, propertyId } = await ensureClaimApprovalTarget({
+    claimRequestId: claimId,
+    parcelId: input.parcelId,
+    claimScope: input.claimScope,
+    declaredAssetType: input.declaredAssetType,
+    unitLabel: input.unitLabel,
+  });
+
+  // 4. Backfill property_asset location + property_asset_profile facts.
+  await backfillPropertyRecordForAsset({
+    propertyAssetId: propertyInternalId,
+    userId: input.userId,
+    claimUnitLabel: input.unitLabel,
+    propertyFacts: input.propertyFacts,
+  });
+
+  // 5. Create property_ownership.
+  const ownershipId = `property-ownership-${propertyInternalId}`;
+  await getPgPool().query(
+    `
+      INSERT INTO property_ownership (
+        id, user_id, property_id, property_internal_id,
+        parcel_id, ownership_scope, created_from_claim_request_id, seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'auto_approval_v1')
+      ON CONFLICT (property_internal_id) DO UPDATE
+      SET
+        user_id = EXCLUDED.user_id,
+        property_id = EXCLUDED.property_id,
+        parcel_id = EXCLUDED.parcel_id,
+        ownership_scope = EXCLUDED.ownership_scope,
+        created_from_claim_request_id = EXCLUDED.created_from_claim_request_id,
+        seed_source = EXCLUDED.seed_source,
+        updated_at = NOW()
+    `,
+    [ownershipId, input.userId, propertyId, propertyInternalId, input.parcelId, ownershipScope, claimId],
+  );
+
+  // 6. Create the listing as a draft. The form activates it after photos are uploaded.
+  const listingId = createRecordId("listing");
+  await getPgPool().query(
+    `
+      INSERT INTO listing (
+        id, parcel_id, property_asset_id, agency_id, agent_user_id,
+        status, marketing_type, asking_price_rwf, location_hidden,
+        visibility, currency, seed_source
+      )
+      VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, 'public', 'RWF', 'auto_approval_v1')
+    `,
+    [
+      listingId,
+      input.parcelId,
+      propertyInternalId,
+      input.agencyId ?? null,
+      input.userId,
+      input.marketingType,
+      input.askingPriceRwf ?? null,
+      input.locationHidden,
+    ],
+  );
+
+  // 7. Grant private_lister role (idempotent, safe outside the sequence above).
+  await addRoleToUser(input.userId, "private_lister");
+
+  return { outcome: "created", listingId, propertyId, propertyInternalId };
+}
+
+export async function createOwnershipContest(input: {
+  contestingUserId: string;
+  upi: string;
+  /** Internal asset ID. If omitted, we resolve it from claimedPropertyId. */
+  claimedPropertyAssetId?: string;
+  claimedPropertyId: string;
+  note: string;
+}): Promise<PropertyOwnershipContest> {
+  // Resolve the internal asset ID from the public route ID when not supplied directly
+  // (e.g. when the contest originates from the public property page, which only has the public ID).
+  let resolvedAssetId = input.claimedPropertyAssetId?.trim() || null;
+  if (!resolvedAssetId) {
+    const assetRow = await getPgPool().query<{ id: string }>(
+      `SELECT id FROM property_asset WHERE public_id = $1 LIMIT 1`,
+      [input.claimedPropertyId],
+    );
+    resolvedAssetId = assetRow.rows[0]?.id ?? null;
+  }
+  if (!resolvedAssetId) {
+    throw new Error("Could not resolve property asset for contest — property not found.");
+  }
+
+  const id = createRecordId("property-contest");
+  const result = await getPgPool().query<{
+    id: string;
+    upi: string;
+    contesting_user_id: string;
+    claimed_property_asset_id: string;
+    claimed_property_id: string;
+    note: string;
+    status: string;
+    created_at: string;
+  }>(
+    `
+      INSERT INTO property_ownership_contest (
+        id, upi, contesting_user_id, claimed_property_asset_id,
+        claimed_property_id, note, status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      RETURNING
+        id, upi, contesting_user_id, claimed_property_asset_id,
+        claimed_property_id, note, status, created_at::TEXT
+    `,
+    [
+      id,
+      input.upi,
+      input.contestingUserId,
+      resolvedAssetId,
+      input.claimedPropertyId,
+      input.note,
+    ],
+  );
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    upi: row.upi,
+    contestingUserId: row.contesting_user_id,
+    claimedPropertyAssetId: row.claimed_property_asset_id,
+    claimedPropertyId: row.claimed_property_id,
+    note: row.note,
+    status: row.status as PropertyOwnershipContest["status"],
+    createdAt: row.created_at,
+  };
+}
+
+interface ContestListRow {
+  id: string;
+  upi: string;
+  contesting_user_id: string;
+  contesting_user_name: string | null;
+  claimed_property_asset_id: string;
+  claimed_property_id: string;
+  note: string;
+  status: string;
+  created_at: string;
+}
+
+export interface AdminOwnershipContest {
+  id: string;
+  upi: string;
+  contestingUserId: string;
+  contestingUserName: string;
+  claimedPropertyAssetId: string;
+  claimedPropertyId: string;
+  note: string;
+  status: PropertyOwnershipContest["status"];
+  createdAt: string;
+}
+
+export async function listOwnershipContestsFromDb(): Promise<AdminOwnershipContest[]> {
+  const result = await getPgPool().query<ContestListRow>(
+    `
+      SELECT
+        c.id,
+        c.upi,
+        c.contesting_user_id,
+        u.full_name AS contesting_user_name,
+        c.claimed_property_asset_id,
+        c.claimed_property_id,
+        c.note,
+        c.status,
+        c.created_at::TEXT
+      FROM property_ownership_contest c
+      JOIN app_user u ON u.id = c.contesting_user_id
+      WHERE c.status = 'pending'
+      ORDER BY c.created_at ASC
+    `,
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    upi: row.upi,
+    contestingUserId: row.contesting_user_id,
+    contestingUserName: row.contesting_user_name ?? "Unknown",
+    claimedPropertyAssetId: row.claimed_property_asset_id,
+    claimedPropertyId: row.claimed_property_id,
+    note: row.note,
+    status: row.status as PropertyOwnershipContest["status"],
+    createdAt: row.created_at,
+  }));
+}
+
+/**
+ * Resolves an ownership contest.
+ *
+ * Upheld  → A keeps ownership. Contest is closed. Nothing else changes.
+ * Overturned → A's listings are archived, A's ownership row is deleted (UPI is
+ *              freed), and the contest is closed. B can now go through the normal
+ *              UPI claim flow and will be auto-approved since no conflict exists.
+ *
+ * Returns the claimed property's public ID so the caller can revalidate surfaces.
+ */
+export async function resolveOwnershipContestInDb(
+  contestId: string,
+  resolution: "resolved_upheld" | "resolved_overturned",
+): Promise<{ claimedPropertyId: string | null }> {
+  if (resolution === "resolved_upheld") {
+    const result = await getPgPool().query<{ claimed_property_id: string }>(
+      `
+        UPDATE property_ownership_contest
+        SET status = 'resolved_upheld', updated_at = NOW()
+        WHERE id = $1 AND status = 'pending'
+        RETURNING claimed_property_id
+      `,
+      [contestId],
+    );
+    return { claimedPropertyId: result.rows[0]?.claimed_property_id ?? null };
+  }
+
+  // Overturn: archive listings, remove ownership, close contest — all in one transaction.
+  const client = await getPgPool().connect();
+  try {
+    await client.query("BEGIN");
+
+    const contestResult = await client.query<{
+      claimed_property_asset_id: string;
+      claimed_property_id: string;
+    }>(
+      `
+        SELECT claimed_property_asset_id, claimed_property_id
+        FROM property_ownership_contest
+        WHERE id = $1 AND status = 'pending'
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [contestId],
+    );
+
+    const contest = contestResult.rows[0];
+    if (!contest) {
+      await client.query("ROLLBACK");
+      return { claimedPropertyId: null };
+    }
+
+    // Archive every open listing on this asset so it disappears from browse.
+    await client.query(
+      `
+        UPDATE listing
+        SET status = 'archived', updated_at = NOW()
+        WHERE property_asset_id = $1
+          AND status IN ('draft', 'active', 'inactive')
+      `,
+      [contest.claimed_property_asset_id],
+    );
+
+    // Remove the original owner's ownership record. This frees the UPI so anyone
+    // (including the contesting user) can re-claim it through the normal flow.
+    await client.query(
+      `DELETE FROM property_ownership WHERE property_internal_id = $1`,
+      [contest.claimed_property_asset_id],
+    );
+
+    // Close the contest.
+    await client.query(
+      `
+        UPDATE property_ownership_contest
+        SET status = 'resolved_overturned', updated_at = NOW()
+        WHERE id = $1
+      `,
+      [contestId],
+    );
+
+    await client.query("COMMIT");
+    return { claimedPropertyId: contest.claimed_property_id };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
 }

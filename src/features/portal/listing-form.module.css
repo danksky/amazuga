@@ -573,6 +573,47 @@
   flex-wrap: wrap;
 }
 
+.locationToggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-alt) 68%, white);
+  cursor: pointer;
+  transition: background 130ms ease;
+}
+
+.locationToggleRow:hover {
+  background: color-mix(in srgb, var(--surface-alt) 85%, white);
+}
+
+.locationToggleCheckbox {
+  flex-shrink: 0;
+  margin-top: 3px;
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+  accent-color: var(--foreground);
+}
+
+.locationToggleContent {
+  display: grid;
+  gap: 3px;
+}
+
+.locationToggleLabel {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.locationToggleHint {
+  color: var(--foreground-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 760px) {
   .card {
     padding: 22px;

@@ -1,0 +1,143 @@
+.page {
+  padding: 32px 0 48px;
+}
+
+.card {
+  display: grid;
+  gap: 24px;
+  max-width: 640px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.10), transparent 40%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 95%, white), color-mix(in srgb, var(--surface-alt) 74%, white));
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.body {
+  margin: 0;
+  color: var(--foreground-muted);
+  line-height: 1.6;
+}
+
+.forkGrid {
+  display: grid;
+  gap: 14px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--foreground);
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.option:hover,
+.option:focus-visible {
+  background: var(--surface-muted);
+  border-color: color-mix(in srgb, var(--border) 60%, var(--foreground) 40%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.option:focus-visible {
+  outline: none;
+}
+
+.optionIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-alt) 72%, white);
+  color: var(--foreground-muted);
+}
+
+.optionContent {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.optionTitle {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.optionBody {
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.optionArrow {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  color: var(--foreground-muted);
+  transition: transform 140ms ease, color 140ms ease;
+}
+
+.option:hover .optionArrow,
+.option:focus-visible .optionArrow {
+  transform: translateX(3px);
+  color: var(--foreground);
+}
+
+.backRow {
+  padding-top: 4px;
+}
+
+.backLink {
+  color: var(--foreground-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.backLink:hover,
+.backLink:focus-visible {
+  color: var(--foreground);
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 22px;
+  }
+
+  .option {
+    gap: 14px;
+    padding: 18px 16px;
+  }
+
+  .optionIcon {
+    width: 44px;
+    height: 44px;
+  }
+}

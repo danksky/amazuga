@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react"; // useState kept for OwnedPropertyActionMenu
 import type { ReactNode } from "react";
 
 import Link from "next/link";
@@ -13,149 +13,6 @@ import { respondToOwnershipTransferAction, setListingStatusAction } from "./acti
 import { ListingStatusButton } from "./listing-status-button";
 import styles from "./portal-properties-page.module.css";
 
-const UPI_PATTERN = /^[1-5]\/\d{2}\/\d{2}\/\d{2}\/\d+$/;
-const UPI_EXAMPLE = "1/03/08/06/7889999";
-
-function formatUpiInput(value: string) {
-  const digits = value.replace(/\D/g, "");
-  const segmentLengths = [1, 2, 2, 2];
-  const segments: string[] = [];
-  let cursor = 0;
-
-  for (const length of segmentLengths) {
-    const segment = digits.slice(cursor, cursor + length);
-    if (!segment) {
-      break;
-    }
-
-    segments.push(segment);
-    cursor += segment.length;
-
-    if (segment.length < length) {
-      break;
-    }
-  }
-
-  const parcelNumber = digits.slice(cursor);
-  if (parcelNumber) {
-    segments.push(parcelNumber);
-  }
-
-  return segments.join("/");
-}
-
-function getUpiGuidance(value: string, hasInvalidCharacters: boolean) {
-  if (!value) {
-    return {
-      state: "info" as const,
-      message: `Format: ${UPI_EXAMPLE}`,
-    };
-  }
-
-  if (hasInvalidCharacters) {
-    return {
-      state: "invalid" as const,
-      message: "Use numbers only. Slashes appear automatically as you type.",
-    };
-  }
-
-  const digits = value.replace(/\D/g, "");
-  if (!digits) {
-    return {
-      state: "info" as const,
-      message: `Format: ${UPI_EXAMPLE}`,
-    };
-  }
-
-  const provinceCode = digits[0];
-  if (!/[1-5]/.test(provinceCode)) {
-    return {
-      state: "invalid" as const,
-      message: "UPI codes start with 1, 2, 3, 4, or 5 for the province or Kigali City code.",
-    };
-  }
-
-  if (digits.length === 1) {
-    return {
-      state: "info" as const,
-      message: `UPI codes start with ${provinceCode}/ and continue as district, sector, cell, and parcel number.`,
-    };
-  }
-
-  if (digits.length < 7) {
-    return {
-      state: "info" as const,
-      message: "Keep going: UPI format is P/DD/SS/CC/parcel-number.",
-    };
-  }
-
-  if (digits.length === 7) {
-    return {
-      state: "info" as const,
-      message: "Add the parcel number after the cell code to complete the UPI.",
-    };
-  }
-
-  if (!UPI_PATTERN.test(value)) {
-    return {
-      state: "invalid" as const,
-      message: `Use the format ${UPI_EXAMPLE}.`,
-    };
-  }
-
-  return {
-    state: "valid" as const,
-    message: "UPI format looks valid.",
-  };
-}
-
-function UpiClaimForm({ defaultUpi }: { defaultUpi?: string }) {
-  const [upiInput, setUpiInput] = useState(() => formatUpiInput(defaultUpi ?? ""));
-  const [upiHasInvalidCharacters, setUpiHasInvalidCharacters] = useState(false);
-  const upiGuidance = getUpiGuidance(upiInput, upiHasInvalidCharacters);
-
-  return (
-    <form action={routes.app.portalPropertyClaim} className={styles.claimForm} method="get">
-      <label className={styles.field} htmlFor="portal-claim-upi">
-        <span className={styles.fieldLabel}>UPI</span>
-        <input
-          aria-describedby="portal-claim-upi-hint"
-          aria-invalid={upiGuidance.state === "invalid" ? true : undefined}
-          autoComplete="off"
-          className={styles.textInput}
-          id="portal-claim-upi"
-          inputMode="numeric"
-          name="upi"
-          onChange={(event) => {
-            setUpiHasInvalidCharacters(/[^0-9/\s]/.test(event.target.value));
-            setUpiInput(formatUpiInput(event.target.value));
-          }}
-          pattern="[1-5]/\d{2}/\d{2}/\d{2}/\d+"
-          placeholder={UPI_EXAMPLE}
-          required
-          title={`Use the format ${UPI_EXAMPLE}`}
-          type="text"
-          value={upiInput}
-        />
-        <span
-          className={`${styles.fieldHint} ${
-            upiGuidance.state === "invalid"
-              ? styles.fieldHintWarning
-              : upiGuidance.state === "valid"
-                ? styles.fieldHintSuccess
-                : ""
-          }`}
-          id="portal-claim-upi-hint"
-        >
-          {upiGuidance.message}
-        </span>
-      </label>
-      <button className={styles.claimAction} type="submit">
-        Continue
-      </button>
-    </form>
-  );
-}
 
 function getKindLabel(kind: PortalPropertiesWorkspaceData["ownedProperties"][number]["propertyKind"]) {
   if (!kind) return null;
@@ -259,20 +116,12 @@ function OwnedPropertyActionMenu({
 export function PortalPropertiesPage({
   canCreateListing,
   canManageListingLifecycle,
-  claimFeedback,
   claimStatusFilter = "pending",
   data,
   transferFeedback,
 }: {
   canCreateListing: boolean;
   canManageListingLifecycle: boolean;
-  claimFeedback?: {
-    status: "created" | "pending" | "owned" | "no_match" | "unit_required";
-    upi?: string;
-    claimScope?: "full_parcel" | "unit_partial";
-    unitLabel?: string;
-    propertyRouteId?: string;
-  };
   claimStatusFilter?: "all" | "pending" | "denied";
   data: PortalPropertiesWorkspaceData;
   transferFeedback?: {
@@ -289,20 +138,6 @@ export function PortalPropertiesPage({
     claimStatusFilter === "all"
       ? data.claimRequests
       : data.claimRequests.filter((c) => c.status === claimStatusFilter);
-  const unitSuffix =
-    claimFeedback?.claimScope === "unit_partial" && claimFeedback.unitLabel ? ` (${claimFeedback.unitLabel})` : "";
-  const claimFeedbackMessage =
-    claimFeedback?.status === "created"
-      ? `Claim request submitted for ${claimFeedback.upi}${unitSuffix}. It now appears in Claim status below while admin review is pending.`
-      : claimFeedback?.status === "pending"
-        ? `You already have a pending claim for ${claimFeedback.upi}${unitSuffix}.`
-        : claimFeedback?.status === "owned"
-          ? `That property is already in your portfolio.`
-          : claimFeedback?.status === "unit_required"
-            ? `Enter the apartment or unit identifier before submitting a partial claim for ${claimFeedback.upi}.`
-            : claimFeedback?.status === "no_match"
-              ? `No Preview parcel matched the UPI ${claimFeedback.upi}.`
-              : null;
   const transferFeedbackMessage =
     transferFeedback?.status === "created"
       ? `Transfer request sent to ${transferFeedback.buyerEmail || "the buyer"}. They need to accept before admin can approve it.`
@@ -326,9 +161,8 @@ export function PortalPropertiesPage({
         <div className={styles.header}>
           <h1 className={styles.title}>Properties</h1>
           <div className={styles.body}>
-            Private sale starts here. Begin from the parcel UPI, optionally describe the apartment or unit you mean,
-            and then turn the approved claim into a listing only after the ownership record is unlocked and the asset
-            is listing-ready.
+            Your owned properties and active listings. Use the button below to add a new property — with or without
+            a UPI — and publish it as a listing in one flow.
           </div>
         </div>
 
@@ -337,62 +171,31 @@ export function PortalPropertiesPage({
           <a className={styles.pageNavItem} href="#claims">Claims</a>
         </div>
 
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Claim a property by UPI</h2>
-            <div className={styles.sectionMeta}>
-              Start from the parcel identifier. If you are claiming only one apartment or unit on that parcel, include
-              the unit identifier even though our authoritative land data is still parcel-first.
-            </div>
+        {transferFeedbackMessage ? (
+          <div
+            className={`${styles.feedback} ${
+              transferFeedback?.status === "buyer_not_found" ||
+              transferFeedback?.status === "self" ||
+              transferFeedback?.status === "not_owner"
+                ? styles.feedbackWarning
+                : styles.feedbackSuccess
+            }`}
+          >
+            {transferFeedbackMessage}
+            {transferFeedback?.propertyRouteId ? (
+              <>
+                {" "}
+                <Link href={routes.public.property(transferFeedback.propertyRouteId)}>Open the resolved property page.</Link>
+              </>
+            ) : null}
           </div>
+        ) : null}
 
-          <UpiClaimForm defaultUpi={claimFeedback?.upi} key={claimFeedback?.upi ?? "blank"} />
-
-          <div className={styles.sectionMeta}>
-            Listing a <strong>rental</strong> and the lessor has not shared a UPI?{" "}
-            <Link href={routes.app.portalPropertyListDirect}>
-              Create a listing without UPI instead.
-            </Link>
-          </div>
-
-          {claimFeedbackMessage ? (
-            <div
-              className={`${styles.feedback} ${
-                claimFeedback?.status === "no_match" || claimFeedback?.status === "unit_required"
-                  ? styles.feedbackWarning
-                  : styles.feedbackSuccess
-              }`}
-            >
-              {claimFeedbackMessage}
-              {claimFeedback?.propertyRouteId ? (
-                <>
-                  {" "}
-                  <Link href={routes.public.property(claimFeedback.propertyRouteId)}>Open the resolved property page.</Link>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-
-          {transferFeedbackMessage ? (
-            <div
-              className={`${styles.feedback} ${
-                transferFeedback?.status === "buyer_not_found" ||
-                transferFeedback?.status === "self" ||
-                transferFeedback?.status === "not_owner"
-                  ? styles.feedbackWarning
-                  : styles.feedbackSuccess
-              }`}
-            >
-              {transferFeedbackMessage}
-              {transferFeedback?.propertyRouteId ? (
-                <>
-                  {" "}
-                  <Link href={routes.public.property(transferFeedback.propertyRouteId)}>Open the resolved property page.</Link>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+        <div className={styles.newListingBar}>
+          <Link className={styles.newListingButton} href={routes.app.portalPropertyNew}>
+            + Create listing
+          </Link>
+        </div>
 
         <div className={styles.stats}>
           <div className={styles.statCard}>
@@ -540,8 +343,7 @@ export function PortalPropertiesPage({
             </div>
           ) : (
             <div className={styles.empty}>
-              No owned properties yet. Use the UPI claim section above to submit your first claim, then come back here
-              after admin approval.
+              No owned properties yet. Use the Create listing button above to add your first property.
             </div>
           )}
         </section>

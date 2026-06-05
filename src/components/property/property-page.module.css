@@ -581,6 +581,20 @@
   background: var(--surface-muted);
 }
 
+.disputeLink {
+  color: var(--foreground-muted);
+  font-size: 0.82rem;
+  text-decoration: none;
+  align-self: center;
+  transition: color 140ms ease;
+}
+
+.disputeLink:hover,
+.disputeLink:focus-visible {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+
 .detailList {
   display: grid;
   gap: 10px;

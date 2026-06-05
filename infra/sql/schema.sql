@@ -478,6 +478,9 @@ CREATE TABLE IF NOT EXISTS listing (
   -- different campaigns can be distinguished.
   campaign_index      INTEGER NOT NULL DEFAULT 1,
   description         TEXT,
+  -- When true, the precise parcel location is suppressed from all public surfaces.
+  -- Only meaningful for UPI-backed listings; direct listings are always village-level.
+  location_hidden     BOOLEAN NOT NULL DEFAULT false,
   seed_source         TEXT NOT NULL DEFAULT 'manual',
   published_at        TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -841,6 +844,39 @@ CREATE INDEX IF NOT EXISTS property_ownership_parcel_id_idx
   ON property_ownership (parcel_id);
 
 
+-- Records a dispute from a second user who believes they own an already-claimed UPI.
+-- Created when a UPI claim is blocked by existing ownership. Admins review contests only;
+-- initial UPI claims are auto-approved synchronously on submission.
+CREATE TABLE IF NOT EXISTS property_ownership_contest (
+  id                         TEXT PRIMARY KEY,
+  upi                        TEXT NOT NULL,
+  contesting_user_id         UUID NOT NULL REFERENCES app_user(id),
+  claimed_property_asset_id  TEXT NOT NULL REFERENCES property_asset(id),
+  claimed_property_id        TEXT NOT NULL,
+  note                       TEXT NOT NULL,
+  status                     TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'resolved_upheld', 'resolved_overturned')),
+  created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE property_ownership_contest IS
+'Dispute submissions from a second claimant who believes they own an already-claimed
+UPI. Created via two entry points: (a) during the UPI claim flow when the UPI is
+already owned, or (b) via the "Dispute ownership" link on the property listing page.
+Reviewed by admins. resolved_upheld = original owner keeps the property;
+resolved_overturned = a separate transfer workflow is needed to reassign ownership.';
+
+CREATE INDEX IF NOT EXISTS property_ownership_contest_status_idx
+  ON property_ownership_contest (status);
+
+CREATE INDEX IF NOT EXISTS property_ownership_contest_contesting_user_id_idx
+  ON property_ownership_contest (contesting_user_id);
+
+CREATE INDEX IF NOT EXISTS property_ownership_contest_upi_idx
+  ON property_ownership_contest (upi);
+
+
 -- =============================================================================
 -- VALUATIONS
 -- =============================================================================
@@ -1077,7 +1113,8 @@ SELECT
   a.website_url,
   u.id                                AS agent_user_id,
   u.full_name                         AS agent_full_name,
-  li.image_url                        AS primary_image_url
+  li.image_url                        AS primary_image_url,
+  l.location_hidden
 FROM listing l
 JOIN property_asset_surface pas
   ON pas.property_asset_id = l.property_asset_id
@@ -1149,8 +1186,9 @@ LEFT JOIN parcel_app_ready_seed_preview p
   ON p.parcel_id = l.parcel_id
 LEFT JOIN property_asset_profile pap
   ON pap.property_asset_id = pa.id
-WHERE l.status     = 'active'
-  AND l.visibility = 'public'
+WHERE l.status          = 'active'
+  AND l.visibility      = 'public'
+  AND l.location_hidden = false
   AND pa.anchor_lon IS NOT NULL
   AND pa.anchor_lat IS NOT NULL;
 

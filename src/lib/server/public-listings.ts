@@ -55,6 +55,7 @@ interface ListingParcelRow {
   currency: Listing["currency"] | null;
   listing_created_at: string | null;
   listing_updated_at: string | null;
+  location_hidden: boolean | null;
   property_type: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
@@ -289,6 +290,7 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
     marketingType: row.marketing_type,
     askingPrice: toNullableNumber(row.asking_price_rwf) ?? 0,
     currency: row.currency,
+    locationHidden: row.location_hidden ?? false,
     imageUrls,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,
@@ -472,6 +474,7 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         l.currency,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
+        l.location_hidden,
         COALESCE(
           NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
@@ -581,6 +584,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         l.currency,
         l.created_at AS listing_created_at,
         l.updated_at AS listing_updated_at,
+        l.location_hidden,
         COALESCE(
           NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
@@ -699,6 +703,7 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
           l.currency,
           l.created_at                AS listing_created_at,
           l.updated_at                AS listing_updated_at,
+          l.location_hidden,
           COALESCE(
             NULLIF(BTRIM(pap.property_type), ''),
             CASE pa.asset_type

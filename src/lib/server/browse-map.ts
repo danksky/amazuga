@@ -56,6 +56,7 @@ interface BrowseMapRow {
   anchor_lon: number | string;
   anchor_lat: number | string;
   location_source: string | null;
+  location_hidden: boolean;
   district: string | null;
   sector: string | null;
   property_type: string | null;
@@ -161,6 +162,7 @@ export async function getBrowseMapData(params: {
         pa.anchor_lon,
         pa.anchor_lat,
         pa.location_source,
+        l.location_hidden,
         pa.admin_district                           AS district,
         pa.admin_sector                             AS sector,
         COALESCE(
@@ -218,7 +220,7 @@ export async function getBrowseMapData(params: {
     const anchorLng = toNumber(row.anchor_lon) ?? 0;
     const anchorLat = toNumber(row.anchor_lat) ?? 0;
 
-    if (!row.location_source || row.location_source === "parcel") {
+    if ((!row.location_source || row.location_source === "parcel") && !row.location_hidden) {
       pins.push({
         listingId: row.listing_id,
         parcelPublicId: row.parcel_public_id ?? undefined,

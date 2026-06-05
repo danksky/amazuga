@@ -17,11 +17,14 @@ import { createDirectListingInDb } from "@/lib/server/portal-direct-listing";
 import { registerPortalBuildingUnitInDb, updatePortalPropertyRecordInDb } from "@/lib/server/portal-properties";
 import {
   addRoleToUser,
+  createAndAutoApproveUpiClaim,
+  createOwnershipContest,
   createOwnershipTransferRequestInDb,
   createValuationSubmissionInDb,
   respondToOwnershipTransferRequestInDb,
 } from "@/lib/server/workflows";
-import type { PropertyKind, PropertyTransferMode } from "@/types/domain";
+import { getParcelDataForNewUpiListing } from "@/lib/server/portal-properties";
+import type { PropertyKind, PropertyTenureType, PropertyTransferMode } from "@/types/domain";
 import { hasCapability } from "@/types/permissions";
 
 function getListingRedirectHref(hasAgencyPortalAccess: boolean) {
@@ -284,6 +287,7 @@ export async function submitListingUpdateAction(formData: FormData) {
       marketingType: getRequiredListingMarketingType(formData, "marketingType"),
       visibility: getRequiredListingVisibility(formData, "visibility"),
       askingPrice: getOptionalNumber(formData, "askingPrice"),
+      locationHidden: formData.get("locationHidden") === "true" ? true : formData.get("locationHidden") === "false" ? false : undefined,
     }),
     getPortalAccessState(currentUser.id),
   ]);
@@ -321,6 +325,7 @@ export async function submitListingEditAction(formData: FormData) {
         marketingType: getRequiredListingMarketingType(formData, "marketingType"),
         visibility: getRequiredListingVisibility(formData, "visibility"),
         askingPrice: getOptionalNumber(formData, "askingPrice"),
+        locationHidden: formData.get("locationHidden") === "true" ? true : formData.get("locationHidden") === "false" ? false : undefined,
       });
     }
 
@@ -351,6 +356,7 @@ export async function submitListingEditAction(formData: FormData) {
     marketingType: getRequiredListingMarketingType(formData, "marketingType"),
     visibility: getRequiredListingVisibility(formData, "visibility"),
     askingPrice: getOptionalNumber(formData, "askingPrice"),
+    locationHidden: formData.get("locationHidden") === "true" ? true : formData.get("locationHidden") === "false" ? false : undefined,
   });
 
   revalidateListingSurfaces({
@@ -507,6 +513,198 @@ export async function registerBuildingUnitAction(formData: FormData) {
 
   redirect(routes.app.portalPropertyEdit(buildingRouteId));
 }
+
+// ─── Ownership contest flow ────────────────────────────────────────────────
+
+export type SubmitContestResult =
+  | { type: "success" }
+  | { type: "error"; message: string };
+
+export async function submitOwnershipContestAction(
+  _prev: SubmitContestResult | null,
+  formData: FormData,
+): Promise<SubmitContestResult> {
+  const currentUser = await requireCurrentUser(routes.app.portalPropertyContest);
+
+  const upi = getOptionalString(formData, "upi");
+  const claimedPropertyAssetId = getOptionalString(formData, "claimedPropertyAssetId");
+  const claimedPropertyId = getOptionalString(formData, "claimedPropertyId");
+  const note = getOptionalString(formData, "note");
+
+  if (!upi || !claimedPropertyId) {
+    return { type: "error", message: "Missing contest target. Please go back and try again." };
+  }
+  if (!note || note.trim().length < 10) {
+    return { type: "error", message: "Please provide a note of at least 10 characters explaining your claim." };
+  }
+
+  try {
+    await createOwnershipContest({
+      contestingUserId: currentUser.id,
+      upi,
+      claimedPropertyAssetId,
+      claimedPropertyId,
+      note: note.trim(),
+    });
+  } catch (err) {
+    return { type: "error", message: err instanceof Error ? err.message : "Failed to submit contest." };
+  }
+
+  return { type: "success" };
+}
+
+// ─── New direct listing flow (no UPI) ────────────────────────────────────
+
+export type SubmitDirectListingResult =
+  | { type: "error"; message: string };
+
+/**
+ * Called from the final step of the no-UPI listing form.
+ * Creates a direct listing as a draft and redirects to the listing edit page.
+ */
+export async function submitNewDirectListingAction(
+  _prev: SubmitDirectListingResult | null,
+  formData: FormData,
+): Promise<SubmitDirectListingResult> {
+  const currentUser = await requireCurrentUser(routes.app.portalPropertyNewDirect);
+
+  const assetType = getOptionalString(formData, "assetType");
+  const adminDistrict = getOptionalString(formData, "adminDistrict");
+  const rawMarketingType = formData.get("marketingType");
+
+  if (!assetType) return { type: "error", message: "Property type is required." };
+  if (!adminDistrict) return { type: "error", message: "Village / location is required." };
+  if (rawMarketingType !== "sale" && rawMarketingType !== "rent") {
+    return { type: "error", message: "Please choose sale or rent." };
+  }
+
+  let listing;
+  try {
+    listing = await createDirectListingInDb({
+      createdByUserId: currentUser.id,
+      agencyId: getOptionalString(formData, "agencyId"),
+      agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
+      assetType: assetType as PropertyKind,
+      adminDistrict,
+      adminSector: getOptionalString(formData, "adminSector"),
+      adminCell: getOptionalString(formData, "adminCell"),
+      adminVillage: getOptionalString(formData, "adminVillage"),
+      marketingType: rawMarketingType,
+      askingPriceRwf: getOptionalNumber(formData, "askingPriceRwf"),
+      visibility: "public",
+      bedrooms: getOptionalNumber(formData, "bedrooms"),
+      bathrooms: getOptionalNumber(formData, "bathrooms"),
+      interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+      createOwnershipForUser: currentUser.id,
+    });
+  } catch (err) {
+    return { type: "error", message: err instanceof Error ? err.message : "An unexpected error occurred." };
+  }
+
+  await addRoleToUser(currentUser.id, "direct_lister");
+  revalidatePath(routes.app.portalProperties);
+  redirect(routes.app.portalListingEdit(listing.listingId));
+}
+
+// ─── New UPI listing flow ──────────────────────────────────────────────────
+
+export type UpiParcelLookupResult = {
+  parcelId: string;
+  upi: string;
+  district?: string;
+  sector?: string;
+  representativeSize?: number;
+  zoning?: string;
+} | null;
+
+/** Called from step 1 of the UPI listing form to validate the UPI and load parcel data. */
+export async function lookupParcelForNewListingAction(upi: string): Promise<UpiParcelLookupResult> {
+  await requireCurrentUser(routes.app.portalPropertyNew);
+  return getParcelDataForNewUpiListing(upi);
+}
+
+export type SubmitUpiListingResult =
+  | { type: "already_owned" }
+  | { type: "conflict_other_owner"; existingPropertyId: string | null; existingPropertyAssetId: string | null }
+  | { type: "error"; message: string };
+
+/** Called from step 4 of the UPI listing form to create the draft listing. Redirects on success. */
+export async function submitUpiListingAction(
+  _prev: SubmitUpiListingResult | null,
+  formData: FormData,
+): Promise<SubmitUpiListingResult> {
+  const currentUser = await requireCurrentUser(routes.app.portalPropertyNew);
+
+  const parcelId = formData.get("parcelId");
+  const upi = formData.get("upi");
+  const rawClaimScope = formData.get("claimScope");
+  const rawDeclaredAssetType = formData.get("declaredAssetType");
+  const rawTenureType = formData.get("tenureType");
+  const rawMarketingType = formData.get("marketingType");
+
+  if (
+    typeof parcelId !== "string" || !parcelId ||
+    typeof upi !== "string" || !upi ||
+    typeof rawDeclaredAssetType !== "string" || !rawDeclaredAssetType ||
+    typeof rawMarketingType !== "string" || (rawMarketingType !== "sale" && rawMarketingType !== "rent")
+  ) {
+    return { type: "error", message: "Missing required fields. Please start the form again." };
+  }
+
+  const claimScope = rawClaimScope === "unit_partial" ? "unit_partial" as const : "full_parcel" as const;
+  const tenureType: PropertyTenureType =
+    rawTenureType === "freehold" || rawTenureType === "emphyteutic_lease" ? rawTenureType : "unspecified";
+  const unitLabel = getOptionalString(formData, "unitLabel");
+  const askingPriceRwf = getOptionalNumber(formData, "askingPriceRwf");
+  const locationHidden = formData.get("locationHidden") === "true";
+
+  const propertyFacts = {
+    bedrooms: getOptionalNumber(formData, "bedrooms"),
+    bathrooms: getOptionalNumber(formData, "bathrooms"),
+    interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+    yearBuilt: getOptionalNumber(formData, "yearBuilt"),
+  };
+
+  let result;
+  try {
+    result = await createAndAutoApproveUpiClaim({
+      userId: currentUser.id,
+      parcelId,
+      upi,
+      claimScope,
+      unitLabel,
+      declaredAssetType: rawDeclaredAssetType as PropertyKind,
+      tenureType,
+      tenureSource: tenureType === "unspecified" ? "unspecified" : "user_provided",
+      propertyFacts,
+      marketingType: rawMarketingType,
+      askingPriceRwf,
+      locationHidden,
+      agencyId: getOptionalString(formData, "agencyId"),
+    });
+  } catch (err) {
+    return { type: "error", message: err instanceof Error ? err.message : "An unexpected error occurred." };
+  }
+
+  if (result.outcome === "already_owned") {
+    return { type: "already_owned" };
+  }
+
+  if (result.outcome === "conflict_other_owner") {
+    return {
+      type: "conflict_other_owner",
+      existingPropertyId: result.existingPropertyId,
+      existingPropertyAssetId: result.existingPropertyAssetId,
+    };
+  }
+
+  // outcome === "created"
+  revalidatePath(routes.app.portalProperties);
+  revalidateListingSurfaces({ propertyRouteId: result.propertyId, marketingType: rawMarketingType });
+  redirect(routes.app.portalListingEdit(result.listingId));
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 export async function respondToOwnershipTransferAction(formData: FormData) {
   const currentUser = await requireCurrentUser(routes.app.portalProperties);
