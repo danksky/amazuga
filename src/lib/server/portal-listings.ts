@@ -119,8 +119,8 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         pa.asset_type AS property_kind,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         COALESCE(
           NULLIF(BTRIM(pap.property_type), ''),
@@ -143,6 +143,8 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         ON agent.id = l.agent_user_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = pa.parcel_id
       LEFT JOIN property_asset_profile pap
         ON pap.property_asset_id = pa.id
       LEFT JOIN LATERAL (

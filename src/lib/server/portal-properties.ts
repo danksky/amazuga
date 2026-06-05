@@ -274,8 +274,8 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         child.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(child.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(child.display_name, child.public_id), ' · ', child.unit_label)
-          ELSE COALESCE(child.display_name, child.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), child.display_name, child.public_id), ' · ', child.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), child.display_name, child.public_id)
         END AS property_title,
         child.asset_type AS property_kind,
         child.unit_label AS property_unit_label,
@@ -288,6 +288,8 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         listing.id AS listing_id,
         listing.status AS listing_status
       FROM property_asset child
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = child.parcel_id
       LEFT JOIN property_asset_profile pap
         ON pap.property_asset_id = child.id
       LEFT JOIN property_ownership owner
@@ -411,8 +413,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           COALESCE(pa.public_id, p.public_id) AS property_route_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-            ELSE COALESCE(pa.display_name, pa.public_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pa.unit_label AS property_unit_label,
@@ -483,8 +485,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pcr.upi,
@@ -716,8 +718,8 @@ export async function findPortalPropertyClaimTargetByUpi(input: {
         COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), p.public_id, p.parcel_id)
         END AS property_title,
         pa.asset_type AS property_kind
       FROM property_asset pa
@@ -784,8 +786,8 @@ export async function getPortalEditablePropertyRecord(
         COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pa.unit_label AS property_unit_label,

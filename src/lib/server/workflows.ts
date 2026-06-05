@@ -759,7 +759,7 @@ async function backfillPropertyRecordForAsset(input: {
         pa.asset_type,
         pa.unit_label,
         pa.parcel_id,
-        parcel.display_id,
+        parcel_label(parcel.upi, parcel.cell, parcel.sector) AS display_id,
         parcel.public_id AS parcel_public_id,
         parcel.district,
         parcel.sector,
@@ -1206,8 +1206,8 @@ export async function listPropertyClaimRequestsFromDb() {
         COALESCE(pa.public_id, parcel.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, parcel.display_id, parcel.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, parcel.display_id, parcel.public_id)
+            THEN CONCAT(COALESCE(pa.display_name, parcel_label(parcel.upi, parcel.cell, parcel.sector), parcel.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, parcel_label(parcel.upi, parcel.cell, parcel.sector), parcel.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         parcel.district,
@@ -1254,8 +1254,8 @@ export async function listPropertyClaimRequestsFromDb() {
           po.ownership_scope,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa_conflict.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(parcel_conflict.display_id, parcel_conflict.public_id, parcel_conflict.parcel_id), ' · ', pa_conflict.unit_label)
-            ELSE COALESCE(parcel_conflict.display_id, parcel_conflict.public_id, parcel_conflict.parcel_id)
+              THEN CONCAT(COALESCE(parcel_label(parcel_conflict.upi, parcel_conflict.cell, parcel_conflict.sector), parcel_conflict.public_id, parcel_conflict.parcel_id), ' · ', pa_conflict.unit_label)
+            ELSE COALESCE(parcel_label(parcel_conflict.upi, parcel_conflict.cell, parcel_conflict.sector), parcel_conflict.public_id, parcel_conflict.parcel_id)
           END AS property_title
         FROM property_ownership po
         JOIN app_user owner
@@ -1642,10 +1642,10 @@ export async function listValuationSubmissionsFromDb() {
         COALESCE(pa_target.public_id, pa_fallback.public_id, parcel.public_id, vs.property_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa_target.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id, vs.property_id), ' · ', pa_target.unit_label)
+            THEN CONCAT(COALESCE(parcel_label(parcel.upi, parcel.cell, parcel.sector), parcel.public_id, parcel.parcel_id, vs.property_id), ' · ', pa_target.unit_label)
           WHEN COALESCE(NULLIF(BTRIM(pa_fallback.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id, vs.property_id), ' · ', pa_fallback.unit_label)
-          ELSE COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id, vs.property_id)
+            THEN CONCAT(COALESCE(parcel_label(parcel.upi, parcel.cell, parcel.sector), parcel.public_id, parcel.parcel_id, vs.property_id), ' · ', pa_fallback.unit_label)
+          ELSE COALESCE(parcel_label(parcel.upi, parcel.cell, parcel.sector), parcel.public_id, parcel.parcel_id, vs.property_id)
         END AS property_title,
         parcel.district,
         parcel.sector

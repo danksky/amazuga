@@ -207,8 +207,8 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         pa.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pap.property_type,
@@ -235,7 +235,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
       WHERE po.user_id = $1
         AND open_listing.id IS NULL
       ORDER BY
-        COALESCE(pa.display_name, pa.public_id) ASC,
+        COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id) ASC,
         pa.public_id ASC
     `,
     [userId],
@@ -278,8 +278,8 @@ async function resolvePropertyTarget(propertyRouteId: string) {
         pa.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title
       FROM property_asset pa
       LEFT JOIN parcel_app_ready_seed_preview p
@@ -310,8 +310,8 @@ async function getEditableListingRow(userId: string, listingId: string) {
         COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pap.property_type,
