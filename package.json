@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "import-listing": "node scripts/import-listing.mjs"
   },
   "dependencies": {
     "@logtail/node": "^0.5.8",
