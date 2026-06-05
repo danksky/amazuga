@@ -299,11 +299,8 @@ export function PropertyPage({
   canCreateListing = false,
 }: PropertyPageProps) {
   const latestValuation = valuations[0];
-  const locationParts = [property.location.village, property.location.cell, property.location.sector, property.location.district]
+  const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
     .filter(Boolean)
-    .map((value) => value.trim())
-    .filter((value) => value && value.toLowerCase() !== "unknown district");
-  const locationLabel = locationParts
     .join(", ");
   const isParcelLinked = !property.locationSource || property.locationSource === "parcel";
   const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${property.location.lat},${property.location.lng}`;
