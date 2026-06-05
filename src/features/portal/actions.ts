@@ -13,13 +13,15 @@ import {
   setPortalListingStatusInDb,
   updatePortalListingInDb,
 } from "@/lib/server/portal-listing-editor";
+import { createDirectListingInDb } from "@/lib/server/portal-direct-listing";
 import { registerPortalBuildingUnitInDb, updatePortalPropertyRecordInDb } from "@/lib/server/portal-properties";
 import {
+  addRoleToUser,
   createOwnershipTransferRequestInDb,
   createValuationSubmissionInDb,
   respondToOwnershipTransferRequestInDb,
 } from "@/lib/server/workflows";
-import type { PropertyTransferMode } from "@/types/domain";
+import type { PropertyKind, PropertyTransferMode } from "@/types/domain";
 import { hasCapability } from "@/types/permissions";
 
 function getListingRedirectHref(hasAgencyPortalAccess: boolean) {
@@ -210,6 +212,60 @@ export async function submitListingCreateAction(formData: FormData) {
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
+  redirect(routes.app.portalListingEdit(listing.listingId));
+}
+
+export async function submitDirectListingCreateAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalListingNewDirect);
+
+  if (!hasCapability(currentUser.roles, "create_listing")) {
+    throw new Error("Current user cannot create listings");
+  }
+
+  const assetType = getRequiredString(formData, "assetType") as PropertyKind;
+  const listing = await createDirectListingInDb({
+    createdByUserId: currentUser.id,
+    agencyId: getOptionalString(formData, "agencyId"),
+    agentUserId: getOptionalString(formData, "agentUserId") ?? currentUser.id,
+    assetType,
+    adminDistrict: getRequiredString(formData, "adminDistrict"),
+    adminSector: getOptionalString(formData, "adminSector"),
+    adminCell: getOptionalString(formData, "adminCell"),
+    adminVillage: getOptionalString(formData, "adminVillage"),
+    marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+    visibility: getRequiredListingVisibility(formData, "visibility"),
+    bedrooms: getOptionalNumber(formData, "bedrooms"),
+    bathrooms: getOptionalNumber(formData, "bathrooms"),
+    interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+  });
+
+  revalidatePath(routes.app.portalListings);
+  redirect(routes.app.portalListingEdit(listing.listingId));
+}
+
+export async function submitFsboDirectListingCreateAction(formData: FormData) {
+  const currentUser = await requireCurrentUser(routes.app.portalPropertyListDirect);
+
+  const assetType = getRequiredString(formData, "assetType") as PropertyKind;
+  const listing = await createDirectListingInDb({
+    createdByUserId: currentUser.id,
+    agentUserId: currentUser.id,
+    assetType,
+    adminDistrict: getRequiredString(formData, "adminDistrict"),
+    adminSector: getOptionalString(formData, "adminSector"),
+    adminCell: getOptionalString(formData, "adminCell"),
+    adminVillage: getOptionalString(formData, "adminVillage"),
+    marketingType: getRequiredListingMarketingType(formData, "marketingType"),
+    visibility: getRequiredListingVisibility(formData, "visibility"),
+    bedrooms: getOptionalNumber(formData, "bedrooms"),
+    bathrooms: getOptionalNumber(formData, "bathrooms"),
+    interiorAreaSqm: getOptionalNumber(formData, "interiorAreaSqm"),
+    createOwnershipForUser: currentUser.id,
+  });
+
+  await addRoleToUser(currentUser.id, "direct_lister");
+
+  revalidatePath(routes.app.portalProperties);
   redirect(routes.app.portalListingEdit(listing.listingId));
 }
 

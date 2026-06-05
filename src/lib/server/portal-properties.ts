@@ -24,6 +24,7 @@ interface PortalOwnedPropertyRow {
   property_title: string | null;
   property_kind: PropertyKind | null;
   property_unit_label: string | null;
+  location_source: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
@@ -71,8 +72,9 @@ interface PortalEditablePropertyRow {
   property_title: string | null;
   property_kind: PropertyKind | null;
   property_unit_label: string | null;
-  parcel_id: string;
-  upi: string;
+  location_source: string | null;
+  parcel_id: string | null;
+  upi: string | null;
   district: string | null;
   sector: string | null;
   cell: string | null;
@@ -158,8 +160,8 @@ export interface PortalEditablePropertyRecord {
   propertyTitle: string;
   propertyKind?: PropertyKind;
   unitLabel?: string;
-  parcelId: string;
-  upi: string;
+  parcelId?: string;
+  upi?: string;
   district: string;
   sector?: string;
   cell?: string;
@@ -272,8 +274,8 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         child.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(child.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id), ' · ', child.unit_label)
-          ELSE COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id)
+            THEN CONCAT(COALESCE(child.display_name, child.public_id), ' · ', child.unit_label)
+          ELSE COALESCE(child.display_name, child.public_id)
         END AS property_title,
         child.asset_type AS property_kind,
         child.unit_label AS property_unit_label,
@@ -286,8 +288,6 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         listing.id AS listing_id,
         listing.status AS listing_status
       FROM property_asset child
-      JOIN parcel_app_ready_seed_preview parcel
-        ON parcel.parcel_id = child.parcel_id
       LEFT JOIN property_asset_profile pap
         ON pap.property_asset_id = child.id
       LEFT JOIN property_ownership owner
@@ -338,6 +338,7 @@ function getRequiredPropertyFacts(input: {
   interiorAreaSqm?: number | string | null;
   representativeSize?: number | string | null;
   zoning?: string | null;
+  locationSource?: string | null;
 }) {
   const requiredFacts: string[] = [];
   const hasTitle = Boolean(input.propertyTitle?.trim());
@@ -346,12 +347,13 @@ function getRequiredPropertyFacts(input: {
   const hasBathrooms = toNumber(input.bathrooms) != null;
   const hasInteriorArea = toNumber(input.interiorAreaSqm) != null;
   const hasRepresentativeSize = toNumber(input.representativeSize) != null;
+  const isParcelLinked = !input.locationSource || input.locationSource === "parcel";
 
   switch (input.propertyKind) {
     case "house":
       if (!hasTitle) requiredFacts.push("display label");
       if (!hasInteriorArea) requiredFacts.push("interior area");
-      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (isParcelLinked && !hasRepresentativeSize) requiredFacts.push("parcel size");
       if (!hasBedrooms) requiredFacts.push("bedrooms");
       if (!hasBathrooms) requiredFacts.push("bathrooms");
       break;
@@ -365,7 +367,7 @@ function getRequiredPropertyFacts(input: {
     case "commercial_building":
       if (!hasTitle) requiredFacts.push("display label");
       if (!hasInteriorArea) requiredFacts.push("built area");
-      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (isParcelLinked && !hasRepresentativeSize) requiredFacts.push("parcel size");
       break;
     case "commercial_unit":
       if (!hasUnitLabel) requiredFacts.push("unit label");
@@ -373,7 +375,7 @@ function getRequiredPropertyFacts(input: {
       break;
     case "land":
       if (!hasTitle) requiredFacts.push("display label");
-      if (!hasRepresentativeSize) requiredFacts.push("parcel size");
+      if (isParcelLinked && !hasRepresentativeSize) requiredFacts.push("parcel size");
       break;
     default:
       if (!hasTitle) requiredFacts.push("display label");
@@ -392,6 +394,7 @@ function isListingReadyForAsset(input: {
   interiorAreaSqm?: number | string | null;
   representativeSize?: number | string | null;
   zoning?: string | null;
+  locationSource?: string | null;
 }) {
   return getRequiredPropertyFacts(input).length === 0;
 }
@@ -405,21 +408,22 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           po.ownership_scope,
           po.created_at::TEXT AS ownership_created_at,
           pa.id AS property_internal_id,
-          COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
+          COALESCE(pa.public_id, p.public_id) AS property_route_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-            ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+              THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+            ELSE COALESCE(pa.display_name, pa.public_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pa.unit_label AS property_unit_label,
+          pa.location_source,
           pap.bedrooms,
           pap.bathrooms,
           pap.interior_area_sqm,
           p.representative_size,
           p.zoning,
-          p.district,
-          p.sector,
+          pa.admin_district AS district,
+          pa.admin_sector AS sector,
           l.id AS listing_id,
           l.status AS listing_status,
           l.visibility AS listing_visibility,
@@ -431,7 +435,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
         FROM property_ownership po
         JOIN property_asset pa
           ON pa.id = po.property_internal_id
-        JOIN parcel_app_ready_seed_preview p
+        LEFT JOIN parcel_app_ready_seed_preview p
           ON p.parcel_id = po.parcel_id
         LEFT JOIN property_asset_profile pap
           ON pap.property_asset_id = pa.id
@@ -531,6 +535,7 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
         interiorAreaSqm: row.interior_area_sqm,
         representativeSize: row.representative_size,
         zoning: row.zoning,
+        locationSource: row.location_source,
       }),
       listingId: row.listing_id || undefined,
       listingStatus: row.listing_status || undefined,
@@ -776,20 +781,21 @@ export async function getPortalEditablePropertyRecord(
     `
       SELECT
         pa.id AS property_internal_id,
-        COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
+        COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pa.unit_label AS property_unit_label,
-        p.parcel_id,
+        pa.location_source,
+        pa.parcel_id,
         p.upi,
-        p.district,
-        p.sector,
-        p.cell,
-        p.village,
+        pa.admin_district AS district,
+        pa.admin_sector AS sector,
+        pa.admin_cell AS cell,
+        pa.admin_village AS village,
         p.representative_size,
         p.zoning,
         pap.property_type,
@@ -800,8 +806,8 @@ export async function getPortalEditablePropertyRecord(
       FROM property_ownership po
       JOIN property_asset pa
         ON pa.id = po.property_internal_id
-      JOIN parcel_app_ready_seed_preview p
-        ON p.parcel_id = po.parcel_id
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = pa.parcel_id
       LEFT JOIN property_asset_profile pap
         ON pap.property_asset_id = pa.id
       WHERE po.user_id = $1
@@ -839,8 +845,8 @@ export async function getPortalEditablePropertyRecord(
     propertyTitle,
     propertyKind: row.property_kind || undefined,
     unitLabel: row.property_unit_label || undefined,
-    parcelId: row.parcel_id,
-    upi: row.upi,
+    parcelId: row.parcel_id || undefined,
+    upi: row.upi || undefined,
     district: row.district || "Unknown district",
     sector: row.sector || undefined,
     cell: row.cell || undefined,
@@ -1016,6 +1022,10 @@ export async function registerPortalBuildingUnitInDb(input: {
         ? "A claimed unit with that label already exists on this parcel"
         : "A unit with that label already exists on this parcel",
     );
+  }
+
+  if (!building.parcelId) {
+    throw new Error("Cannot register units on a direct listing (no parcel)");
   }
 
   const propertyInternalId = createBuildingUnitAssetId(building.propertyInternalId, normalizedUnitLabel);

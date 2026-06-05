@@ -15,6 +15,7 @@ interface PropertyOptionRow {
   property_kind: string | null;
   property_type: string | null;
   property_unit_label: string | null;
+  location_source: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
@@ -58,7 +59,7 @@ interface EditableListingImageRow {
 
 interface PropertyTargetRow {
   property_asset_id: string;
-  parcel_id: string;
+  parcel_id: string | null;
   property_route_id: string;
   property_title: string | null;
 }
@@ -156,6 +157,7 @@ function isListingReadyForAsset(input: {
   interiorAreaSqm?: number | string | null;
   representativeSize?: number | string | null;
   zoning?: string | null;
+  locationSource?: string | null;
 }) {
   const hasTitle = Boolean(input.propertyTitle?.trim());
   const hasUnitLabel = Boolean(input.propertyUnitLabel?.trim()) || hasTitle;
@@ -163,25 +165,26 @@ function isListingReadyForAsset(input: {
   const hasBathrooms = toNumber(input.bathrooms) != null;
   const hasInteriorArea = toNumber(input.interiorAreaSqm) != null;
   const hasRepresentativeSize = toNumber(input.representativeSize) != null;
+  const isParcelLinked = !input.locationSource || input.locationSource === "parcel";
 
   switch (input.propertyKind) {
     case "house":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize && hasBedrooms && hasBathrooms;
+      return hasTitle && hasInteriorArea && (!isParcelLinked || hasRepresentativeSize) && hasBedrooms && hasBathrooms;
     case "apartment_unit":
       return hasUnitLabel && hasInteriorArea && hasBedrooms && hasBathrooms;
     case "apartment_building":
     case "commercial_building":
-      return hasTitle && hasInteriorArea && hasRepresentativeSize;
+      return hasTitle && hasInteriorArea && (!isParcelLinked || hasRepresentativeSize);
     case "commercial_unit":
       return hasUnitLabel && hasInteriorArea;
     case "land":
-      return hasTitle && hasRepresentativeSize;
+      return hasTitle && (!isParcelLinked || hasRepresentativeSize);
     default:
       return hasTitle;
   }
 }
 
-async function getAccessibleListingAgencies(userId: string): Promise<PortalListingAgencyOption[]> {
+export async function getAccessibleListingAgencies(userId: string): Promise<PortalListingAgencyOption[]> {
   const workspace = await getPortalAgencyWorkspaceData(userId);
 
   return workspace.agencies.map((agency) => ({
@@ -204,24 +207,25 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         pa.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pap.property_type,
         pa.unit_label AS property_unit_label,
+        pa.location_source,
         pap.bedrooms,
         pap.bathrooms,
         pap.interior_area_sqm,
         p.representative_size,
         p.zoning,
-        p.district,
-        p.sector,
+        pa.admin_district AS district,
+        pa.admin_sector AS sector,
         open_listing.id AS open_listing_id
       FROM property_ownership po
       JOIN property_asset pa
         ON pa.id = po.property_internal_id
-      JOIN parcel_app_ready_seed_preview p
+      LEFT JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = pa.parcel_id
       LEFT JOIN property_asset_profile pap
         ON pap.property_asset_id = pa.id
@@ -231,7 +235,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
       WHERE po.user_id = $1
         AND open_listing.id IS NULL
       ORDER BY
-        COALESCE(p.display_id, p.public_id, p.parcel_id) ASC,
+        COALESCE(pa.display_name, pa.public_id) ASC,
         pa.public_id ASC
     `,
     [userId],
@@ -248,6 +252,7 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
         interiorAreaSqm: row.interior_area_sqm,
         representativeSize: row.representative_size,
         zoning: row.zoning,
+        locationSource: row.location_source,
       }),
     )
     .map((row) => ({
@@ -267,46 +272,24 @@ async function listAvailablePropertyOptions(userId: string): Promise<PortalListi
 async function resolvePropertyTarget(propertyRouteId: string) {
   const result = await getPgPool().query<PropertyTargetRow>(
     `
-      WITH target_parcel AS (
-        SELECT p.parcel_id
-        FROM parcel_app_ready_seed_preview p
-        WHERE p.public_id = $1
-        UNION
-        SELECT pa.parcel_id
-        FROM property_asset pa
-        WHERE pa.public_id = $1
-        LIMIT 1
-      )
       SELECT
         pa.id AS property_asset_id,
-        p.parcel_id,
+        pa.parcel_id,
         pa.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, pa.public_id)
         END AS property_title
-      FROM target_parcel tp
-      JOIN parcel_app_ready_seed_preview p
-        ON p.parcel_id = tp.parcel_id
-      LEFT JOIN LATERAL (
-        SELECT pa_inner.id, pa_inner.public_id, pa_inner.unit_label
-        FROM property_asset pa_inner
-        LEFT JOIN listing active_listing
-          ON active_listing.property_asset_id = pa_inner.id
-         AND active_listing.status = 'active'
-        WHERE pa_inner.parcel_id = p.parcel_id
-        ORDER BY
-          CASE
-            WHEN pa_inner.public_id = $1 THEN 0
-            WHEN pa_inner.is_primary_for_parcel THEN 1
-            ELSE 2
-          END,
-          pa_inner.created_at ASC,
-          pa_inner.id ASC
-        LIMIT 1
-      ) pa
-        ON TRUE
+      FROM property_asset pa
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = pa.parcel_id
+      WHERE pa.public_id = $1
+         OR (pa.parcel_id IS NOT NULL AND p.public_id = $1)
+      ORDER BY
+        CASE WHEN pa.public_id = $1 THEN 0 ELSE 1 END,
+        pa.created_at ASC,
+        pa.id ASC
       LIMIT 1
     `,
     [propertyRouteId],
@@ -324,16 +307,16 @@ async function getEditableListingRow(userId: string, listingId: string) {
       SELECT
         l.id AS listing_id,
         l.property_asset_id,
-        COALESCE(pa.public_id, p.public_id, p.parcel_id) AS property_route_id,
+        COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pap.property_type,
-        p.district,
-        p.sector,
+        pa.admin_district AS district,
+        pa.admin_sector AS sector,
         l.agency_id,
         l.agent_user_id,
         l.status,
@@ -342,7 +325,7 @@ async function getEditableListingRow(userId: string, listingId: string) {
         l.asking_price_rwf,
         l.campaign_index
       FROM listing l
-      JOIN parcel_app_ready_seed_preview p
+      LEFT JOIN parcel_app_ready_seed_preview p
         ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
@@ -975,11 +958,9 @@ export async function updatePortalListingInDb(input: {
         WHERE id = $1
         RETURNING
           (
-            SELECT COALESCE(pa.public_id, p.public_id, p.parcel_id)
-            FROM parcel_app_ready_seed_preview p
-            LEFT JOIN property_asset pa
-              ON pa.id = listing.property_asset_id
-            WHERE p.parcel_id = listing.parcel_id
+            SELECT pa.public_id
+            FROM property_asset pa
+            WHERE pa.id = listing.property_asset_id
             LIMIT 1
           ) AS property_route_id,
           marketing_type
@@ -1101,11 +1082,9 @@ export async function setPortalListingStatusInDb(input: {
         WHERE id = $1
         RETURNING
           (
-            SELECT COALESCE(pa.public_id, p.public_id, p.parcel_id)
-            FROM parcel_app_ready_seed_preview p
-            LEFT JOIN property_asset pa
-              ON pa.id = listing.property_asset_id
-            WHERE p.parcel_id = listing.parcel_id
+            SELECT pa.public_id
+            FROM property_asset pa
+            WHERE pa.id = listing.property_asset_id
             LIMIT 1
           ) AS property_route_id,
           marketing_type

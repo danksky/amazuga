@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PortalShell } from "@/features/portal/portal-shell";
@@ -33,6 +34,7 @@ export default async function SellPortalListingCreateRoute({
       <ListingForm
         agencies={data.agencies}
         cancelHref={cancelHref}
+        directListingHref={routes.app.portalListingNewDirect}
         mode="create"
         propertyOptions={data.propertyOptions}
         selectedPropertyRouteId={typeof property === "string" ? property : undefined}

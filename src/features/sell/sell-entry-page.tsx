@@ -33,8 +33,8 @@ export function SellEntryPage({
           <div className={styles.cardLabel}>Owner route</div>
           <h2 className={styles.cardTitle}>List privately</h2>
           <div className={styles.cardBody}>
-            Start with the properties workspace, enter a parcel UPI, and submit a claim so owner-led selling can begin
-            without first browsing through public listing pages.
+            List your own property for sale or rent. If you have a UPI, submit a claim to verify ownership. For
+            rentals without a UPI, you can list directly with approximate location only.
           </div>
           <div className={styles.cardActions}>
             <Link href={privateSaleHref}>

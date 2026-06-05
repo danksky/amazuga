@@ -44,6 +44,6 @@ export async function startPropertyClaimAction(formData: FormData) {
     redirect(propertyPath);
   }
 
-  const params = new URLSearchParams({ upi: propertyPageData.property.upi });
+  const params = new URLSearchParams({ upi: propertyPageData.property.upi ?? "" });
   redirect(`${routes.app.portalPropertyClaim}?${params.toString()}`);
 }

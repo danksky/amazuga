@@ -51,6 +51,7 @@ export const roleCapabilities: Record<Role, Capability[]> = {
     "submit_valuation",
   ],
   private_lister: ["save_property", "create_listing", "edit_listing", "deactivate_listing"],
+  direct_lister: ["save_property", "create_listing", "edit_listing", "deactivate_listing"],
   admin: [
     "save_property",
     "search_upi",

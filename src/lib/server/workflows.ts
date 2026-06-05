@@ -120,8 +120,14 @@ interface PropertyRecordBackfillRow {
   parcel_public_id: string | null;
   district: string | null;
   sector: string | null;
+  cell: string | null;
+  village: string | null;
   representative_size: number | string | null;
   zoning: string | null;
+  anchor_lat: number | null;
+  anchor_lon: number | null;
+  centroid_lat: number | null;
+  centroid_lon: number | null;
 }
 
 interface AdminPropertyClaimRequestRow extends PropertyClaimRequestRow {
@@ -757,11 +763,19 @@ async function backfillPropertyRecordForAsset(input: {
         parcel.public_id AS parcel_public_id,
         parcel.district,
         parcel.sector,
+        parcel.cell,
+        parcel.village,
         parcel.representative_size,
-        parcel.zoning
+        parcel.zoning,
+        parcel.centroid_lat,
+        parcel.centroid_lon,
+        anchor.anchor_lat,
+        anchor.anchor_lon
       FROM property_asset pa
       JOIN parcel_app_ready_seed_preview parcel
         ON parcel.parcel_id = pa.parcel_id
+      LEFT JOIN parcel_anchor_point_preview anchor
+        ON anchor.parcel_id = pa.parcel_id
       WHERE pa.id = $1
       LIMIT 1
     `,
@@ -796,11 +810,29 @@ async function backfillPropertyRecordForAsset(input: {
     `
       UPDATE property_asset
       SET
-        unit_label = COALESCE(NULLIF(BTRIM(unit_label), ''), $2),
-        updated_at = NOW()
+        unit_label     = COALESCE(NULLIF(BTRIM(unit_label), ''), $2),
+        location_source = COALESCE(location_source, 'parcel'),
+        display_name   = COALESCE(display_name, $3),
+        admin_district = COALESCE(admin_district, $4),
+        admin_sector   = COALESCE(admin_sector, $5),
+        admin_cell     = COALESCE(admin_cell, $6),
+        admin_village  = COALESCE(admin_village, $7),
+        anchor_lat     = COALESCE(anchor_lat, $8),
+        anchor_lon     = COALESCE(anchor_lon, $9),
+        updated_at     = NOW()
       WHERE id = $1
     `,
-    [input.propertyAssetId, inferred.assetUnitLabel],
+    [
+      input.propertyAssetId,
+      inferred.assetUnitLabel,
+      row.display_id ?? row.parcel_public_id,
+      row.district,
+      row.sector,
+      row.cell,
+      row.village,
+      row.anchor_lat ?? row.centroid_lat,
+      row.anchor_lon ?? row.centroid_lon,
+    ],
   );
 
   await getPgPool().query(
@@ -851,7 +883,7 @@ async function backfillPropertyRecordForAsset(input: {
   );
 }
 
-async function addRoleToUser(userId: string, role: Role) {
+export async function addRoleToUser(userId: string, role: Role) {
   await getPgPool().query(
     `
       UPDATE app_user
@@ -1174,8 +1206,8 @@ export async function listPropertyClaimRequestsFromDb() {
         COALESCE(pa.public_id, parcel.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(parcel.display_id, parcel.public_id, parcel.parcel_id)
+            THEN CONCAT(COALESCE(pa.display_name, parcel.display_id, parcel.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, parcel.display_id, parcel.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         parcel.district,

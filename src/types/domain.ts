@@ -1,4 +1,4 @@
-export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | "private_lister";
+export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | "private_lister" | "direct_lister";
 
 export type ListingStatus = "draft" | "active" | "inactive" | "archived";
 export type ListingVisibility = "public" | "unlisted" | "private";
@@ -77,13 +77,14 @@ export interface PropertyFacts {
 export interface Property {
   id: string;
   internalId?: string;
-  parcelId: string;
+  parcelId?: string;
   parcelPublicId?: string;
   parcelDisplayId?: string;
   code?: string;
   parentInternalId?: string;
   unitLabel?: string;
-  upi: string;
+  upi?: string;
+  locationSource?: "parcel" | "admin_unit" | "pin_derived";
   title: string;
   location: PropertyLocation;
   geometry: PropertyGeometry;

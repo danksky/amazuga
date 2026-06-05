@@ -1,0 +1,148 @@
+.root {
+  position: relative;
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 38px 12px 14px; /* right padding for clear button */
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.clear {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--foreground-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clear:hover {
+  background: var(--surface-muted);
+  color: var(--foreground);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.option {
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.option:last-child {
+  border-bottom: 0;
+}
+
+.option:hover,
+.option:focus-visible {
+  background: var(--surface-muted);
+}
+
+.optionName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.optionMeta {
+  color: var(--foreground-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  width: 100%;
+}
+
+.chipText {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipClear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--foreground-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chipClear:hover {
+  background: var(--surface-muted);
+  color: var(--foreground);
+}
+
+.hint {
+  margin-top: 6px;
+  color: var(--foreground-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}

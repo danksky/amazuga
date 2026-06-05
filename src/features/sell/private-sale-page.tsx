@@ -14,10 +14,11 @@ export function PrivateSalePage({ isSignedIn }: { isSignedIn: boolean }) {
     <div className={`container ${styles.page}`}>
       <div className={styles.hero}>
         <div className={styles.eyebrow}>Private Sale</div>
-        <h1 className={styles.title}>Owner-led selling starts with property claim</h1>
+        <h1 className={styles.title}>List your property privately</h1>
         <div className={styles.body}>
-          The private-sale path now starts inside the properties workspace. Sign in, enter the parcel UPI, and submit
-          a claim so Amazuga can verify that the property belongs to you before owner-led listing tools expand further.
+          For sale listings, start with the properties workspace, enter the parcel UPI, and submit a claim so
+          Amazuga can verify ownership. For rental listings without a UPI, the workspace also lets you create a
+          direct listing with approximate location.
         </div>
         <div className={styles.cardActions}>
           <Link href={nextHref}>

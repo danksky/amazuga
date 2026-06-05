@@ -18,14 +18,12 @@ interface PortalListingRow {
   agency_id: string | null;
   agent_user_id: string;
   agent_full_name: string;
-  public_id: string;
   district: string | null;
   sector: string | null;
   property_internal_id: string | null;
   property_public_id: string | null;
   property_kind: string | null;
   property_title: string | null;
-  parcel_display_id: string | null;
   property_type: string | null;
   bedrooms: number | string | null;
   bathrooms: number | string | null;
@@ -88,7 +86,7 @@ function normalizePropertyType(row: PortalListingRow) {
 }
 
 function normalizePropertyTitle(row: PortalListingRow) {
-  return row.property_title || row.parcel_display_id || row.public_id || "Untitled property";
+  return row.property_title || row.property_public_id || "Untitled property";
 }
 
 export async function getPortalListingsWorkspaceData(userId: string): Promise<PortalListingsWorkspaceData> {
@@ -114,17 +112,15 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         l.agency_id,
         l.agent_user_id,
         agent.full_name AS agent_full_name,
-        p.public_id,
-        p.display_id AS parcel_display_id,
-        p.district,
-        p.sector,
+        pa.admin_district AS district,
+        pa.admin_sector AS sector,
         pa.id AS property_internal_id,
         pa.public_id AS property_public_id,
         pa.asset_type AS property_kind,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(p.display_id, p.public_id, p.parcel_id), ' · ', pa.unit_label)
-          ELSE COALESCE(p.display_id, p.public_id, p.parcel_id)
+            THEN CONCAT(COALESCE(pa.display_name, pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(pa.display_name, pa.public_id)
         END AS property_title,
         COALESCE(
           NULLIF(BTRIM(pap.property_type), ''),
@@ -145,8 +141,6 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
       FROM listing l
       JOIN app_user agent
         ON agent.id = l.agent_user_id
-      JOIN parcel_app_ready_seed_preview p
-        ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset pa
         ON pa.id = l.property_asset_id
       LEFT JOIN property_asset_profile pap
@@ -183,7 +177,7 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
 
   const listings = result.rows.map((row) => ({
     id: row.listing_id,
-    propertyId: row.property_public_id || row.public_id,
+    propertyId: row.property_public_id || row.listing_id,
     propertyInternalId: row.property_internal_id || undefined,
     propertyTitle: normalizePropertyTitle(row),
     propertyType: normalizePropertyType(row),

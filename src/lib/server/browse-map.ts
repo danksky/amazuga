@@ -4,18 +4,19 @@ import { getPgPool } from "./postgres";
 
 export interface BrowseMapPin {
   listingId: string;
-  parcelPublicId: string;
+  parcelPublicId?: string;
   assetPublicId?: string;
   routeId: string;
   priceLabelRwf: number;
   marketingType: "sale" | "rent";
   anchorLng: number;
   anchorLat: number;
+  locationSource?: string;
 }
 
 export interface BrowseMapCard {
   listingId: string;
-  parcelPublicId: string;
+  parcelPublicId?: string;
   assetPublicId?: string;
   routeId: string;
   title: string;
@@ -28,6 +29,7 @@ export interface BrowseMapCard {
   bedrooms?: number;
   bathrooms?: number;
   areaSqm?: number;
+  locationSource?: string;
 }
 
 export interface BrowseMapResult {
@@ -44,8 +46,8 @@ export interface BrowseMapResult {
 
 interface BrowseMapRow {
   listing_id: string;
-  parcel_public_id: string;
-  parcel_display_id: string | null;
+  parcel_public_id: string | null;
+  asset_display_name: string | null;
   asset_public_id: string | null;
   asset_unit_label: string | null;
   route_id: string;
@@ -53,6 +55,7 @@ interface BrowseMapRow {
   asking_price_rwf: number | string | null;
   anchor_lon: number | string;
   anchor_lat: number | string;
+  location_source: string | null;
   district: string | null;
   sector: string | null;
   property_type: string | null;
@@ -69,16 +72,9 @@ function toNumber(value: number | string | null | undefined): number | undefined
 }
 
 function buildTitle(row: BrowseMapRow): string {
-  if (row.parcel_display_id?.trim()) {
-    const base = row.parcel_display_id.trim();
-    const unit = row.asset_unit_label?.trim();
-    return unit ? `${base} · ${unit}` : base;
-  }
-  if (row.asset_public_id?.trim()) {
-    const unit = row.asset_unit_label?.trim();
-    return unit ? `${row.asset_public_id.trim()} · ${unit}` : row.asset_public_id.trim();
-  }
-  return `Parcel ${row.parcel_public_id}`;
+  const base = (row.asset_display_name?.trim() || row.asset_public_id?.trim() || row.parcel_public_id || "").trim();
+  const unit = row.asset_unit_label?.trim();
+  return unit && base ? `${base} · ${unit}` : base || row.route_id;
 }
 
 interface BrowseMapFilters {
@@ -117,19 +113,19 @@ export async function getBrowseMapData(params: {
   }
   if (filters?.district) {
     queryParams.push(filters.district);
-    extraClauses.push(`AND p.district ILIKE $${queryParams.length}`);
+    extraClauses.push(`AND pa.admin_district ILIKE $${queryParams.length}`);
   }
   if (filters?.sector) {
     queryParams.push(filters.sector);
-    extraClauses.push(`AND p.sector ILIKE $${queryParams.length}`);
+    extraClauses.push(`AND pa.admin_sector ILIKE $${queryParams.length}`);
   }
   if (filters?.cell) {
     queryParams.push(filters.cell);
-    extraClauses.push(`AND p.cell ILIKE $${queryParams.length}`);
+    extraClauses.push(`AND pa.admin_cell ILIKE $${queryParams.length}`);
   }
   if (filters?.village) {
     queryParams.push(filters.village);
-    extraClauses.push(`AND p.village ILIKE $${queryParams.length}`);
+    extraClauses.push(`AND pa.admin_village ILIKE $${queryParams.length}`);
   }
   if (filters?.propertyTypes?.length) {
     const typeConditions: string[] = [];
@@ -156,16 +152,17 @@ export async function getBrowseMapData(params: {
       SELECT
         l.id                                        AS listing_id,
         p.public_id                                 AS parcel_public_id,
-        p.display_id                                AS parcel_display_id,
+        pa.display_name                             AS asset_display_name,
         pa.public_id                                AS asset_public_id,
-        to_jsonb(pa)->>'unit_label'                 AS asset_unit_label,
-        COALESCE(pa.public_id, p.public_id)         AS route_id,
+        pa.unit_label                               AS asset_unit_label,
+        pa.public_id                                AS route_id,
         l.marketing_type,
         l.asking_price_rwf,
-        parcel_anchor.anchor_lon,
-        parcel_anchor.anchor_lat,
-        p.district,
-        p.sector,
+        pa.anchor_lon,
+        pa.anchor_lat,
+        pa.location_source,
+        pa.admin_district                           AS district,
+        pa.admin_sector                             AS sector,
         COALESCE(
           NULLIF(BTRIM(property_profile.property_type), ''),
           CASE pa.asset_type
@@ -190,21 +187,23 @@ export async function getBrowseMapData(params: {
           LIMIT 1
         )                                           AS hero_image_url
       FROM listing l
-      JOIN parcel_app_ready_seed_preview p
-        ON p.parcel_id = l.parcel_id
-      JOIN parcel_anchor_point_preview parcel_anchor
-        ON parcel_anchor.parcel_id = p.parcel_id
-      LEFT JOIN property_asset pa
+      JOIN property_asset pa
         ON pa.id = l.property_asset_id
+      LEFT JOIN parcel_app_ready_seed_preview p
+        ON p.parcel_id = l.parcel_id
       LEFT JOIN property_asset_profile property_profile
         ON property_profile.property_asset_id = pa.id
       WHERE l.status     = 'active'
         AND l.visibility = 'public'
         AND l.marketing_type = $1
-        AND parcel_anchor.anchor_lon BETWEEN $2 AND $4
-        AND parcel_anchor.anchor_lat BETWEEN $3 AND $5
+        AND pa.anchor_lon BETWEEN $2 AND $4
+        AND pa.anchor_lat BETWEEN $3 AND $5
         ${extraClauses.join("\n        ")}
-      ORDER BY l.published_at DESC NULLS LAST, l.created_at DESC, l.id ASC
+      ORDER BY
+        CASE WHEN pa.location_source = 'parcel' THEN 0 ELSE 1 END,
+        l.published_at DESC NULLS LAST,
+        l.created_at DESC,
+        l.id ASC
       LIMIT 200
     `,
     queryParams,
@@ -221,18 +220,19 @@ export async function getBrowseMapData(params: {
 
     pins.push({
       listingId: row.listing_id,
-      parcelPublicId: row.parcel_public_id,
+      parcelPublicId: row.parcel_public_id ?? undefined,
       assetPublicId: row.asset_public_id ?? undefined,
       routeId: row.route_id,
       priceLabelRwf,
       marketingType: row.marketing_type,
       anchorLng,
       anchorLat,
+      locationSource: row.location_source ?? undefined,
     });
 
     cards.push({
       listingId: row.listing_id,
-      parcelPublicId: row.parcel_public_id,
+      parcelPublicId: row.parcel_public_id ?? undefined,
       assetPublicId: row.asset_public_id ?? undefined,
       routeId: row.route_id,
       title: buildTitle(row),
@@ -245,9 +245,12 @@ export async function getBrowseMapData(params: {
       bedrooms: toNumber(row.bedrooms),
       bathrooms: toNumber(row.bathrooms),
       areaSqm: toNumber(row.interior_area_sqm),
+      locationSource: row.location_source ?? undefined,
     });
 
-    suppressionKeys.push(row.parcel_public_id);
+    if (row.parcel_public_id) {
+      suppressionKeys.push(row.parcel_public_id);
+    }
   }
 
   return {
