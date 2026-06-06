@@ -321,7 +321,6 @@ export function PropertyPage({
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
   const detailItems = buildDetailItems(property, propertyKind);
   const listingStateLabel = buildListingStateLabel(listing);
-  const primaryInfoMetaLabel = `${listingStateLabel} | ${behavior.kindLabel}`;
   const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
   const primaryPrice = listing
     ? formatCurrency(listing.askingPrice, listing.currency)
@@ -496,8 +495,13 @@ export function PropertyPage({
 
         <div className={styles.rightRail}>
           <div className={`${styles.panel} ${styles.primaryInfoPanel}`}>
+            <div className={styles.metaBadgeRow}>
+              <span className={styles.metaBadge}>
+                <span className={styles.metaBadgeType}>{behavior.kindLabel}</span>
+                <span className={styles.metaBadgeState}>{listingStateLabel.toLowerCase()}</span>
+              </span>
+            </div>
             <div className={styles.eyebrow}>{locationLabel}</div>
-            <div className={styles.eyebrow}>{primaryInfoMetaLabel}</div>
             <div className={styles.priceValue}>{primaryPrice}</div>
             <h1 className={styles.primaryAddress}>{property.title}</h1>
             <div className={styles.primaryInfoStats}>
@@ -508,8 +512,9 @@ export function PropertyPage({
                 </div>
               ))}
             </div>
+            <hr className={styles.separator} />
             {listing ? (
-              <div className={styles.contactSummary}>
+              <>
                 <div className={styles.contactIdentity}>
                   <div className={styles.contactDetailRow}>
                     <div className={styles.contactDetailLabel}>Agent:</div>
@@ -539,12 +544,12 @@ export function PropertyPage({
                     rel="noreferrer"
                     target="_blank"
                   >
-                    Inquire via WhatsApp
+                    <i className="bi bi-whatsapp" />{" "}Inquire via WhatsApp
                   </a>
                   <form action={toggleSavePropertyAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
-                    <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
+                    <Button type="submit" variant="secondary"><i className="bi bi-bookmark" />{" "}{isSaved ? "Saved" : "Save property"}</Button>
                   </form>
                   {showPreciseLocation ? (
                     <a
@@ -553,7 +558,7 @@ export function PropertyPage({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Get directions
+                      <i className="bi bi-geo-alt" />{" "}Get directions
                     </a>
                   ) : null}
                   {isParcelLinked && property.upi ? (
@@ -561,40 +566,40 @@ export function PropertyPage({
                       className={styles.disputeLink}
                       href={`${routes.app.portalPropertyContest}?property=${encodeURIComponent(propertyRouteId)}`}
                     >
-                      Dispute ownership
+                      <i className="bi bi-flag" />{" "}Dispute ownership
                     </Link>
                   ) : null}
                 </div>
-              </div>
+              </>
             ) : (
               <div className={styles.ctaGroup}>
                 {claimState === "owned" ? (
                   <>
                     <Link className={styles.actionLinkPrimary} href={routes.app.portalProperties}>
-                      View owned properties
+                      <i className="bi bi-building" />{" "}View owned properties
                     </Link>
                     {canCreateListing ? (
                       <Link
                         className={styles.actionLinkSecondary}
                         href={`${routes.app.portalListingNew}?property=${encodeURIComponent(propertyRouteId)}`}
                       >
-                        Create listing
+                        <i className="bi bi-plus-circle" />{" "}Create listing
                       </Link>
                     ) : null}
                   </>
                 ) : claimState === "pending" ? (
-                  <Button disabled>Claim pending review</Button>
+                  <Button disabled><i className="bi bi-hourglass-split" />{" "}Claim pending review</Button>
                 ) : !isParcelLinked ? null : (
                   <form action={startPropertyClaimAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
-                    <Button type="submit">{behavior.claimLabel}</Button>
+                    <Button type="submit"><i className="bi bi-key" />{" "}{behavior.claimLabel}</Button>
                   </form>
                 )}
                 <form action={toggleSavePropertyAction}>
                   <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                   <input name="propertyPath" type="hidden" value={propertyPath} />
-                  <Button type="submit" variant="secondary">{isSaved ? "Saved" : "Save property"}</Button>
+                  <Button type="submit" variant="secondary"><i className="bi bi-bookmark" />{" "}{isSaved ? "Saved" : "Save property"}</Button>
                 </form>
                 {isParcelLinked ? (
                   <a
@@ -603,7 +608,7 @@ export function PropertyPage({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Get directions
+                    <i className="bi bi-geo-alt" />{" "}Get directions
                   </a>
                 ) : null}
               </div>
@@ -620,7 +625,7 @@ export function PropertyPage({
           role="dialog"
         >
           <div className={styles.galleryModal} onClick={(event) => event.stopPropagation()}>
-            <div className={styles.galleryModalHeader}>
+            <div className={styles.galleryModalImageFrame}>
               <div className={styles.galleryModalCounter}>
                 {activeGalleryIndex + 1} / {galleryImages.length}
               </div>
@@ -633,8 +638,6 @@ export function PropertyPage({
               >
                 Close
               </button>
-            </div>
-            <div className={styles.galleryModalImageFrame}>
               <img
                 alt={`${property.title} view ${activeGalleryIndex + 1}`}
                 className={styles.galleryModalImage}
@@ -648,7 +651,9 @@ export function PropertyPage({
                     onClick={showPreviousGalleryImage}
                     type="button"
                   >
-                    &lt;
+                    <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
                   </button>
                   <button
                     aria-label="Show next image"
@@ -656,7 +661,9 @@ export function PropertyPage({
                     onClick={showNextGalleryImage}
                     type="button"
                   >
-                    &gt;
+                    <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
                   </button>
                 </>
               ) : null}
