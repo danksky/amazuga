@@ -513,13 +513,10 @@
   background: var(--surface);
 }
 
-.contactSummary {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface-muted);
+.separator {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
 }
 
 .contactIdentity {
@@ -584,7 +581,13 @@
 
 .ctaGroup {
   display: grid;
+  grid-template-columns: max-content;
   gap: 12px;
+}
+
+.ctaGroup i {
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .ctaGroup form {
@@ -593,7 +596,11 @@
 
 .ctaGroup form > * {
   width: 100%;
-  justify-content: center;
+  justify-content: flex-start;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .whatsappAction,
@@ -601,12 +608,15 @@
 .actionLinkSecondary {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 8px;
   padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   line-height: normal;
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
@@ -633,14 +643,25 @@
   background: color-mix(in srgb, var(--foreground) 88%, white);
 }
 
+.actionLinkSecondary {
+  background: #ffffff;
+  color: var(--foreground);
+}
+
 .actionLinkSecondary:hover,
 .actionLinkSecondary:focus-visible {
   background: var(--surface-muted);
 }
 
 .disputeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--foreground-muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   text-decoration: none;
   align-self: center;
   transition: color 140ms ease;
