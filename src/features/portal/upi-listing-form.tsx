@@ -149,9 +149,8 @@ export function UpiListingForm({
   const agentOptions = flattenAgentOptions(agencies);
   const hasAgency = agentOptions.length > 0;
 
-  // Step 3 is valid when every shown required field has a value (year built is optional).
+  // Step 3 is valid when every shown required field has a value (year built and interior area are optional).
   const step3Valid =
-    (!needsInteriorArea(propertyType) || interiorAreaSqm !== "") &&
     (!needsBedsBaths(propertyType) || (bedrooms !== "" && bathrooms !== "")) &&
     (!UNIT_TYPES.includes(propertyType) || unitLabel.trim() !== "");
 
@@ -360,7 +359,10 @@ export function UpiListingForm({
 
             {needsInteriorArea(propertyType) && (
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="interior-area">{getAreaLabel(propertyType)}</label>
+                <label className={styles.label} htmlFor="interior-area">
+                  {getAreaLabel(propertyType)}
+                  <span className={styles.optionalTag}> (optional)</span>
+                </label>
                 <WheelSafeNumberInput
                   className={styles.input}
                   id="interior-area"

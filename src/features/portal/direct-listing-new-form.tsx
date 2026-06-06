@@ -98,9 +98,8 @@ export function DirectListingNewForm({
 
   const locationReady = location != null;
 
-  // Step 4 is valid when every shown required field has a value (year built is optional).
+  // Step 4 is valid when every shown required field has a value (year built and interior area are optional).
   const step4Valid =
-    (!needsInteriorArea(propertyType) || interiorAreaSqm !== "") &&
     (!needsBedsBaths(propertyType) || (bedrooms !== "" && bathrooms !== ""));
 
   return (
@@ -243,7 +242,10 @@ export function DirectListingNewForm({
 
             {needsInteriorArea(propertyType) && (
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="interior-area">{getAreaLabel(propertyType)}</label>
+                <label className={styles.label} htmlFor="interior-area">
+                  {getAreaLabel(propertyType)}
+                  <span className={styles.optionalTag}> (optional)</span>
+                </label>
                 <WheelSafeNumberInput
                   className={styles.input}
                   id="interior-area"
