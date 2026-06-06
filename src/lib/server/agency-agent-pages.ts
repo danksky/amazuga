@@ -236,3 +236,29 @@ export async function getPublicAgentPageData(agentUserId: string): Promise<Publi
     listings: listingResult.rows.map(rowToCard),
   };
 }
+
+export async function getAgencyNameBySlug(agencySlug: string): Promise<string | undefined> {
+  const result = await getPgPool().query<{ business_name: string }>(
+    `SELECT business_name FROM agency WHERE slug = $1 AND status = 'approved' LIMIT 1`,
+    [agencySlug],
+  );
+  return result.rows[0]?.business_name;
+}
+
+export async function getAgentNameById(agentUserId: string): Promise<{ fullName: string; agencyName: string } | undefined> {
+  const result = await getPgPool().query<{ full_name: string; agency_name: string }>(
+    `
+      SELECT u.full_name, a.business_name AS agency_name
+      FROM app_user u
+      JOIN agency_membership am ON am.user_id = u.id AND am.status = 'active'
+      JOIN agency a ON a.id = am.agency_id AND a.status = 'approved'
+      WHERE u.id = $1::UUID
+      ORDER BY am.created_at ASC
+      LIMIT 1
+    `,
+    [agentUserId],
+  );
+  const row = result.rows[0];
+  if (!row) return undefined;
+  return { fullName: row.full_name, agencyName: row.agency_name };
+}

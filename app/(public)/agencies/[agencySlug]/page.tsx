@@ -1,10 +1,23 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AgencyProfilePage } from "@/components/profile/agency-profile-page";
-import { getPublicAgencyPageData } from "@/lib/server/agency-agent-pages";
+import { getAgencyNameBySlug, getPublicAgencyPageData } from "@/lib/server/agency-agent-pages";
 
 interface AgencyPageProps {
   params: Promise<{ agencySlug: string }>;
+}
+
+export async function generateMetadata({ params }: AgencyPageProps): Promise<Metadata> {
+  const { agencySlug } = await params;
+  const name = await getAgencyNameBySlug(agencySlug);
+  if (!name) return {};
+  const title = `Properties by ${name}`;
+  return {
+    title,
+    openGraph: { title },
+    twitter: { title },
+  };
 }
 
 export default async function AgencyPage({ params }: AgencyPageProps) {

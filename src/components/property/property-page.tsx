@@ -127,36 +127,31 @@ function formatBedsBaths(property: Property) {
   return `${property.facts.bedrooms ?? "-"} bd / ${property.facts.bathrooms ?? "-"} ba`;
 }
 
-function formatArea(value?: number) {
-  return value ? formatAreaSqm(value) : "Unknown";
-}
-
 function buildFactItems(property: Property, propertyKind?: PropertyKind): FactItem[] {
+  const items: FactItem[] = [];
+
   switch (propertyKind) {
     case "land":
-      return [
-        { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
-      ];
+      if (property.facts.zoningLabel) items.push({ label: "Use zone", value: property.facts.zoningLabel });
+      break;
     case "apartment_unit":
-      return [
-        { label: "Year built", value: property.facts.yearBuilt ? String(property.facts.yearBuilt) : "Unknown" },
-      ];
+      if (property.facts.yearBuilt) items.push({ label: "Year built", value: String(property.facts.yearBuilt) });
+      break;
     case "apartment_building":
     case "commercial_building":
-      return [
-        { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
-      ];
+      if (property.facts.zoningLabel) items.push({ label: "Use zone", value: property.facts.zoningLabel });
+      break;
     case "commercial_unit":
-      return [
-        { label: "Use zone", value: property.facts.zoningLabel ?? "Unknown" },
-      ];
+      if (property.facts.zoningLabel) items.push({ label: "Use zone", value: property.facts.zoningLabel });
+      break;
     case "house":
     default:
-      return [
-        { label: "Parcel", value: formatArea(property.facts.landAreaSqm) },
-        { label: "Year built", value: property.facts.yearBuilt ? String(property.facts.yearBuilt) : "Unknown" },
-      ];
+      if (property.facts.landAreaSqm) items.push({ label: "Parcel", value: formatAreaSqm(property.facts.landAreaSqm) });
+      if (property.facts.yearBuilt) items.push({ label: "Year built", value: String(property.facts.yearBuilt) });
+      break;
   }
+
+  return items;
 }
 
 function buildDetailItems(property: Property, propertyKind?: PropertyKind): DetailItem[] {
