@@ -609,7 +609,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 12px;
   padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -656,7 +656,7 @@
 .disputeLink {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   color: var(--foreground-muted);
   font-size: 0.8rem;
   font-weight: 500;
