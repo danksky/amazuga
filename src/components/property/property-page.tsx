@@ -518,11 +518,23 @@ export function PropertyPage({
                 <div className={styles.contactIdentity}>
                   <div className={styles.contactDetailRow}>
                     <div className={styles.contactDetailLabel}>Agent:</div>
-                    <div className={styles.contactDetailValue}>{contactName ?? agency?.businessName ?? "Owner"}</div>
+                    <div className={styles.contactDetailValue}>
+                      {agency && listing?.agentUserId ? (
+                        <Link className={styles.contactLink} href={routes.public.agent(listing.agentUserId)}>
+                          {contactName ?? agency.businessName}
+                        </Link>
+                      ) : (contactName ?? agency?.businessName ?? "Owner")}
+                    </div>
                   </div>
                   <div className={styles.contactDetailRow}>
                     <div className={styles.contactDetailLabel}>Agency:</div>
-                    <div className={styles.contactDetailValue}>{contactRoleLabel ?? "For sale by owner"}</div>
+                    <div className={styles.contactDetailValue}>
+                      {agency ? (
+                        <Link className={styles.contactLink} href={routes.public.agency(agency.slug)}>
+                          {agency.businessName}
+                        </Link>
+                      ) : "For sale by owner"}
+                    </div>
                   </div>
                 </div>
                 <div className={styles.ctaGroup}>

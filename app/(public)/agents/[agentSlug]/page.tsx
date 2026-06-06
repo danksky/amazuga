@@ -1,4 +1,7 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { notFound } from "next/navigation";
+
+import { AgentProfilePage } from "@/components/profile/agent-profile-page";
+import { getPublicAgentPageData } from "@/lib/server/agency-agent-pages";
 
 interface AgentPageProps {
   params: Promise<{ agentSlug: string }>;
@@ -6,12 +9,11 @@ interface AgentPageProps {
 
 export default async function AgentPage({ params }: AgentPageProps) {
   const { agentSlug } = await params;
+  const data = await getPublicAgentPageData(agentSlug);
 
-  return (
-    <PlaceholderPage
-      eyebrow="Agent"
-      title={agentSlug.replaceAll("-", " ")}
-      description="Agent profiles will be public and tied to approved agency membership and active listing activity."
-    />
-  );
+  if (!data) {
+    notFound();
+  }
+
+  return <AgentProfilePage data={data} />;
 }

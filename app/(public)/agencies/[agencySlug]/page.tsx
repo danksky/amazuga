@@ -1,4 +1,7 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { notFound } from "next/navigation";
+
+import { AgencyProfilePage } from "@/components/profile/agency-profile-page";
+import { getPublicAgencyPageData } from "@/lib/server/agency-agent-pages";
 
 interface AgencyPageProps {
   params: Promise<{ agencySlug: string }>;
@@ -6,12 +9,11 @@ interface AgencyPageProps {
 
 export default async function AgencyPage({ params }: AgencyPageProps) {
   const { agencySlug } = await params;
+  const data = await getPublicAgencyPageData(agencySlug);
 
-  return (
-    <PlaceholderPage
-      eyebrow="Agency"
-      title={agencySlug.replaceAll("-", " ")}
-      description="Agency pages will show approved agency details, active properties, and a request-to-join path for eligible agents."
-    />
-  );
+  if (!data) {
+    notFound();
+  }
+
+  return <AgencyProfilePage data={data} />;
 }
