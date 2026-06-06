@@ -29,6 +29,7 @@ export interface BrowseMapCard {
   bedrooms?: number;
   bathrooms?: number;
   areaSqm?: number;
+  landAreaSqm?: number;
   locationSource?: string;
 }
 
@@ -63,6 +64,7 @@ interface BrowseMapRow {
   bedrooms: number | string | null;
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
+  representative_size: number | string | null;
   hero_image_url: string | null;
 }
 
@@ -180,6 +182,7 @@ export async function getBrowseMapData(params: {
         property_profile.bedrooms,
         property_profile.bathrooms,
         property_profile.interior_area_sqm,
+        p.representative_size,
         (
           SELECT li.image_url
           FROM listing_image li
@@ -249,6 +252,7 @@ export async function getBrowseMapData(params: {
       bedrooms: toNumber(row.bedrooms),
       bathrooms: toNumber(row.bathrooms),
       areaSqm: toNumber(row.interior_area_sqm),
+      landAreaSqm: toNumber(row.representative_size),
       locationSource: row.location_source ?? undefined,
     });
 

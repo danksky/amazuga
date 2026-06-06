@@ -45,17 +45,37 @@
   background: var(--surface-muted);
 }
 
-.mediaBadge {
+.splitBadge {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 2;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--foreground-muted);
-  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: stretch;
+  font-size: 0.72rem;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-radius: 999px;
+  outline: 1.5px solid rgba(255, 255, 255, 0.75);
+}
+
+.splitBadgeType {
+  padding: 4px 18px 4px 9px;
+  background: #00a1de;
+  color: #ffffff;
+  border-radius: 999px 0 0 999px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.splitBadgeState {
+  padding: 4px 9px 4px 18px;
+  margin-left: -10px;
+  background: #fad201;
+  color: #000000;
+  border-radius: 0 999px 999px 0;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%);
 }
 
 .mediaShapePrimary,
@@ -107,11 +127,34 @@
   margin-bottom: 6px;
 }
 
-.facts,
 .meta {
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--foreground-muted);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+}
+
+.factGrid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: start;
+  gap: 2px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.factLabel {
+  color: var(--foreground-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.factValue {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .title {
