@@ -212,6 +212,12 @@
 .hintWarn { color: #8a4b09; }
 .hintOk   { color: #2f6b2f; }
 
+.optionalTag {
+  font-weight: 400;
+  color: var(--foreground-muted);
+  font-size: 0.88em;
+}
+
 /* ─── Parcel summary card ─── */
 
 .parcelCard {
