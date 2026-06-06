@@ -4,15 +4,26 @@
  *
  * Usage:
  *   node scripts/import-listing.mjs path/to/listing.json [--dry-run]
+ *   node scripts/import-listing.mjs path/to/listing.json --photos-only <listing-id>
+ *
+ * --dry-run
+ *   Validates the spec and resolves the parcel (UPI mode) without writing anything.
+ *
+ * --photos-only <listing-id>
+ *   Skips DB record creation entirely. Uploads photos from the JSON spec to an
+ *   already-existing listing and activates it. Use this to recover from a run
+ *   where the listing record was created but photo uploads failed mid-way.
+ *   Aborts if the listing already has images (use --force to override).
  *
  * Photos in the JSON are resolved relative to the directory containing listing.json.
  * See scripts/listing-example.json for the full format.
  *
  * Reads config from .env.infra.local and .env.local (same sources as the app):
- *   DATABASE_URL_PREVIEW          — Postgres connection string
- *   LISTING_IMAGE_UPLOAD_URL      — R2/Cloudflare Worker upload endpoint
+ *   DATABASE_URL_PREVIEW           — Postgres connection string
+ *   LISTING_IMAGE_UPLOAD_URL       — R2/Cloudflare Worker upload endpoint
  *   LISTING_IMAGES_PUBLIC_BASE_URL — CDN public base URL
- *   LISTING_IMAGE_UPLOAD_SECRET   — HMAC signing secret for upload tokens
+ *   LISTING_IMAGE_UPLOAD_SECRET    — HMAC signing secret for upload tokens
+ *   LISTING_IMAGE_UPLOAD_ORIGIN    — Origin header for upload worker (default: http://localhost:3001)
  */
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
@@ -363,16 +374,139 @@ async function createUpiListing(spec, agent, client) {
   return { listingId, assetPublicId: parcel.public_id };
 }
 
+// ─── Photos-only recovery path ────────────────────────────────────────────────
+
+async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
+  // Resolve photo paths from the spec.
+  const photoPaths = (spec.photos ?? []).map((rel) => resolve(listingDir, rel));
+  if (photoPaths.length === 0) throw new Error("No photos in spec — nothing to upload.");
+  const missing = photoPaths.filter((fp) => !existsSync(fp));
+  if (missing.length > 0) throw new Error(`Missing photo files:\n  ${missing.join("\n  ")}`);
+
+  // Look up the listing + agent.
+  const listingResult = await pool.query(
+    `SELECT l.id, l.status, l.agent_user_id, l.asking_price_rwf,
+            pa.public_id AS asset_public_id
+     FROM listing l
+     JOIN property_asset pa ON pa.id = l.property_asset_id
+     WHERE l.id = $1`,
+    [listingId],
+  );
+  if (!listingResult.rows.length) throw new Error(`Listing not found: ${listingId}`);
+  const listing = listingResult.rows[0];
+
+  // Check for existing images.
+  const imgCountResult = await pool.query(
+    `SELECT COUNT(*) AS n FROM listing_image WHERE listing_id = $1`,
+    [listingId],
+  );
+  const existingCount = Number(imgCountResult.rows[0].n);
+  if (existingCount > 0 && !force) {
+    throw new Error(
+      `Listing ${listingId} already has ${existingCount} image(s).\n` +
+      `  Pass --force to append photos anyway.`,
+    );
+  }
+  if (existingCount > 0) {
+    console.log(`  ⚠ Appending to ${existingCount} existing image(s) (--force)`);
+  }
+
+  console.log(`  Listing : ${listingId}  (${listing.status})`);
+  console.log(`  Asset   : /property/${listing.asset_public_id}`);
+  console.log(`  Photos  : ${photoPaths.length}\n`);
+  console.log(`  Uploading photos...`);
+
+  for (let i = 0; i < photoPaths.length; i++) {
+    const photoPath = photoPaths[i];
+    const baseName  = photoPath.split("/").pop() ?? `photo-${i + 1}.jpg`;
+    const ct        = contentTypeFromPath(photoPath);
+    const intent    = createUploadIntent({ listingId, userId: listing.agent_user_id, contentType: ct, fileName: baseName });
+
+    const fileBuffer = readFileSync(photoPath);
+    const formData   = new FormData();
+    formData.append("token", intent.token);
+    formData.append("file", new Blob([fileBuffer], { type: ct }), baseName);
+
+    const uploadRes = await fetch(intent.uploadUrl, {
+      method: "POST",
+      body: formData,
+      headers: { Origin: UPLOAD_ORIGIN },
+    });
+    if (!uploadRes.ok) {
+      const body = await uploadRes.text().catch(() => `HTTP ${uploadRes.status}`);
+      throw new Error(`Photo upload failed for ${baseName}: ${body}`);
+    }
+    const uploaded = await uploadRes.json();
+
+    const orderResult = await pool.query(
+      `SELECT COALESCE(MAX(sort_order) + 1, 0) AS next_order FROM listing_image WHERE listing_id = $1`,
+      [listingId],
+    );
+    await pool.query(
+      `INSERT INTO listing_image (
+        id, listing_id, sort_order, image_url, storage_key,
+        content_type, width, height, file_size_bytes,
+        uploaded_by_user_id, status, seed_source
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'ready','script_import_v1')`,
+      [
+        genImageId(), listingId, Number(orderResult.rows[0]?.next_order ?? i),
+        uploaded.imageUrl, uploaded.storageKey,
+        uploaded.contentType ?? ct,
+        uploaded.width ?? null, uploaded.height ?? null,
+        uploaded.fileSizeBytes ?? fileBuffer.length,
+        listing.agent_user_id,
+      ],
+    );
+    console.log(`  ✓ photo ${i + 1}/${photoPaths.length} → ${uploaded.imageUrl}`);
+  }
+
+  // Activate if requested.
+  if (spec.activate) {
+    if (spec.asking_price_rwf == null) {
+      console.log(`\n  ⚠ asking_price_rwf not set — listing left as draft.`);
+    } else {
+      await pool.query(
+        `UPDATE listing SET status='active', published_at=NOW(), asking_price_rwf=$2 WHERE id=$1`,
+        [listingId, spec.asking_price_rwf],
+      );
+      await pool.query(
+        `INSERT INTO listing_price_history (id, listing_id, price_rwf, changed_by_user_id, campaign_index)
+         VALUES ($1,$2,$3,$4,1)`,
+        [genPriceHistoryId(), listingId, spec.asking_price_rwf, listing.agent_user_id],
+      );
+      console.log(`\n  ✓ Activated at ${Number(spec.asking_price_rwf).toLocaleString()} RWF`);
+    }
+  }
+
+  console.log(`\n✅ Done!`);
+  console.log(`   Property : /property/${listing.asset_public_id}`);
+  console.log(`   Listing  : ${listingId}\n`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function run() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
-  const filePath = args.find((a) => !a.startsWith("--"));
+  const force   = args.includes("--force");
+
+  // --photos-only <listing-id>
+  const photosOnlyIdx = args.indexOf("--photos-only");
+  const photosOnly    = photosOnlyIdx !== -1;
+  const photosOnlyId  = photosOnly ? args[photosOnlyIdx + 1] : null;
+
+  if (photosOnly && (!photosOnlyId || photosOnlyId.startsWith("--"))) {
+    console.error("Usage: node scripts/import-listing.mjs path/to/listing.json --photos-only <listing-id>");
+    process.exit(1);
+  }
+
+  const filePath = args.find((a) => !a.startsWith("--") && a !== photosOnlyId);
 
   if (!filePath) {
     console.error(
-      "Usage: node scripts/import-listing.mjs path/to/listing.json [--dry-run]",
+      "Usage:\n" +
+      "  node scripts/import-listing.mjs path/to/listing.json [--dry-run]\n" +
+      "  node scripts/import-listing.mjs path/to/listing.json --photos-only <listing-id> [--force]",
     );
     process.exit(1);
   }
@@ -387,6 +521,15 @@ async function run() {
   const listingDir = dirname(absPath);
 
   const mode = spec.upi ? "UPI" : "direct";
+
+  if (photosOnly) {
+    console.log(`\n📸 Photos-only mode for listing: ${photosOnlyId}${force ? "  [--force]" : ""}`);
+    console.log(`   Spec: ${absPath}\n`);
+    await uploadPhotosToExisting({ spec, listingDir, listingId: photosOnlyId, force });
+    await pool.end();
+    return;
+  }
+
   console.log(`\n📋 Importing listing from: ${absPath}${dryRun ? "  [DRY RUN]" : ""}`);
   console.log(`   Mode: ${mode}${spec.upi ? `  (${spec.upi})` : ""}\n`);
 
