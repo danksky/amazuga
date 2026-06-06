@@ -537,10 +537,13 @@ async function run() {
 
   // ── Look up agent ──────────────────────────────────────────────────────────
 
+  // Normalize phone: try as-given and also stripped of leading '+', since
+  // the DB may store either format depending on how the user signed up.
+  const phoneBare = spec.agent_phone.replace(/^\+/, "");
   const agentResult = await pool.query(
     `SELECT id, full_name, phone, roles FROM app_user
-     WHERE phone = $1 AND status = 'active' LIMIT 1`,
-    [spec.agent_phone],
+     WHERE (phone = $1 OR phone = $2) AND status = 'active' LIMIT 1`,
+    [spec.agent_phone, phoneBare],
   );
   if (!agentResult.rows.length) {
     throw new Error(
