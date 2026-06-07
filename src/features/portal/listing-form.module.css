@@ -245,8 +245,24 @@
   display: none;
 }
 
+.mediaCardActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mediaCardActions .mediaRemove {
+  margin-left: auto;
+}
+
+.mediaMove {
+  min-width: 46px;
+  padding: 0;
+}
+
 .mediaButton,
-.mediaRemove {
+.mediaRemove,
+.mediaMove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -265,12 +281,15 @@
 .mediaButton:hover,
 .mediaButton:focus-visible,
 .mediaRemove:hover,
-.mediaRemove:focus-visible {
+.mediaRemove:focus-visible,
+.mediaMove:hover,
+.mediaMove:focus-visible {
   background: var(--surface-muted);
 }
 
 .mediaButton:disabled,
-.mediaRemove:disabled {
+.mediaRemove:disabled,
+.mediaMove:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }

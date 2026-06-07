@@ -742,6 +742,66 @@ export async function addListingImageToDb(input: {
     : null;
 }
 
+export async function swapListingImageSortOrders(input: {
+  userId: string;
+  listingId: string;
+  imageIdA: string;
+  imageIdB: string;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+
+  if (!listing) {
+    throw new Error("Listing not found or inaccessible");
+  }
+
+  const client = await getPgPool().connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const rows = await client.query<{ id: string; sort_order: number | string }>(
+      `
+        SELECT id, sort_order
+        FROM listing_image
+        WHERE id = ANY($1)
+          AND listing_id = $2
+          AND COALESCE(status, 'ready') NOT IN ('pending_delete', 'delete_failed')
+        FOR UPDATE
+      `,
+      [[input.imageIdA, input.imageIdB], input.listingId],
+    );
+
+    if (rows.rowCount !== 2) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+
+    const [rowA, rowB] = rows.rows[0].id === input.imageIdA ? rows.rows : [rows.rows[1], rows.rows[0]];
+    const orderA = toNumber(rowA.sort_order) ?? 0;
+    const orderB = toNumber(rowB.sort_order) ?? 0;
+
+    // The unique constraint is non-deferrable so we can't swap in one statement.
+    // Step through a guaranteed-free slot (MAX + 1) so no intermediate state collides.
+    const maxResult = await client.query<{ max_order: number | string | null }>(
+      `SELECT MAX(sort_order) AS max_order FROM listing_image WHERE listing_id = $1`,
+      [input.listingId],
+    );
+    const tempOrder = (toNumber(maxResult.rows[0]?.max_order) ?? 0) + 1;
+
+    await client.query(`UPDATE listing_image SET sort_order = $1 WHERE id = $2`, [tempOrder, rowA.id]);
+    await client.query(`UPDATE listing_image SET sort_order = $1 WHERE id = $2`, [orderA, rowB.id]);
+    await client.query(`UPDATE listing_image SET sort_order = $1 WHERE id = $2`, [orderB, rowA.id]);
+
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function queueListingImageDeletion(input: {
   userId: string;
   listingId: string;

@@ -236,6 +236,46 @@ export function ListingPhotoManager({
     }
   }
 
+  async function handleMove(imageId: string, direction: "up" | "down") {
+    const index = images.findIndex((img) => img.id === imageId);
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+
+    if (swapIndex < 0 || swapIndex >= images.length) {
+      return;
+    }
+
+    const swapTargetId = images[swapIndex].id;
+    const next = [...images];
+    const thisOrder = next[index].sortOrder;
+    const thatOrder = next[swapIndex].sortOrder;
+
+    next[index] = { ...next[index], sortOrder: thatOrder };
+    next[swapIndex] = { ...next[swapIndex], sortOrder: thisOrder };
+    next.sort((a, b) => a.sortOrder - b.sortOrder || 0);
+    setImages(next);
+
+    setError(null);
+    setStatus(null);
+    setPending(true);
+
+    try {
+      const res = await fetch(`/api/portal/listings/${encodeURIComponent(listingId)}/images/${encodeURIComponent(imageId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ swapWithImageId: swapTargetId }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Could not reorder photos.");
+      }
+    } catch (moveError) {
+      setImages(images);
+      setError(moveError instanceof Error ? moveError.message : "Could not reorder photos.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function handleRemove(imageId: string) {
     setError(null);
     setStatus(null);
@@ -317,14 +357,34 @@ export function ListingPhotoManager({
                 </div>
                 <div className={styles.mediaCardStatus}>{image.status}</div>
               </div>
-              <button
-                className={styles.mediaRemove}
-                disabled={pending}
-                onClick={() => handleRemove(image.id)}
-                type="button"
-              >
-                Remove
-              </button>
+              <div className={styles.mediaCardActions}>
+                <button
+                  aria-label="Move photo up"
+                  className={styles.mediaMove}
+                  disabled={pending || index === 0}
+                  onClick={() => handleMove(image.id, "up")}
+                  type="button"
+                >
+                  ↑
+                </button>
+                <button
+                  aria-label="Move photo down"
+                  className={styles.mediaMove}
+                  disabled={pending || index === images.length - 1}
+                  onClick={() => handleMove(image.id, "down")}
+                  type="button"
+                >
+                  ↓
+                </button>
+                <button
+                  className={styles.mediaRemove}
+                  disabled={pending}
+                  onClick={() => handleRemove(image.id)}
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
             </article>
           ))}
         </div>
