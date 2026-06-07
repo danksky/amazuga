@@ -238,8 +238,8 @@ export function TopNav({ currentUser, isAdmin = false, marketingLinks, signedInL
                     <Link className={styles.mobileMenuLink} href={routes.auth.login} onClick={() => setMenuOpen(false)}>
                       Sign in
                     </Link>
-                    <Link href={routes.auth.signup} onClick={() => setMenuOpen(false)}>
-                      <Button variant="secondary">Create account</Button>
+                    <Link className={styles.mobileMenuLink} href={routes.auth.signup} onClick={() => setMenuOpen(false)}>
+                      Create account
                     </Link>
                   </>
                 )}
