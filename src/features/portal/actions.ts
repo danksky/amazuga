@@ -331,6 +331,7 @@ export async function submitListingEditAction(formData: FormData) {
         askingPrice: getOptionalNumber(formData, "askingPrice"),
         locationHidden: formData.get("locationHidden") === "true" ? true : formData.get("locationHidden") === "false" ? false : undefined,
       });
+      generateAndStoreOgImage(listingId).catch(console.error);
     }
 
     const status = intent === "publish" ? "active" : "archived";
@@ -367,6 +368,7 @@ export async function submitListingEditAction(formData: FormData) {
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
+  generateAndStoreOgImage(listing.listingId).catch(console.error);
   redirect(redirectHref);
 }
 

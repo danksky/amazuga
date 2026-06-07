@@ -1,12 +1,12 @@
 import "server-only";
 
+import { createHmac, randomUUID } from "node:crypto";
 import fs from "fs/promises";
 import path from "path";
 
 import sharp from "sharp";
 
 import { getPgPool } from "@/lib/server/postgres";
-import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 // ---------- canvas geometry (mirrors property-page.module.css gallery ratios) ----------
 
@@ -14,7 +14,6 @@ const OG_W = 1200;
 const OG_H = 630;
 const GAP = 2;
 const PRIMARY_RATIO = 1.45 / (1.45 + 0.85);
-const OG_BUCKET = "og-images";
 
 // ---------- image compositing ----------
 
@@ -315,18 +314,45 @@ async function downloadBuffer(url: string): Promise<Buffer> {
 }
 
 async function storeOgImage(listingId: string, pngBuffer: Buffer): Promise<string> {
-  const supabase = await createSupabaseServiceClient();
-  const filePath = `${listingId}.png`;
+  const uploadUrl = process.env.LISTING_IMAGE_UPLOAD_URL?.trim();
+  const signingSecret = process.env.LISTING_IMAGE_UPLOAD_SECRET?.trim();
 
-  const { error } = await supabase.storage.from(OG_BUCKET).upload(filePath, pngBuffer, {
+  if (!uploadUrl || !signingSecret) throw new Error("Listing image upload is not configured");
+
+  const payload = {
+    version: 1,
+    intentId: randomUUID(),
+    listingId,
+    userId: "system",
     contentType: "image/png",
-    upsert: true,
-  });
+    fileName: "og-image.png",
+    maxBytes: 4 * 1024 * 1024,
+    exp: Date.now() + 5 * 60 * 1000,
+  };
 
-  if (error) throw new Error(`OG image storage upload failed: ${error.message}`);
+  const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = createHmac("sha256", signingSecret).update(encodedPayload).digest("base64url");
+  const token = `${encodedPayload}.${signature}`;
 
-  const { data } = supabase.storage.from(OG_BUCKET).getPublicUrl(filePath);
-  return data.publicUrl;
+  // Derive allowed origin from upload hostname: uploads.amazuga.com → https://amazuga.com
+  const uploadHost = new URL(uploadUrl).hostname;
+  const origin = `https://${uploadHost.split(".").slice(-2).join(".")}`;
+
+  const form = new FormData();
+  form.append("token", token);
+  const ab = pngBuffer.buffer.slice(pngBuffer.byteOffset, pngBuffer.byteOffset + pngBuffer.byteLength) as ArrayBuffer;
+  form.append("file", new Blob([ab], { type: "image/png" }), "og-image.png");
+
+  const res = await fetch(uploadUrl, { method: "POST", body: form, headers: { Origin: origin } });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`OG image upload failed: ${res.status} ${body}`);
+  }
+
+  const data = await res.json() as { imageUrl?: string };
+  if (!data.imageUrl) throw new Error("OG image upload returned no imageUrl");
+  return data.imageUrl;
 }
 
 async function saveOgImageUrl(listingId: string, url: string): Promise<void> {
