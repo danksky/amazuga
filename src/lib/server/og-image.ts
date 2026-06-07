@@ -20,7 +20,7 @@ const PRIMARY_RATIO = 1.45 / (1.45 + 0.85);
 async function coverCrop(input: Buffer, w: number, h: number): Promise<Buffer> {
   return sharp(input)
     .resize(w, h, { fit: "cover", position: "centre" })
-    .png()
+    .jpeg({ quality: 92 })
     .toBuffer();
 }
 
@@ -226,7 +226,7 @@ export async function buildOgImageBuffer(params: OgImageParams): Promise<Buffer>
       { input: svgBuf, top: 0, left: 0 },
       { input: logoBuf, top: OG_H - logoH - pad, left: pad },
     ])
-    .png()
+    .jpeg({ quality: 92 })
     .toBuffer();
 }
 
@@ -324,8 +324,8 @@ async function storeOgImage(listingId: string, pngBuffer: Buffer): Promise<strin
     intentId: randomUUID(),
     listingId,
     userId: "system",
-    contentType: "image/png",
-    fileName: "og-image.png",
+    contentType: "image/jpeg",
+    fileName: "og-image.jpg",
     maxBytes: 4 * 1024 * 1024,
     exp: Date.now() + 5 * 60 * 1000,
   };
@@ -341,7 +341,7 @@ async function storeOgImage(listingId: string, pngBuffer: Buffer): Promise<strin
   const form = new FormData();
   form.append("token", token);
   const ab = pngBuffer.buffer.slice(pngBuffer.byteOffset, pngBuffer.byteOffset + pngBuffer.byteLength) as ArrayBuffer;
-  form.append("file", new Blob([ab], { type: "image/png" }), "og-image.png");
+  form.append("file", new Blob([ab], { type: "image/jpeg" }), "og-image.jpg");
 
   const res = await fetch(uploadUrl, { method: "POST", body: form, headers: { Origin: origin } });
 
