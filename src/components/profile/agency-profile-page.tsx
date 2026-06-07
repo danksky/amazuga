@@ -1,4 +1,6 @@
-import { Fragment } from "react";
+"use client";
+
+import { Fragment, useState } from "react";
 
 import type { PublicAgencyPageData } from "@/lib/server/agency-agent-pages";
 
@@ -11,6 +13,22 @@ interface AgencyProfilePageProps {
 
 export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
   const { agency, listings } = data;
+  const [shareCopied, setShareCopied] = useState(false);
+
+  async function shareAgency() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: agency.businessName, url });
+      } catch {
+        // user cancelled or share failed — ignore
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  }
 
   const metaItems: { label: string; href: string }[] = [];
   if (agency.whatsappPhone) {
@@ -21,7 +39,7 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
     metaItems.push({ label: "Find us", href: agency.googleMapsUrl });
   }
 
-  const hasAnyMeta = metaItems.length > 0 || !!agency.websiteUrl || !!agency.instagramUrl;
+  const hasAnyMeta = true;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -70,6 +88,10 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
                 Instagram
               </a>
             ) : null}
+            <button className={styles.socialButton} onClick={shareAgency} type="button">
+              <i className={shareCopied ? "bi bi-check2" : "bi bi-share"} />
+              {shareCopied ? "Link copied!" : "Share"}
+            </button>
           </div>
         ) : null}
       </div>
