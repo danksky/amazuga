@@ -146,13 +146,8 @@ function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
       <stop offset="0%" stop-color="rgba(0,0,0,0.72)"/>
       <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
     </linearGradient>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
-      <stop offset="100%" stop-color="rgba(0,0,0,0.78)"/>
-    </linearGradient>
   </defs>
   <rect x="0" y="0" width="${W}" height="${H * 0.45}" fill="url(#tg)"/>
-  <rect x="0" y="${H * 0.55}" width="${W}" height="${H * 0.45}" fill="url(#bg)"/>
   <path d="${yellowPath}" fill="#fad201" stroke="none"/>
   <path d="${bluePath}" fill="#00a1de" stroke="none"/>
   <text x="${bx + BPX}" y="${by + BH / 2}"
@@ -204,7 +199,11 @@ async function buildOgImageBuffer({ photoBuffers, priceRwf, marketingType, prope
   const logoMeta = await sharp(logoRaw).metadata();
   const logoH = 56;
   const logoW = Math.round((logoMeta.width ?? 200) * (logoH / (logoMeta.height ?? 56)));
-  const logoBuf = await sharp(logoRaw).resize(logoW, logoH).png().toBuffer();
+  const logoResized = await sharp(logoRaw).resize(logoW, logoH).ensureAlpha().png().toBuffer();
+  const alphaHalf = await sharp({
+    create: { width: logoW, height: logoH, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0.5 } },
+  }).png().toBuffer();
+  const logoBuf = await sharp(logoResized).composite([{ input: alphaHalf, blend: "dest-in" }]).png().toBuffer();
 
   const collageBuf = await buildCollage(photoBuffers);
   const svgBuf = Buffer.from(buildOverlaySvg(priceLabel, factsLabel, propertyType, marketingType));

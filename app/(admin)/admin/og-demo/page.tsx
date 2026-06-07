@@ -100,12 +100,6 @@ function drawGradientOverlays(ctx: CanvasRenderingContext2D, w: number, h: numbe
   topGrad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, w, h * 0.45);
-
-  const bottomGrad = ctx.createLinearGradient(0, h * 0.55, 0, h);
-  bottomGrad.addColorStop(0, "rgba(0,0,0,0)");
-  bottomGrad.addColorStop(1, "rgba(0,0,0,0.78)");
-  ctx.fillStyle = bottomGrad;
-  ctx.fillRect(0, h * 0.55, w, h * 0.45);
 }
 
 // Replicates the CSS split badge:
@@ -218,10 +212,12 @@ function drawTextAndLogo(
 
   ctx.restore();
 
-  // Logo — bottom left
+  // Logo — bottom left, 50% opacity
   const logoH = 56;
   const logoW = Math.round(logo.naturalWidth * (logoH / logo.naturalHeight));
+  ctx.globalAlpha = 0.5;
   ctx.drawImage(logo, pad, h - logoH - pad, logoW, logoH);
+  ctx.globalAlpha = 1.0;
 }
 
 async function renderOgCanvas(
