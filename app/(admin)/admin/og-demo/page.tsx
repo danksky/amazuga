@@ -133,7 +133,7 @@ function drawSplitBadge(
 
   const blueW = PAD_X + typeW + PAD_X; // content width (without diagonal)
   const yellowX = x + blueW;           // yellow starts where blue content ends (bottom junction)
-  const yellowW = D + PAD_X + stateW + PAD_X - 12; // diagonal overhang + content
+  const yellowW = D + PAD_X + stateW + PAD_X; // diagonal overhang + content
 
   // 1. Yellow (drawn first, behind blue)
   //    Trapezoid: top-left at (yellowX + D, y), bottom-left at (yellowX, y+H), right side rounded

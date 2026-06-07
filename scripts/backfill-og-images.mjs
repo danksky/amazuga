@@ -113,7 +113,7 @@ function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
   const blueBottomRight = bx + blueContentW;
   const yellowX = blueBottomRight;
   const yellowTopLeft = yellowX + BD;
-  const yellowEndX = yellowTopLeft + approxW(stateLabel, BF, "700") + BPX * 2 - 12;
+  const yellowEndX = yellowTopLeft + approxW(stateLabel, BF, "700") + BPX * 2;
 
   const bluePath = [
     `M ${bx + BR} ${by}`,

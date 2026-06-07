@@ -104,7 +104,7 @@ function buildOverlaySvg(
   const blueBottomRight = bx + blueContentW;
   const yellowX = blueBottomRight;
   const yellowTopLeft = yellowX + BD;
-  const yellowEndX = yellowTopLeft + approxW(stateLabel, BF, "700") + BPX * 2 - 12;
+  const yellowEndX = yellowTopLeft + approxW(stateLabel, BF, "700") + BPX * 2;
 
   // Blue: left-pill (two 90° quarter arcs) + diagonal right edge
   const bluePath = [
