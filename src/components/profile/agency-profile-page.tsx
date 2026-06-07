@@ -20,19 +20,18 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
   if (agency.websiteUrl) {
     metaItems.push({ label: "Website", href: agency.websiteUrl });
   }
-  if (agency.instagramUrl) {
-    metaItems.push({ label: "Instagram", href: agency.instagramUrl });
-  }
   if (agency.googleMapsUrl) {
     metaItems.push({ label: "Find us", href: agency.googleMapsUrl });
   }
+
+  const hasAnyMeta = metaItems.length > 0 || !!agency.instagramUrl;
 
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.header}>
         <div className={styles.eyebrow}>Agency</div>
         <h1 className={styles.title}>{agency.businessName}</h1>
-        {metaItems.length > 0 ? (
+        {hasAnyMeta ? (
           <div className={styles.meta}>
             {metaItems.map((item, i) => (
               <Fragment key={item.href}>
@@ -47,6 +46,17 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
                 </a>
               </Fragment>
             ))}
+            {agency.instagramUrl ? (
+              <a
+                className={styles.instagramButton}
+                href={agency.instagramUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <i className="bi bi-instagram" />
+                Instagram
+              </a>
+            ) : null}
           </div>
         ) : null}
       </div>
