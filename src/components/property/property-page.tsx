@@ -23,6 +23,7 @@ interface PropertyPageProps {
   statusMessage?: string;
   claimState?: "claimable" | "pending" | "owned";
   canCreateListing?: boolean;
+  isListingOwner?: boolean;
 }
 
 interface FactItem {
@@ -294,6 +295,7 @@ export function PropertyPage({
   statusMessage,
   claimState = "claimable",
   canCreateListing = false,
+  isListingOwner = false,
 }: PropertyPageProps) {
   const latestValuation = valuations[0];
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
@@ -495,6 +497,11 @@ export function PropertyPage({
 
         <div className={styles.rightRail}>
           <div className={`${styles.panel} ${styles.primaryInfoPanel}`}>
+            {isListingOwner && listing ? (
+              <Link href={routes.app.portalListingEdit(listing.id)} className={styles.editListingBtn} title="Edit listing">
+                <i className="bi bi-pencil" />
+              </Link>
+            ) : null}
             <div className={styles.metaBadgeRow}>
               <span className={styles.metaBadge}>
                 <span className={styles.metaBadgeType}>{behavior.kindLabel}</span>

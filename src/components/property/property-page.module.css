@@ -213,7 +213,28 @@
   padding: 24px;
 }
 
+.editListingBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  color: var(--foreground-muted);
+  font-size: 1rem;
+  transition: color 0.15s, background 0.15s;
+}
+
+.editListingBtn:hover {
+  color: var(--foreground);
+  background: var(--surface-hover, rgba(0, 0, 0, 0.06));
+}
+
 .primaryInfoPanel {
+  position: relative;
   display: grid;
   gap: 14px;
   padding: 24px;

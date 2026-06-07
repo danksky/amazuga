@@ -158,6 +158,7 @@ export default async function PropertySlugDetailsPage({ params, searchParams }: 
     <PropertyPage
       agency={propertyPageData.agency}
       canCreateListing={Boolean(currentUser && hasCapability(currentUser.roles, "create_listing"))}
+      isListingOwner={Boolean(currentUser && propertyPageData.listing && currentUser.id === propertyPageData.listing.agentUserId)}
       claimState={
         propertyRelationship?.ownership
           ? "owned"
