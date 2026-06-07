@@ -1,6 +1,8 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
+import { useTransition } from "react";
+
+import { Button } from "@/components/ui/button";
 
 export function ListingStatusButton({
   className,
@@ -11,15 +13,15 @@ export function ListingStatusButton({
   submitName,
   submitValue,
 }: {
-  className: string;
+  className?: string;
   currentStatus: "draft" | "active" | "inactive" | "archived";
   disabled?: boolean;
-  formAction?: string | ((formData: FormData) => void | Promise<void>);
+  formAction?: ((formData: FormData) => void | Promise<void>);
   nextStatus: "active" | "inactive" | "archived";
   submitName?: string;
   submitValue?: string;
 }) {
-  const { pending } = useFormStatus();
+  const [pending, startTransition] = useTransition();
 
   const idleLabel =
     currentStatus === "draft" && nextStatus === "active"
@@ -38,17 +40,23 @@ export function ListingStatusButton({
           ? "Deactivating..."
           : "Reactivating...";
 
+  function handleClick() {
+    if (!formAction) return;
+    const formData = new FormData();
+    if (submitName) formData.set(submitName, submitValue ?? "");
+    startTransition(() => formAction(formData));
+  }
+
   return (
-    <button
+    <Button
       aria-busy={pending}
       className={className}
       disabled={pending || disabledProp}
-      formAction={formAction}
-      name={submitName}
-      type="submit"
-      value={submitValue}
+      onClick={handleClick}
+      type="button"
+      variant="secondary"
     >
       {pending ? pendingLabel : idleLabel}
-    </button>
+    </Button>
   );
 }

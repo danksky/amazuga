@@ -506,7 +506,6 @@ export function ListingForm({
             ) : null}
             {mode === "edit" && listing?.status === "active" ? (
               <ListingStatusButton
-                className={styles.secondaryAction}
                 currentStatus="active"
                 formAction={setListingStatusAction}
                 nextStatus="inactive"
@@ -516,7 +515,6 @@ export function ListingForm({
             ) : null}
             {mode === "edit" && listing?.status === "inactive" ? (
               <ListingStatusButton
-                className={styles.secondaryAction}
                 currentStatus="inactive"
                 disabled={!canPublish}
                 formAction={setListingStatusAction}
