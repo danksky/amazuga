@@ -11,13 +11,24 @@
   margin-bottom: 20px;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.titleRow .title {
+  margin-bottom: 0;
+}
+
 .agencyLogo {
   display: block;
-  max-height: 72px;
-  max-width: 240px;
+  max-height: 52px;
+  max-width: 160px;
   width: auto;
   object-fit: contain;
-  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .eyebrow {
