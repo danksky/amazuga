@@ -1,4 +1,4 @@
-export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | "private_lister" | "direct_lister";
+export type Role = "user" | "agent" | "agency_manager" | "valuator" | "admin" | "private_lister";
 
 export type ListingStatus = "draft" | "active" | "inactive" | "archived";
 export type ListingVisibility = "public" | "unlisted" | "private";

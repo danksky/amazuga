@@ -267,7 +267,7 @@ export async function submitFsboDirectListingCreateAction(formData: FormData) {
     createOwnershipForUser: currentUser.id,
   });
 
-  await addRoleToUser(currentUser.id, "direct_lister");
+  await addRoleToUser(currentUser.id, "private_lister");
 
   revalidatePath(routes.app.portalProperties);
   redirect(routes.app.portalListingEdit(listing.listingId));
@@ -607,7 +607,7 @@ export async function submitNewDirectListingAction(
     return { type: "error", message: err instanceof Error ? err.message : "An unexpected error occurred." };
   }
 
-  await addRoleToUser(currentUser.id, "direct_lister");
+  await addRoleToUser(currentUser.id, "private_lister");
   revalidatePath(routes.app.portalProperties);
   redirect(routes.app.portalListingEdit(listing.listingId));
 }

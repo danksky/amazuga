@@ -24,6 +24,7 @@ interface PropertyPageProps {
   claimState?: "claimable" | "pending" | "owned";
   canCreateListing?: boolean;
   isListingOwner?: boolean;
+  isLoggedIn?: boolean;
 }
 
 interface FactItem {
@@ -296,6 +297,7 @@ export function PropertyPage({
   claimState = "claimable",
   canCreateListing = false,
   isListingOwner = false,
+  isLoggedIn = false,
 }: PropertyPageProps) {
   const latestValuation = valuations[0];
   const locationLabel = [property.location.village, property.location.cell, property.location.sector, property.location.district]
@@ -318,6 +320,7 @@ export function PropertyPage({
   const tertiaryImage = galleryImages[2];
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const closeGalleryButtonRef = useRef<HTMLButtonElement | null>(null);
   const propertyKind = inferPropertyKind(property);
   const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
@@ -338,6 +341,22 @@ export function PropertyPage({
     : undefined;
   const activeGalleryImage = galleryImages[activeGalleryIndex];
   const hasMultipleGalleryImages = galleryImages.length > 1;
+
+  async function shareProperty() {
+    const url = window.location.href;
+    const title = property.title;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch {
+        // user cancelled or share failed — ignore
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  }
 
   function openGalleryModal(imageIndex = 0) {
     setActiveGalleryIndex(imageIndex);
@@ -553,6 +572,9 @@ export function PropertyPage({
                   >
                     <i className="bi bi-whatsapp" />{" "}Inquire via WhatsApp
                   </a>
+                  <button className={styles.actionLinkSecondary} onClick={shareProperty} type="button">
+                    <i className={shareCopied ? "bi bi-check2" : "bi bi-share"} />{" "}{shareCopied ? "Link copied!" : "Share property"}
+                  </button>
                   <form action={toggleSavePropertyAction}>
                     <input name="propertyRouteId" type="hidden" value={propertyRouteId} />
                     <input name="propertyPath" type="hidden" value={propertyPath} />
@@ -577,6 +599,20 @@ export function PropertyPage({
                     </Link>
                   ) : null}
                 </div>
+                {!canCreateListing ? (
+                  <>
+                    <hr className={styles.separator} />
+                    <div className={styles.createListingNudge}>
+                      <p className={styles.createListingNudgeText}>Want to list your own property?</p>
+                      <Link
+                        className={styles.actionLinkSecondary}
+                        href={isLoggedIn ? routes.public.sell : `${routes.auth.signup}?next=${encodeURIComponent(routes.public.sell)}`}
+                      >
+                        <i className="bi bi-plus-circle" />{" "}Create your own listing
+                      </Link>
+                    </div>
+                  </>
+                ) : null}
               </>
             ) : (
               <div className={styles.ctaGroup}>

@@ -639,6 +639,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: normal;
+  cursor: pointer;
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
@@ -672,6 +673,18 @@
 .actionLinkSecondary:hover,
 .actionLinkSecondary:focus-visible {
   background: var(--surface-muted);
+}
+
+.createListingNudge {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.createListingNudgeText {
+  font-size: 0.8rem;
+  color: var(--foreground-muted);
+  margin: 0;
 }
 
 .disputeLink {
