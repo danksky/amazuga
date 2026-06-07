@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getListingImageUploadConfig } from "@/lib/server/listing-image-storage";
+import { generateAndStoreOgImage } from "@/lib/server/og-image";
 import { addListingImageToDb, getEditablePortalListingSummary } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
 
@@ -79,6 +80,9 @@ export async function POST(
   }
   revalidatePath(routes.app.portalListings);
   revalidatePath(routes.app.portalListingEdit(listingId));
+
+  // Regenerate OG image async — don't block the response
+  generateAndStoreOgImage(listingId).catch(console.error);
 
   return NextResponse.json({ image });
 }

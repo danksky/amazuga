@@ -49,9 +49,10 @@ export async function generateMetadata({ params }: { params: Promise<PropertySlu
   }
 
   const { property, listing } = propertyPageData;
-  const firstImageUrl = listing?.imageUrls[0];
-  const ogImage = firstImageUrl
-    ? [{ url: firstImageUrl }]
+  // Prefer the pre-composited OG image; fall back to raw first photo, then the site default.
+  const ogImageUrl = listing?.ogImageUrl ?? listing?.imageUrls[0];
+  const ogImage = ogImageUrl
+    ? [{ url: ogImageUrl, width: 1200, height: 630 }]
     : [{ url: "/opengraph-image.png", width: 1200, height: 630 }];
 
   const title = buildPropertyOgTitle(property, listing);
@@ -74,7 +75,7 @@ export async function generateMetadata({ params }: { params: Promise<PropertySlu
       card: "summary_large_image",
       title,
       description,
-      images: [firstImageUrl ?? "/opengraph-image.png"],
+      images: [ogImageUrl ?? "/opengraph-image.png"],
     },
   };
 }

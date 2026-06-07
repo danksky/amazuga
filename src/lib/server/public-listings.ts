@@ -61,6 +61,7 @@ interface ListingParcelRow {
   bathrooms: number | string | null;
   interior_area_sqm: number | string | null;
   year_built: number | string | null;
+  og_image_url: string | null;
 }
 
 interface ListingImageRow {
@@ -292,6 +293,7 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = []): L
     currency: row.currency,
     locationHidden: row.location_hidden ?? false,
     imageUrls,
+    ogImageUrl: row.og_image_url ?? undefined,
     createdAt: row.listing_created_at,
     updatedAt: row.listing_updated_at,
   };
@@ -490,7 +492,8 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
         property_profile.bedrooms,
         property_profile.bathrooms,
         property_profile.interior_area_sqm,
-        property_profile.year_built
+        property_profile.year_built,
+        l.og_image_url
       FROM listing l
       JOIN app_user agent
         ON agent.id = l.agent_user_id
@@ -600,7 +603,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
         property_profile.bedrooms,
         property_profile.bathrooms,
         property_profile.interior_area_sqm,
-        property_profile.year_built
+        property_profile.year_built,
+        l.og_image_url
       FROM target_parcel tp
       JOIN parcel_anchor_point_preview parcel_anchor
         ON parcel_anchor.parcel_id = tp.parcel_id

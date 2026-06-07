@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { attemptListingImageCleanupNow } from "@/lib/server/listing-image-cleanup";
+import { generateAndStoreOgImage } from "@/lib/server/og-image";
 import { getEditablePortalListingSummary, queueListingImageDeletion, swapListingImageSortOrders } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
 
@@ -45,6 +46,8 @@ export async function PATCH(
   if (!swapped) {
     return NextResponse.json({ error: "Listing images not found." }, { status: 404 });
   }
+
+  generateAndStoreOgImage(listingId).catch(console.error);
 
   return NextResponse.json({ swapped: true });
 }
@@ -108,6 +111,8 @@ export async function DELETE(
   }
   revalidatePath(routes.app.portalListings);
   revalidatePath(routes.app.portalListingEdit(listingId));
+
+  generateAndStoreOgImage(listingId).catch(console.error);
 
   return NextResponse.json({ deleted: true, cleanup });
 }

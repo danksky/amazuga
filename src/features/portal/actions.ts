@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
+import { generateAndStoreOgImage } from "@/lib/server/og-image";
 import { getPortalAccessState } from "@/lib/server/portal-access";
 import {
   addListingAccessGrantInDb,
@@ -296,6 +297,9 @@ export async function submitListingUpdateAction(formData: FormData) {
     propertyRouteId: listing.propertyRouteId,
     marketingType: listing.marketingType,
   });
+
+  generateAndStoreOgImage(listing.listingId).catch(console.error);
+
   redirect(getListingRedirectHref(access.hasAgencyPortalAccess));
 }
 
