@@ -133,7 +133,7 @@ function drawSplitBadge(
 
   const blueW = PAD_X + typeW + PAD_X; // content width (without diagonal)
   const yellowX = x + blueW;           // yellow starts where blue content ends (bottom junction)
-  const yellowW = D + PAD_X + stateW + PAD_X; // diagonal overhang + content
+  const yellowW = D + PAD_X + stateW + PAD_X - 12; // diagonal overhang + content
 
   // 1. Yellow (drawn first, behind blue)
   //    Trapezoid: top-left at (yellowX + D, y), bottom-left at (yellowX, y+H), right side rounded
@@ -196,8 +196,8 @@ function drawTextAndLogo(
   const badgeY = pad;
   const priceY = badgeY + BADGE_H + BADGE_PRICE_GAP;
 
-  const stateLabel = listingType === "rent" ? "for rent" : "for sale";
-  drawSplitBadge(ctx, propertyTypeLabel, stateLabel, pad, badgeY);
+  const stateLabel = listingType === "rent" ? "FOR RENT" : "FOR SALE";
+  drawSplitBadge(ctx, propertyTypeLabel.toUpperCase(), stateLabel, pad, badgeY);
 
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.5)";

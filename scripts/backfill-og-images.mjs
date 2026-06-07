@@ -104,7 +104,7 @@ function approxW(text, size, weight = "400") {
 
 function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
   const W = OG_W, H = OG_H, pad = 52;
-  const stateLabel = listingType === "rent" ? "for rent" : "for sale";
+  const stateLabel = listingType === "rent" ? "FOR RENT" : "FOR SALE";
   const BF = 22, BH = 35, BR = BH / 2, BD = 11, BPX = 20;
 
   const blueContentW = BPX + approxW(propertyType, BF, "700") + BPX;
@@ -113,7 +113,7 @@ function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
   const blueBottomRight = bx + blueContentW;
   const yellowX = blueBottomRight;
   const yellowTopLeft = yellowX + BD;
-  const yellowEndX = yellowTopLeft + approxW(stateLabel, BF, "700") + BPX * 2;
+  const yellowEndX = yellowTopLeft + approxW(stateLabel, BF, "700") + BPX * 2 - 12;
 
   const bluePath = [
     `M ${bx + BR} ${by}`,
@@ -158,7 +158,7 @@ function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
   <text x="${bx + BPX}" y="${by + BH / 2}"
     font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
     font-size="${BF}" font-weight="700" fill="white" dominant-baseline="middle"
-  >${escXml(propertyType)}</text>
+  >${escXml(propertyType.toUpperCase())}</text>
   <text x="${yellowTopLeft + BPX}" y="${by + BH / 2}"
     font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
     font-size="${BF}" font-weight="700" fill="black" dominant-baseline="middle"
