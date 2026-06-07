@@ -29,6 +29,9 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.header}>
+        {agency.logoUrl ? (
+          <img alt={agency.businessName} className={styles.agencyLogo} src={agency.logoUrl} />
+        ) : null}
         <div className={styles.eyebrow}>Agency</div>
         <h1 className={styles.title}>{agency.businessName}</h1>
         {hasAnyMeta ? (

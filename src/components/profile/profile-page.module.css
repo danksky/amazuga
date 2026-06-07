@@ -11,6 +11,15 @@
   margin-bottom: 20px;
 }
 
+.agencyLogo {
+  display: block;
+  max-height: 72px;
+  max-width: 240px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 16px;
+}
+
 .eyebrow {
   color: var(--foreground-muted);
   text-transform: uppercase;

@@ -123,6 +123,7 @@ export interface Agency {
   websiteUrl?: string;
   googleMapsUrl?: string;
   instagramUrl?: string;
+  logoUrl?: string;
   status: SubmissionStatus;
   pendingManagerUserId?: string;
   managerUserId?: string;

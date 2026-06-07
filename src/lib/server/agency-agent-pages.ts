@@ -31,6 +31,7 @@ interface AgencyRow {
   website_url: string | null;
   instagram_url: string | null;
   google_maps_url: string | null;
+  logo_url: string | null;
 }
 
 interface AgentRow {
@@ -51,6 +52,7 @@ export interface PublicAgencyPageData {
     websiteUrl?: string;
     instagramUrl?: string;
     googleMapsUrl?: string;
+    logoUrl?: string;
   };
   listings: BrowseMapCard[];
 }
@@ -149,7 +151,7 @@ const LISTING_CARD_SELECT = `
 export async function getPublicAgencyPageData(agencySlug: string): Promise<PublicAgencyPageData | undefined> {
   const agencyResult = await getPgPool().query<AgencyRow>(
     `
-      SELECT id, slug, business_name, whatsapp_phone, website_url, instagram_url, google_maps_url
+      SELECT id, slug, business_name, whatsapp_phone, website_url, instagram_url, google_maps_url, logo_url
       FROM agency
       WHERE slug = $1
         AND status = 'approved'
@@ -181,6 +183,7 @@ export async function getPublicAgencyPageData(agencySlug: string): Promise<Publi
       websiteUrl: agencyRow.website_url ?? undefined,
       instagramUrl: agencyRow.instagram_url ?? undefined,
       googleMapsUrl: agencyRow.google_maps_url ?? undefined,
+      logoUrl: agencyRow.logo_url ?? undefined,
     },
     listings: listingResult.rows.map(rowToCard),
   };
@@ -240,12 +243,21 @@ export async function getPublicAgentPageData(agentUserId: string): Promise<Publi
   };
 }
 
-export async function getAgencyNameBySlug(agencySlug: string): Promise<string | undefined> {
-  const result = await getPgPool().query<{ business_name: string }>(
-    `SELECT business_name FROM agency WHERE slug = $1 AND status = 'approved' LIMIT 1`,
+export async function getAgencyMetaBySlug(
+  agencySlug: string,
+): Promise<{ name: string; logoUrl?: string } | undefined> {
+  const result = await getPgPool().query<{ business_name: string; logo_url: string | null }>(
+    `SELECT business_name, logo_url FROM agency WHERE slug = $1 AND status = 'approved' LIMIT 1`,
     [agencySlug],
   );
-  return result.rows[0]?.business_name;
+  const row = result.rows[0];
+  if (!row) return undefined;
+  return { name: row.business_name, logoUrl: row.logo_url ?? undefined };
+}
+
+/** @deprecated Use getAgencyMetaBySlug */
+export async function getAgencyNameBySlug(agencySlug: string): Promise<string | undefined> {
+  return (await getAgencyMetaBySlug(agencySlug))?.name;
 }
 
 export async function getAgentNameById(agentUserId: string): Promise<{ fullName: string; agencyName: string } | undefined> {

@@ -72,6 +72,7 @@ export const routes = {
     home: "/admin/dashboard",
     dashboard: "/admin/dashboard",
     agencies: "/admin/agencies",
+    agenciesManage: "/admin/agencies/manage",
     agents: "/admin/agents",
     valuators: "/admin/valuators",
     valuations: "/admin/valuations",

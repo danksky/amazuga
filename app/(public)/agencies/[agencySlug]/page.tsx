@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AgencyProfilePage } from "@/components/profile/agency-profile-page";
-import { getAgencyNameBySlug, getPublicAgencyPageData } from "@/lib/server/agency-agent-pages";
+import { getAgencyMetaBySlug, getPublicAgencyPageData } from "@/lib/server/agency-agent-pages";
 
 interface AgencyPageProps {
   params: Promise<{ agencySlug: string }>;
@@ -10,13 +10,14 @@ interface AgencyPageProps {
 
 export async function generateMetadata({ params }: AgencyPageProps): Promise<Metadata> {
   const { agencySlug } = await params;
-  const name = await getAgencyNameBySlug(agencySlug);
-  if (!name) return {};
-  const title = `Properties by ${name}`;
+  const meta = await getAgencyMetaBySlug(agencySlug);
+  if (!meta) return {};
+  const title = `Properties by ${meta.name}`;
+  const ogImage = meta.logoUrl ?? "/opengraph-image.png";
   return {
     title,
-    openGraph: { title, images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }] },
-    twitter: { title, images: ["/opengraph-image.png"] },
+    openGraph: { title, images: [{ url: ogImage }] },
+    twitter: { title, images: [ogImage] },
   };
 }
 

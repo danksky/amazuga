@@ -77,6 +77,7 @@ interface AgencyRow {
   website_url: string | null;
   google_maps_url: string | null;
   instagram_url: string | null;
+  logo_url: string | null;
   status: Agency["status"];
   pending_manager_user_id: string | null;
   manager_user_id: string | null;
@@ -309,6 +310,7 @@ function buildAgencyFromRow(row: AgencyRow): Agency {
     websiteUrl: row.website_url || undefined,
     googleMapsUrl: row.google_maps_url || undefined,
     instagramUrl: row.instagram_url || undefined,
+    logoUrl: row.logo_url || undefined,
     status: row.status,
     pendingManagerUserId: row.pending_manager_user_id || undefined,
     managerUserId: row.manager_user_id || undefined,
@@ -372,6 +374,7 @@ async function getAgencyByIdFromDb(agencyId: string) {
         a.website_url,
         a.google_maps_url,
         a.instagram_url,
+        a.logo_url,
         a.status,
         a.pending_manager_user_id,
         a.manager_user_id,
@@ -392,6 +395,7 @@ async function getAgencyByIdFromDb(agencyId: string) {
         a.website_url,
         a.google_maps_url,
         a.instagram_url,
+        a.logo_url,
         a.status,
         a.pending_manager_user_id,
         a.manager_user_id
