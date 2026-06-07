@@ -19,6 +19,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import pg from "pg";
+import sharp from "sharp";
 
 const { Pool } = pg;
 
@@ -34,7 +35,7 @@ if (!UPLOAD_URL || !UPLOAD_SECRET) { console.error("LISTING_IMAGE_UPLOAD_URL / L
 // Map agency slug → absolute path to logo file.
 const LOGOS = [
   { slug: "nicolas-real-estate", filePath: "/Users/danielkawalsky/Downloads/nicolas-real-estate-rwanda-logo.png" },
-  { slug: "green-real-estate", filePath: "/Users/danielkawalsky/Downloads/green-real-estate-rwanda-logo.png" },
+  { slug: "green-rwanda-real-estate", filePath: "/Users/danielkawalsky/Downloads/green-real-estate-rwanda-logo.png" },
 ];
 
 const pool = new Pool({ connectionString: DATABASE_URL });
@@ -42,10 +43,11 @@ const pool = new Pool({ connectionString: DATABASE_URL });
 // ---------- upload ----------
 
 async function uploadLogo(agencyId, filePath) {
-  const fileBuffer = await fs.readFile(filePath);
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType = ext === ".png" ? "image/png" : "image/jpeg";
-  const fileName = `logo${ext}`;
+  const raw = await fs.readFile(filePath);
+  // Worker only accepts JPEG — convert regardless of source format.
+  const fileBuffer = await sharp(raw).jpeg({ quality: 92 }).toBuffer();
+  const contentType = "image/jpeg";
+  const fileName = "logo.jpg";
 
   const payload = {
     version: 1,

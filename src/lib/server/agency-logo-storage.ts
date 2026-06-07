@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHmac, randomUUID } from "node:crypto";
 
+import sharp from "sharp";
+
 // Agency logos are uploaded via the same listing-media worker used for listing images.
 // The worker stores them in the public R2 bucket under agency-logos/{agencyId}/logo.jpg
 // and returns a public media.amazuga.com URL that is stored in agency.logo_url.
@@ -21,7 +23,7 @@ export function isAgencyLogoUploadConfigured() {
   );
 }
 
-export async function uploadAgencyLogo(agencyId: string, fileBuffer: Buffer, contentType: string): Promise<string> {
+export async function uploadAgencyLogo(agencyId: string, fileBuffer: Buffer, _contentType: string): Promise<string> {
   const uploadUrl = getRequiredEnv("LISTING_IMAGE_UPLOAD_URL");
   const signingSecret = getRequiredEnv("LISTING_IMAGE_UPLOAD_SECRET");
 
@@ -29,14 +31,16 @@ export async function uploadAgencyLogo(agencyId: string, fileBuffer: Buffer, con
     throw new Error("Agency logo upload is not configured.");
   }
 
-  const ext = contentType === "image/png" ? "png" : "jpg";
+  // Worker only accepts JPEG — convert regardless of source format.
+  const jpegBuffer = await sharp(fileBuffer).jpeg({ quality: 92 }).toBuffer();
+
   const payload = {
     version: 1,
     intentId: randomUUID(),
     listingId: `agency-logos/${agencyId}`,
     userId: "system",
-    contentType,
-    fileName: `logo.${ext}`,
+    contentType: "image/jpeg",
+    fileName: "logo.jpg",
     maxBytes: MAX_LOGO_BYTES,
     exp: Date.now() + 10 * 60 * 1000,
   };
@@ -50,8 +54,8 @@ export async function uploadAgencyLogo(agencyId: string, fileBuffer: Buffer, con
 
   const form = new FormData();
   form.append("token", token);
-  const ab = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer;
-  form.append("file", new Blob([ab], { type: contentType }), `logo.${ext}`);
+  const ab = jpegBuffer.buffer.slice(jpegBuffer.byteOffset, jpegBuffer.byteOffset + jpegBuffer.byteLength) as ArrayBuffer;
+  form.append("file", new Blob([ab], { type: "image/jpeg" }), "logo.jpg");
 
   const res = await fetch(uploadUrl, { method: "POST", body: form, headers: { Origin: origin } });
 
