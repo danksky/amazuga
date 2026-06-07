@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: AgentPageProps): Promise<Meta
   const title = `Properties by ${info.fullName} · ${info.agencyName}`;
   return {
     title,
-    openGraph: { title },
-    twitter: { title },
+    openGraph: { title, images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }] },
+    twitter: { title, images: ["/opengraph-image.png"] },
   };
 }
 
