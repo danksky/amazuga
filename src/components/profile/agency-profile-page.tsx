@@ -17,14 +17,11 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
     const normalized = agency.whatsappPhone.replace(/\D/g, "");
     metaItems.push({ label: "WhatsApp", href: `https://wa.me/${normalized}` });
   }
-  if (agency.websiteUrl) {
-    metaItems.push({ label: "Website", href: agency.websiteUrl });
-  }
   if (agency.googleMapsUrl) {
     metaItems.push({ label: "Find us", href: agency.googleMapsUrl });
   }
 
-  const hasAnyMeta = metaItems.length > 0 || !!agency.instagramUrl;
+  const hasAnyMeta = metaItems.length > 0 || !!agency.websiteUrl || !!agency.instagramUrl;
 
   return (
     <div className={`container ${styles.page}`}>
@@ -51,9 +48,20 @@ export function AgencyProfilePage({ data }: AgencyProfilePageProps) {
                 </a>
               </Fragment>
             ))}
+            {agency.websiteUrl ? (
+              <a
+                className={styles.socialButton}
+                href={agency.websiteUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <i className="bi bi-globe" />
+                Website
+              </a>
+            ) : null}
             {agency.instagramUrl ? (
               <a
-                className={styles.instagramButton}
+                className={styles.socialButton}
                 href={agency.instagramUrl}
                 rel="noopener noreferrer"
                 target="_blank"

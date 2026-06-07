@@ -69,7 +69,7 @@
   color: var(--border-strong);
 }
 
-.instagramButton {
+.socialButton {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -87,8 +87,8 @@
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
-.instagramButton:hover,
-.instagramButton:focus-visible {
+.socialButton:hover,
+.socialButton:focus-visible {
   background: var(--surface-muted);
   color: var(--foreground);
   text-decoration: none;
