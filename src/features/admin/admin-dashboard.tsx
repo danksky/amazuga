@@ -1,7 +1,5 @@
-import Link from "next/link";
-
+import { AdminNav } from "@/features/admin/admin-nav";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { routes } from "@/lib/routes";
 import {
   listAgencyApplicationsFromDb,
   listAgentApplicationsFromDb,
@@ -31,29 +29,9 @@ export async function AdminDashboard() {
       <div className={styles.stack}>
         <div className={styles.header}>
           <div className={styles.eyebrow}>Admin</div>
+          <AdminNav active="dashboard" />
           <h1 className={styles.title}>Dashboard</h1>
           <div className={styles.body}>Review pending submissions and move directly into the first moderation queues.</div>
-        </div>
-
-        <div className={styles.nav}>
-          <Link className={`${styles.navLink} ${styles.active}`} href={routes.admin.dashboard}>
-            Dashboard
-          </Link>
-          <Link className={styles.navLink} href={routes.admin.agencies}>
-            Agencies
-          </Link>
-          <Link className={styles.navLink} href={routes.admin.agents}>
-            Agents
-          </Link>
-          <Link className={styles.navLink} href={routes.admin.valuators}>
-            Valuators
-          </Link>
-          <Link className={styles.navLink} href={routes.admin.valuations}>
-            Valuations
-          </Link>
-          <Link className={styles.navLink} href={routes.admin.properties}>
-            Properties
-          </Link>
         </div>
 
         <div className={styles.stats}>

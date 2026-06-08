@@ -1,8 +1,6 @@
-import Link from "next/link";
-
 import { reviewApplicationAction } from "@/features/admin/actions";
-import { routes } from "@/lib/routes";
 
+import { AdminNav, type AdminNavItem } from "./admin-nav";
 import styles from "./admin.module.css";
 
 interface ReviewItem {
@@ -19,57 +17,52 @@ interface ReviewItem {
 interface AdminReviewPageProps {
   title: string;
   body: string;
-  active: "agencies" | "agents" | "valuators" | "valuations" | "properties" | "contests";
+  active: Exclude<AdminNavItem, "dashboard">;
   items: ReviewItem[];
   empty: string;
 }
 
 export function AdminReviewPage({ title, body, active, items, empty }: AdminReviewPageProps) {
+  const pendingLabel = `${items.length} pending ${items.length === 1 ? "entry" : "entries"}`;
+
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
         <div className={styles.header}>
           <div className={styles.eyebrow}>Admin</div>
+          <AdminNav active={active} />
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.body}>{body}</div>
         </div>
 
-        <div className={styles.nav}>
-          <Link className={`${styles.navLink} ${active === "agencies" ? styles.active : ""}`} href={routes.admin.agencies}>
-            Agencies
-          </Link>
-          <Link className={`${styles.navLink} ${active === "agents" ? styles.active : ""}`} href={routes.admin.agents}>
-            Agents
-          </Link>
-          <Link className={`${styles.navLink} ${active === "valuators" ? styles.active : ""}`} href={routes.admin.valuators}>
-            Valuators
-          </Link>
-          <Link className={`${styles.navLink} ${active === "valuations" ? styles.active : ""}`} href={routes.admin.valuations}>
-            Valuations
-          </Link>
-          <Link className={`${styles.navLink} ${active === "properties" ? styles.active : ""}`} href={routes.admin.properties}>
-            Properties
-          </Link>
-          <Link className={`${styles.navLink} ${active === "contests" ? styles.active : ""}`} href={routes.admin.contests}>
-            Contests
-          </Link>
-          <Link className={styles.navLink} href={routes.admin.dashboard}>
-            Dashboard
-          </Link>
-        </div>
-
         <div className={styles.panel}>
-          <div className={styles.list}>
+          <div className={styles.reviewQueueHeader}>
+            <div>
+              <h2 className={styles.panelTitle}>Review queue</h2>
+              <p className={styles.panelBody}>Work through the oldest pending submissions first, then approve or deny from the decision rail.</p>
+            </div>
+            <div className={styles.queueCount}>{pendingLabel}</div>
+          </div>
+
+          <div className={styles.reviewList}>
             {items.length > 0 ? (
-              items.map((item) => (
-                <div className={styles.item} key={item.id}>
+              items.map((item, index) => (
+                <article className={styles.reviewItem} key={item.id}>
                   <div className={styles.itemContent}>
-                    <div className={styles.itemTitle}>{item.title}</div>
-                    {item.meta.map((line) => (
-                      <div className={styles.itemMeta} key={line}>
-                        {line}
+                    <div className={styles.reviewItemHeader}>
+                      <div className={styles.reviewIndex}>#{index + 1}</div>
+                      <div>
+                        <div className={styles.itemTitle}>{item.title}</div>
+                        <div className={styles.metaList}>
+                          {item.meta.map((line) => (
+                            <span className={styles.metaPill} key={line}>
+                              {line}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    </div>
+
                     <div className={styles.detailList}>
                       {item.details.map((detail) => (
                         <div className={styles.detailRow} key={`${item.id}-${detail.label}`}>
@@ -97,6 +90,7 @@ export function AdminReviewPage({ title, body, active, items, empty }: AdminRevi
                         ))}
                       </div>
                     ) : null}
+
                     <div className={styles.reviewNote}>
                       <div className={styles.reviewNoteLabel}>Approval effect</div>
                       <div>{item.reviewNote}</div>
@@ -108,32 +102,42 @@ export function AdminReviewPage({ title, body, active, items, empty }: AdminRevi
                       </div>
                     ) : null}
                   </div>
-                  <div className={styles.itemActions}>
-                    <form action={reviewApplicationAction}>
-                      <input name="kind" type="hidden" value={item.kind} />
-                      <input name="applicationId" type="hidden" value={item.id} />
-                      <input name="decision" type="hidden" value="approved" />
-                      <button
-                        className={styles.primaryAction}
-                        disabled={Boolean(item.approvalBlockedReason)}
-                        type="submit"
-                      >
-                        {item.approvalBlockedReason ? "Cannot approve" : "Approve"}
-                      </button>
-                    </form>
-                    <form action={reviewApplicationAction}>
-                      <input name="kind" type="hidden" value={item.kind} />
-                      <input name="applicationId" type="hidden" value={item.id} />
-                      <input name="decision" type="hidden" value="denied" />
-                      <button className={styles.secondaryAction} type="submit">
-                        Deny
-                      </button>
-                    </form>
-                  </div>
-                </div>
+
+                  <aside className={styles.decisionRail} aria-label={`Decision controls for ${item.title}`}>
+                    <div>
+                      <div className={styles.decisionLabel}>Decision</div>
+                      <div className={styles.decisionCopy}>Resolve this entry and remove it from the pending queue.</div>
+                    </div>
+                    <div className={styles.decisionActions}>
+                      <form action={reviewApplicationAction}>
+                        <input name="kind" type="hidden" value={item.kind} />
+                        <input name="applicationId" type="hidden" value={item.id} />
+                        <input name="decision" type="hidden" value="approved" />
+                        <button
+                          className={styles.primaryAction}
+                          disabled={Boolean(item.approvalBlockedReason)}
+                          type="submit"
+                        >
+                          {item.approvalBlockedReason ? "Cannot approve" : "Approve"}
+                        </button>
+                      </form>
+                      <form action={reviewApplicationAction}>
+                        <input name="kind" type="hidden" value={item.kind} />
+                        <input name="applicationId" type="hidden" value={item.id} />
+                        <input name="decision" type="hidden" value="denied" />
+                        <button className={styles.secondaryAction} type="submit">
+                          Deny
+                        </button>
+                      </form>
+                    </div>
+                  </aside>
+                </article>
               ))
             ) : (
-              <div className={styles.empty}>{empty}</div>
+              <div className={styles.emptyState}>
+                <div className={styles.emptyTitle}>All clear</div>
+                <div className={styles.empty}>{empty}</div>
+              </div>
             )}
           </div>
         </div>

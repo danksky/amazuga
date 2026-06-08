@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminNav } from "@/features/admin/admin-nav";
 import { requireAdminUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { listAgenciesFromDb } from "@/lib/server/workflows";
@@ -20,17 +21,17 @@ export default async function AgenciesManagePage() {
       <div className={adminStyles.stack}>
         <div className={adminStyles.header}>
           <div className={adminStyles.eyebrow}>Admin</div>
+          <AdminNav active="agencies" />
           <h1 className={adminStyles.title}>Manage agencies</h1>
           <div className={adminStyles.body}>Upload logos for approved agencies.</div>
         </div>
 
-        <div className={adminStyles.nav}>
-          <Link className={adminStyles.navLink} href={routes.admin.dashboard}>Dashboard</Link>
+        <nav aria-label="Agency administration" className={adminStyles.nav}>
           <Link className={adminStyles.navLink} href={routes.admin.agencies}>Review queue</Link>
           <Link className={`${adminStyles.navLink} ${adminStyles.active}`} href={routes.admin.agenciesManage}>
             Manage logos
           </Link>
-        </div>
+        </nav>
 
         <div className={adminStyles.panel}>
           {agencies.length === 0 ? (

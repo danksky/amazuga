@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { resolveContestAction } from "@/features/admin/actions";
+import { AdminNav } from "@/features/admin/admin-nav";
 import { formatDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { listOwnershipContestsFromDb } from "@/lib/server/workflows";
@@ -17,6 +16,7 @@ export default async function AdminContestsPage() {
       <div className={styles.stack}>
         <div className={styles.header}>
           <div className={styles.eyebrow}>Admin</div>
+          <AdminNav active="contests" />
           <h1 className={styles.title}>Ownership disputes</h1>
           <div className={styles.body}>
             Review disputes from users who believe a UPI has been wrongly claimed by someone else.
@@ -25,16 +25,6 @@ export default async function AdminContestsPage() {
             the UPI is freed so the disputing user (or anyone else) can re-claim it through the
             normal flow.
           </div>
-        </div>
-
-        <div className={styles.nav}>
-          <Link className={styles.navLink} href={routes.admin.agencies}>Agencies</Link>
-          <Link className={styles.navLink} href={routes.admin.agents}>Agents</Link>
-          <Link className={styles.navLink} href={routes.admin.valuators}>Valuators</Link>
-          <Link className={styles.navLink} href={routes.admin.valuations}>Valuations</Link>
-          <Link className={styles.navLink} href={routes.admin.properties}>Properties</Link>
-          <Link className={`${styles.navLink} ${styles.active}`} href={routes.admin.contests}>Contests</Link>
-          <Link className={styles.navLink} href={routes.admin.dashboard}>Dashboard</Link>
         </div>
 
         <div className={styles.panel}>
