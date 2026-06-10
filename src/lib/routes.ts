@@ -23,6 +23,7 @@ export const routes = {
     ) => buildPublicPropertyPath(propertyId, propertyContext),
     area: (slug: string) => `/area/${slug}`,
     agencies: "/agencies",
+    terms: "/terms",
     agency: (agencySlug: string) => `/agencies/${agencySlug}`,
     agent: (agentSlug: string) => `/agents/${agentSlug}`,
     valuator: (valuatorSlug: string) => `/valuators/${valuatorSlug}`,

@@ -1,0 +1,56 @@
+.wrap {
+  display: flex;
+  justify-content: center;
+  padding: 48px 24px 80px;
+}
+
+.content {
+  max-width: 720px;
+  width: 100%;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin: 0 0 8px;
+}
+
+.updated {
+  color: var(--foreground-muted);
+  font-size: 0.875rem;
+  margin: 0 0 32px;
+}
+
+.content p {
+  line-height: 1.7;
+  margin: 0 0 16px;
+  color: var(--foreground);
+}
+
+.content h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 40px 0 12px;
+}
+
+.content ul {
+  margin: 0 0 16px;
+  padding-left: 24px;
+}
+
+.content li {
+  line-height: 1.7;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.content a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.content a:hover {
+  text-decoration: underline;
+}
