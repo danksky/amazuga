@@ -108,6 +108,8 @@ export interface Listing {
   /** When true the precise parcel location is suppressed from public surfaces. */
   locationHidden: boolean;
   imageUrls: string[];
+  videoUrl?: string;
+  videoThumbnailUrl?: string;
   ogImageUrl?: string;
   createdAt: string;
   updatedAt: string;

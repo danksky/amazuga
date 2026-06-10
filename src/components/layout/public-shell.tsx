@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 
+import { Footer } from "@/components/layout/footer";
 import { TopNav } from "@/components/navigation/top-nav";
 import { getCurrentUser, isAdminUser, isOtpMode } from "@/lib/auth";
 import { publicTopNav } from "@/lib/navigation";
@@ -22,6 +23,7 @@ export async function PublicShell({ children }: PropsWithChildren) {
         signedInLinks={signedInLinks}
       />
       <main className={styles.main}>{children}</main>
+      <Footer />
     </>
   );
 }
