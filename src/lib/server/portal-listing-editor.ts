@@ -59,6 +59,19 @@ interface EditableListingImageRow {
   uploaded_by_user_id?: string | null;
 }
 
+interface EditableListingVideoRow {
+  id: string;
+  video_url: string;
+  video_storage_key: string | null;
+  thumbnail_url: string | null;
+  thumbnail_storage_key: string | null;
+  duration_seconds: number | string | null;
+  content_type: string | null;
+  file_size_bytes: number | string | null;
+  status: "ready" | "pending_delete" | "delete_failed";
+  uploaded_by_user_id: string | null;
+}
+
 interface PropertyTargetRow {
   property_asset_id: string;
   parcel_id: string | null;
@@ -131,6 +144,18 @@ export interface PortalEditableListing {
     status: "ready" | "processing" | "failed" | "pending_delete" | "delete_failed";
     sortOrder: number;
   }>;
+  video?: {
+    id: string;
+    videoUrl: string;
+    videoStorageKey?: string;
+    thumbnailUrl?: string;
+    thumbnailStorageKey?: string;
+    durationSeconds?: number;
+    contentType?: string;
+    fileSizeBytes?: number;
+    status: "ready" | "pending_delete" | "delete_failed";
+    uploadedByUserId?: string;
+  };
   priceHistory: ListingPriceHistoryEntry[];
   accessGrants: ListingAccessGrant[];
 }
@@ -389,6 +414,45 @@ async function getEditableListingImages(listingId: string) {
   }));
 }
 
+async function getEditableListingVideo(listingId: string) {
+  const result = await getPgPool().query<EditableListingVideoRow>(
+    `
+      SELECT
+        lv.id,
+        lv.video_url,
+        lv.video_storage_key,
+        lv.thumbnail_url,
+        lv.thumbnail_storage_key,
+        lv.duration_seconds,
+        lv.content_type,
+        lv.file_size_bytes,
+        lv.status,
+        lv.uploaded_by_user_id::TEXT AS uploaded_by_user_id
+      FROM listing_video lv
+      WHERE lv.listing_id = $1
+        AND lv.status = 'ready'
+      LIMIT 1
+    `,
+    [listingId],
+  );
+
+  const row = result.rows[0];
+  if (!row) return undefined;
+
+  return {
+    id: row.id,
+    videoUrl: row.video_url,
+    videoStorageKey: row.video_storage_key || undefined,
+    thumbnailUrl: row.thumbnail_url || undefined,
+    thumbnailStorageKey: row.thumbnail_storage_key || undefined,
+    durationSeconds: toNumber(row.duration_seconds),
+    contentType: row.content_type || undefined,
+    fileSizeBytes: toNumber(row.file_size_bytes),
+    status: row.status,
+    uploadedByUserId: row.uploaded_by_user_id || undefined,
+  };
+}
+
 async function countReadyListingImages(client: PoolClient, listingId: string) {
   const result = await client.query<{ count: string }>(
     `
@@ -586,8 +650,9 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     return null;
   }
 
-  const [images, priceHistory, accessGrants] = await Promise.all([
+  const [images, video, priceHistory, accessGrants] = await Promise.all([
     getEditableListingImages(listingId),
+    getEditableListingVideo(listingId),
     getListingPriceHistory(listingId),
     getListingAccessGrants(listingId),
   ]);
@@ -612,6 +677,7 @@ export async function getEditablePortalListingData(userId: string, listingId: st
     locationHidden: row.location_hidden ?? false,
     locationSource: row.location_source,
     images,
+    video,
     priceHistory,
     accessGrants,
   };
@@ -629,6 +695,11 @@ export async function getEditablePortalListingSummary(userId: string, listingId:
     return null;
   }
 
+  const [images, video] = await Promise.all([
+    getEditableListingImages(listingId),
+    getEditableListingVideo(listingId),
+  ]);
+
   return {
     listingId: row.listing_id,
     propertyRouteId: row.property_route_id,
@@ -636,7 +707,8 @@ export async function getEditablePortalListingSummary(userId: string, listingId:
       propertyTitle: row.property_title,
       propertyRouteId: row.property_route_id,
     }),
-    images: await getEditableListingImages(listingId),
+    images,
+    hasVideo: Boolean(video),
   };
 }
 
@@ -917,6 +989,113 @@ export async function queueListingImageDeletion(input: {
   } finally {
     client.release();
   }
+}
+
+export async function addListingVideoToDb(input: {
+  userId: string;
+  listingId: string;
+  videoUrl: string;
+  videoStorageKey: string;
+  thumbnailUrl?: string;
+  thumbnailStorageKey?: string;
+  durationSeconds?: number;
+  contentType?: string;
+  fileSizeBytes?: number;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+  if (!listing) throw new Error("Listing not found or inaccessible");
+
+  const existing = await getEditableListingVideo(input.listingId);
+  if (existing) throw new Error("This listing already has a video");
+
+  const id = `listing-video-${randomUUID()}`;
+
+  const result = await getPgPool().query<EditableListingVideoRow>(
+    `
+      INSERT INTO listing_video (
+        id,
+        listing_id,
+        video_url,
+        video_storage_key,
+        thumbnail_url,
+        thumbnail_storage_key,
+        duration_seconds,
+        content_type,
+        file_size_bytes,
+        uploaded_by_user_id,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ready')
+      RETURNING
+        id,
+        video_url,
+        video_storage_key,
+        thumbnail_url,
+        thumbnail_storage_key,
+        duration_seconds,
+        content_type,
+        file_size_bytes,
+        status,
+        uploaded_by_user_id::TEXT AS uploaded_by_user_id
+    `,
+    [
+      id,
+      input.listingId,
+      input.videoUrl,
+      input.videoStorageKey,
+      input.thumbnailUrl || null,
+      input.thumbnailStorageKey || null,
+      input.durationSeconds || null,
+      input.contentType || null,
+      input.fileSizeBytes || null,
+      input.userId,
+    ],
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    videoUrl: row.video_url,
+    videoStorageKey: row.video_storage_key || undefined,
+    thumbnailUrl: row.thumbnail_url || undefined,
+    thumbnailStorageKey: row.thumbnail_storage_key || undefined,
+    durationSeconds: toNumber(row.duration_seconds),
+    contentType: row.content_type || undefined,
+    fileSizeBytes: toNumber(row.file_size_bytes),
+    status: row.status,
+  };
+}
+
+export async function removeListingVideoFromDb(input: {
+  userId: string;
+  listingId: string;
+}) {
+  const listing = await getEditableListingRow(input.userId, input.listingId);
+  if (!listing) throw new Error("Listing not found or inaccessible");
+
+  const result = await getPgPool().query<EditableListingVideoRow>(
+    `
+      DELETE FROM listing_video
+      WHERE listing_id = $1
+        AND status = 'ready'
+      RETURNING
+        id,
+        video_url,
+        video_storage_key,
+        thumbnail_url,
+        thumbnail_storage_key,
+        duration_seconds,
+        content_type,
+        file_size_bytes,
+        status,
+        uploaded_by_user_id::TEXT AS uploaded_by_user_id
+    `,
+    [input.listingId],
+  );
+
+  return result.rows[0] || null;
 }
 
 export async function createPortalListingInDb(input: {

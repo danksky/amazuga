@@ -19,6 +19,7 @@ import {
   setListingStatusAction,
 } from "./actions";
 import { ListingPhotoManager } from "./listing-photo-manager";
+import { ListingVideoManager } from "./listing-video-manager";
 import { ListingStatusButton } from "./listing-status-button";
 import { WheelSafeNumberInput } from "./wheel-safe-number-input";
 import styles from "./listing-form.module.css";
@@ -449,6 +450,22 @@ export function ListingForm({
               Photos come next. This first step creates the listing, then sends you to the full editor to add and
               manage gallery images before publishing.
             </div>
+          ) : null}
+
+          {mode === "edit" && listing ? (
+            <section className={styles.formSection}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Video</h2>
+                <div className={styles.sectionBody}>
+                  An optional video tour shown at the end of the photo gallery.
+                </div>
+              </div>
+              <ListingVideoManager
+                initialVideo={listing.video}
+                listingId={listing.id}
+                uploadEnabled={uploadEnabled}
+              />
+            </section>
           ) : null}
 
           {mode === "edit" && listing && listing.priceHistory.length > 0 ? (

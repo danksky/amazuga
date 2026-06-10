@@ -577,6 +577,31 @@ CREATE INDEX IF NOT EXISTS listing_image_cleanup_job_status_run_after_idx
   ON listing_image_cleanup_job (status, run_after);
 
 
+-- Optional single video per listing. Thumbnail is captured client-side
+-- (first frame, JPEG) and uploaded separately via the image upload URL.
+CREATE TABLE IF NOT EXISTS listing_video (
+  id                        TEXT PRIMARY KEY,
+  listing_id                TEXT NOT NULL REFERENCES listing(id) ON DELETE CASCADE,
+  video_url                 TEXT NOT NULL,
+  video_storage_key         TEXT,
+  thumbnail_url             TEXT,
+  thumbnail_storage_key     TEXT,
+  duration_seconds          INTEGER,
+  content_type              TEXT,
+  file_size_bytes           INTEGER,
+  uploaded_by_user_id       UUID REFERENCES app_user(id),
+  status                    TEXT NOT NULL DEFAULT 'ready' CHECK (
+    status IN ('ready', 'pending_delete', 'delete_failed')
+  ),
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (listing_id)
+);
+
+CREATE INDEX IF NOT EXISTS listing_video_listing_id_idx
+  ON listing_video (listing_id);
+
+
 -- Append-only price history for listings. A row is inserted at listing
 -- creation (opening price) and whenever asking_price_rwf changes on an
 -- active listing. Never updated or deleted.

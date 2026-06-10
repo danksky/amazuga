@@ -314,16 +314,25 @@ export function PropertyPage({
     propertyKind: property.facts.propertyKind,
     unitLabel: property.unitLabel,
   });
-  const galleryImages = listing?.imageUrls ?? [];
-  const primaryImage = galleryImages[0];
-  const secondaryImage = galleryImages[1];
-  const tertiaryImage = galleryImages[2];
+  type MediaItem =
+    | { type: "image"; url: string }
+    | { type: "video"; url: string; thumbnailUrl?: string };
+
+  const galleryMedia: MediaItem[] = [
+    ...(listing?.imageUrls ?? []).map((url): MediaItem => ({ type: "image", url })),
+    ...(listing?.videoUrl ? [{ type: "video" as const, url: listing.videoUrl, thumbnailUrl: listing.videoThumbnailUrl }] : []),
+  ];
+  const primaryItem = galleryMedia[0];
+  const secondaryItem = galleryMedia[1];
+  const tertiaryItem = galleryMedia[2];
+  const hasGallery = galleryMedia.length > 0;
+  const hasVideo = Boolean(listing?.videoUrl);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const [galleryModalOpen, setGalleryModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const closeGalleryButtonRef = useRef<HTMLButtonElement | null>(null);
   const propertyKind = inferPropertyKind(property);
-  const behavior = buildPropertyPageBehavior(property, propertyKind, listing, Boolean(primaryImage));
+  const behavior = buildPropertyPageBehavior(property, propertyKind, listing, hasGallery);
   const detailItems = buildDetailItems(property, propertyKind);
   const listingStateLabel = buildListingStateLabel(listing);
   const primaryInfoStats = buildPrimaryInfoStats(property, propertyKind);
@@ -339,8 +348,8 @@ export function PropertyPage({
         : "Listing agency"
       : "For sale by owner"
     : undefined;
-  const activeGalleryImage = galleryImages[activeGalleryIndex];
-  const hasMultipleGalleryImages = galleryImages.length > 1;
+  const activeGalleryItem = galleryMedia[activeGalleryIndex];
+  const hasMultipleGalleryItems = galleryMedia.length > 1;
 
   async function shareProperty() {
     const url = window.location.href;
@@ -363,12 +372,12 @@ export function PropertyPage({
     setGalleryModalOpen(true);
   }
 
-  function showPreviousGalleryImage() {
-    setActiveGalleryIndex((current) => (current - 1 + galleryImages.length) % galleryImages.length);
+  function showPreviousGalleryItem() {
+    setActiveGalleryIndex((current) => (current - 1 + galleryMedia.length) % galleryMedia.length);
   }
 
-  function showNextGalleryImage() {
-    setActiveGalleryIndex((current) => (current + 1) % galleryImages.length);
+  function showNextGalleryItem() {
+    setActiveGalleryIndex((current) => (current + 1) % galleryMedia.length);
   }
 
   useEffect(() => {
@@ -383,16 +392,16 @@ export function PropertyPage({
         setGalleryModalOpen(false);
       }
 
-      if (!hasMultipleGalleryImages) {
+      if (!hasMultipleGalleryItems) {
         return;
       }
 
       if (event.key === "ArrowLeft") {
-        setActiveGalleryIndex((current) => (current - 1 + galleryImages.length) % galleryImages.length);
+        setActiveGalleryIndex((current) => (current - 1 + galleryMedia.length) % galleryMedia.length);
       }
 
       if (event.key === "ArrowRight") {
-        setActiveGalleryIndex((current) => (current + 1) % galleryImages.length);
+        setActiveGalleryIndex((current) => (current + 1) % galleryMedia.length);
       }
     }
 
@@ -403,35 +412,91 @@ export function PropertyPage({
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [galleryModalOpen, hasMultipleGalleryImages, galleryImages.length]);
+  }, [galleryModalOpen, hasMultipleGalleryItems, galleryMedia.length]);
 
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.pageGrid}>
         <div className={styles.leftRail}>
-          {behavior.mediaMode === "gallery" && primaryImage ? (
+          {behavior.mediaMode === "gallery" && primaryItem ? (
             <div className={`${styles.panel} ${styles.mediaPanel}`}>
-              <div className={`${styles.gallery}${!secondaryImage ? ` ${styles.gallerySingle}` : ""}`}>
-                <div className={styles.galleryPrimary}>
-                  <img alt={property.title} className={styles.galleryImage} src={primaryImage} />
+              <div className={`${styles.gallery}${!secondaryItem ? ` ${styles.gallerySingle}` : ""}`}>
+                <div className={styles.galleryPrimary} onClick={() => openGalleryModal(0)} style={{ cursor: "pointer" }}>
+                  {primaryItem.type === "video" ? (
+                    <div className={styles.galleryVideoThumb}>
+                      {primaryItem.thumbnailUrl
+                        ? <img alt={`${property.title} video`} className={styles.galleryImage} src={primaryItem.thumbnailUrl} />
+                        : <div className={styles.galleryImage} />}
+                      <div className={styles.galleryPlayOverlay} aria-hidden="true">
+                        <svg fill="white" height="48" viewBox="0 0 48 48" width="48" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="24" cy="24" fill="rgba(0,0,0,0.5)" r="24" />
+                          <polygon fill="white" points="19,14 38,24 19,34" />
+                        </svg>
+                      </div>
+                    </div>
+                  ) : (
+                    <img alt={property.title} className={styles.galleryImage} src={primaryItem.url} />
+                  )}
                 </div>
-                {tertiaryImage ? (
+                {tertiaryItem ? (
                   <div className={styles.galleryStack}>
                     <div className={styles.gallerySecondary}>
-                      <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+                      {secondaryItem?.type === "video" ? (
+                        <div className={styles.galleryVideoThumb} onClick={() => openGalleryModal(1)} style={{ cursor: "pointer" }}>
+                          {secondaryItem.thumbnailUrl
+                            ? <img alt={`${property.title} video`} className={styles.galleryImage} src={secondaryItem.thumbnailUrl} />
+                            : <div className={styles.galleryImage} />}
+                          <div className={styles.galleryPlayOverlay} aria-hidden="true">
+                            <svg fill="white" height="36" viewBox="0 0 48 48" width="36" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="24" cy="24" fill="rgba(0,0,0,0.5)" r="24" />
+                              <polygon fill="white" points="19,14 38,24 19,34" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : (
+                        <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryItem?.url} />
+                      )}
                     </div>
                     <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction}`}>
-                      <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryImage} />
+                      {tertiaryItem.type === "video" ? (
+                        <div className={styles.galleryVideoThumb}>
+                          {tertiaryItem.thumbnailUrl
+                            ? <img alt={`${property.title} video`} className={styles.galleryImage} src={tertiaryItem.thumbnailUrl} />
+                            : <div className={styles.galleryImage} />}
+                          <div className={styles.galleryPlayOverlay} aria-hidden="true">
+                            <svg fill="white" height="36" viewBox="0 0 48 48" width="36" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="24" cy="24" fill="rgba(0,0,0,0.5)" r="24" />
+                              <polygon fill="white" points="19,14 38,24 19,34" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : (
+                        <img alt={`${property.title} view 3`} className={styles.galleryImage} src={tertiaryItem.url} />
+                      )}
                     </div>
                   </div>
-                ) : secondaryImage ? (
+                ) : secondaryItem ? (
                   <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction} ${styles.gallerySecondaryFull}`}>
-                    <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryImage} />
+                    {secondaryItem.type === "video" ? (
+                      <div className={styles.galleryVideoThumb}>
+                        {secondaryItem.thumbnailUrl
+                          ? <img alt={`${property.title} video`} className={styles.galleryImage} src={secondaryItem.thumbnailUrl} />
+                          : <div className={styles.galleryImage} />}
+                        <div className={styles.galleryPlayOverlay} aria-hidden="true">
+                          <svg fill="white" height="36" viewBox="0 0 48 48" width="36" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="24" cy="24" fill="rgba(0,0,0,0.5)" r="24" />
+                            <polygon fill="white" points="19,14 38,24 19,34" />
+                          </svg>
+                        </div>
+                      </div>
+                    ) : (
+                      <img alt={`${property.title} view 2`} className={styles.galleryImage} src={secondaryItem.url} />
+                    )}
                   </div>
                 ) : null}
-                {hasMultipleGalleryImages ? (
+                {hasMultipleGalleryItems ? (
                   <button className={styles.galleryCta} onClick={() => openGalleryModal(0)} type="button">
-                    See all images
+                    {hasVideo ? "See all media" : "See all images"}
                   </button>
                 ) : null}
               </div>
@@ -659,9 +724,9 @@ export function PropertyPage({
           </div>
         </div>
       </div>
-      {galleryModalOpen && activeGalleryImage ? (
+      {galleryModalOpen && activeGalleryItem ? (
         <div
-          aria-label={`${property.title} image gallery`}
+          aria-label={`${property.title} media gallery`}
           aria-modal="true"
           className={styles.galleryModalBackdrop}
           onClick={() => setGalleryModalOpen(false)}
@@ -670,10 +735,10 @@ export function PropertyPage({
           <div className={styles.galleryModal} onClick={(event) => event.stopPropagation()}>
             <div className={styles.galleryModalImageFrame}>
               <div className={styles.galleryModalCounter}>
-                {activeGalleryIndex + 1} / {galleryImages.length}
+                {activeGalleryIndex + 1} / {galleryMedia.length}
               </div>
               <button
-                aria-label="Close image gallery"
+                aria-label="Close media gallery"
                 className={styles.galleryModalClose}
                 onClick={() => setGalleryModalOpen(false)}
                 ref={closeGalleryButtonRef}
@@ -681,17 +746,30 @@ export function PropertyPage({
               >
                 Close
               </button>
-              <img
-                alt={`${property.title} view ${activeGalleryIndex + 1}`}
-                className={styles.galleryModalImage}
-                src={activeGalleryImage}
-              />
-              {hasMultipleGalleryImages ? (
+              {activeGalleryItem.type === "video" ? (
+                <video
+                  autoPlay
+                  className={styles.galleryModalVideo}
+                  controls
+                  key={activeGalleryItem.url}
+                  muted
+                  playsInline
+                  poster={activeGalleryItem.thumbnailUrl}
+                  src={activeGalleryItem.url}
+                />
+              ) : (
+                <img
+                  alt={`${property.title} view ${activeGalleryIndex + 1}`}
+                  className={styles.galleryModalImage}
+                  src={activeGalleryItem.url}
+                />
+              )}
+              {hasMultipleGalleryItems ? (
                 <>
                   <button
-                    aria-label="Show previous image"
+                    aria-label="Show previous"
                     className={`${styles.galleryModalArrow} ${styles.galleryModalArrowPrevious}`}
-                    onClick={showPreviousGalleryImage}
+                    onClick={showPreviousGalleryItem}
                     type="button"
                   >
                     <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg">
@@ -699,9 +777,9 @@ export function PropertyPage({
                     </svg>
                   </button>
                   <button
-                    aria-label="Show next image"
+                    aria-label="Show next"
                     className={`${styles.galleryModalArrow} ${styles.galleryModalArrowNext}`}
-                    onClick={showNextGalleryImage}
+                    onClick={showNextGalleryItem}
                     type="button"
                   >
                     <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg">
