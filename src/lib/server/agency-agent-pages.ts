@@ -107,7 +107,7 @@ const LISTING_CARD_SELECT = `
   SELECT
     l.id                                                                    AS listing_id,
     p.public_id                                                             AS parcel_public_id,
-    COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name)       AS asset_display_name,
+    COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district)) AS asset_display_name,
     pa.public_id                                                            AS asset_public_id,
     pa.unit_label                                                           AS asset_unit_label,
     pa.public_id                                                            AS route_id,

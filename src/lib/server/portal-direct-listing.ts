@@ -26,12 +26,11 @@ export interface DirectListingInput {
   createOwnershipForUser?: string;
 }
 
+// Location is no longer baked in — queries compute it dynamically from
+// admin_sector + admin_district at render time (same pattern as parcel_label).
 function generateDirectListingDisplayName(input: {
   assetType: PropertyKind;
   bedrooms?: number;
-  adminVillage?: string;
-  adminSector?: string;
-  adminDistrict: string;
 }): string {
   const typeLabels: Record<PropertyKind, string> = {
     house: "House",
@@ -46,9 +45,7 @@ function generateDirectListingDisplayName(input: {
     input.bedrooms != null && (input.assetType === "house" || input.assetType === "apartment_unit")
       ? `${input.bedrooms}BR `
       : "";
-  const locationParts = [input.adminVillage, input.adminSector, input.adminDistrict].filter(Boolean);
-  const locationSuffix = locationParts.length > 0 ? ` · ${locationParts.join(", ")}` : "";
-  return `${bedroomPrefix}${typeLabel}${locationSuffix}`;
+  return `${bedroomPrefix}${typeLabel}`;
 }
 
 function generatePublicId(): string {
@@ -145,9 +142,6 @@ export async function createDirectListingInDb(input: DirectListingInput): Promis
   const displayName = generateDirectListingDisplayName({
     assetType: input.assetType,
     bedrooms: input.bedrooms,
-    adminVillage: input.adminVillage,
-    adminSector: input.adminSector,
-    adminDistrict: input.adminDistrict,
   });
   const centroid = await resolveVillageCentroid({
     adminDistrict: input.adminDistrict,
