@@ -119,8 +119,8 @@ export async function getPortalListingsWorkspaceData(userId: string): Promise<Po
         pa.asset_type AS property_kind,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district), pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district), pa.public_id)
         END AS property_title,
         COALESCE(
           NULLIF(BTRIM(pap.property_type), ''),

@@ -274,8 +274,8 @@ async function listChildUnitsForBuilding(buildingInternalId: string, userId: str
         child.public_id AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(child.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), child.display_name, child.public_id), ' · ', child.unit_label)
-          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), child.display_name, child.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', child.display_name, child.admin_sector, child.admin_district), child.public_id), ' · ', child.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', child.display_name, child.admin_sector, child.admin_district), child.public_id)
         END AS property_title,
         child.asset_type AS property_kind,
         child.unit_label AS property_unit_label,
@@ -413,8 +413,8 @@ export async function getPortalPropertiesWorkspaceData(userId: string): Promise<
           COALESCE(pa.public_id, p.public_id) AS property_route_id,
           CASE
             WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
-            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
+              THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district), pa.public_id), ' · ', pa.unit_label)
+            ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district), pa.public_id)
           END AS property_title,
           pa.asset_type AS property_kind,
           pa.unit_label AS property_unit_label,
@@ -786,8 +786,8 @@ export async function getPortalEditablePropertyRecord(
         COALESCE(pa.public_id, p.public_id) AS property_route_id,
         CASE
           WHEN COALESCE(NULLIF(BTRIM(pa.unit_label), ''), NULL) IS NOT NULL
-            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id), ' · ', pa.unit_label)
-          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), pa.display_name, pa.public_id)
+            THEN CONCAT(COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district), pa.public_id), ' · ', pa.unit_label)
+          ELSE COALESCE(parcel_label(p.upi, p.cell, p.sector), CONCAT_WS(' · ', pa.display_name, pa.admin_sector, pa.admin_district), pa.public_id)
         END AS property_title,
         pa.asset_type AS property_kind,
         pa.unit_label AS property_unit_label,

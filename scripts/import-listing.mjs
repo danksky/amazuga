@@ -122,6 +122,35 @@ function createUploadIntent({ listingId, userId, contentType, fileName }) {
   };
 }
 
+// ─── Video upload signing ──────────────────────────────────────────────────────
+
+const VIDEO_UPLOAD_URL = getEnv("LISTING_VIDEO_UPLOAD_URL");
+const VIDEO_UPLOAD_SECRET = getEnv("LISTING_VIDEO_UPLOAD_SECRET");
+
+function createVideoUploadIntent({ listingId, userId, contentType, fileName }) {
+  if (!VIDEO_UPLOAD_URL || !VIDEO_UPLOAD_SECRET) {
+    throw new Error(
+      "Video upload env vars not configured. Set LISTING_VIDEO_UPLOAD_URL and " +
+        "LISTING_VIDEO_UPLOAD_SECRET in .env.local",
+    );
+  }
+  const encoded = Buffer.from(JSON.stringify({
+    version: 1,
+    intentId: randomUUID(),
+    listingId,
+    userId,
+    contentType,
+    fileName,
+    maxBytes: 30 * 1024 * 1024,
+    exp: Date.now() + 15 * 60 * 1000,
+  }), "utf8").toString("base64url");
+  const sig = createHmac("sha256", VIDEO_UPLOAD_SECRET).update(encoded).digest("base64url");
+  return {
+    token: `${encoded}.${sig}`,
+    uploadUrl: VIDEO_UPLOAD_URL,
+  };
+}
+
 // ─── Generators ───────────────────────────────────────────────────────────────
 
 const uid = () => randomUUID().replace(/-/g, "");
@@ -130,6 +159,7 @@ function genPublicId() { return uid().slice(0, 10).toUpperCase(); }
 function genDisplayCode() { return "DLT-" + uid().slice(0, 8).toUpperCase(); }
 function genListingId() { return "listing-" + randomUUID(); }
 function genImageId() { return "listing-image-" + randomUUID(); }
+function genVideoId() { return "listing-video-" + randomUUID(); }
 function genPriceHistoryId() { return "lph_" + uid(); }
 
 // Deterministic IDs for UPI path — matches workflows.ts so re-runs are idempotent.
@@ -149,14 +179,13 @@ const PROPERTY_TYPE_LABELS = {
   land: "Land",
 };
 
-function displayName({ assetType, bedrooms, adminVillage, adminSector, adminDistrict }) {
+function displayName({ assetType, bedrooms }) {
   const label = PROPERTY_TYPE_LABELS[assetType] ?? "Property";
   const prefix =
     bedrooms != null && (assetType === "house" || assetType === "apartment_unit")
       ? `${bedrooms}BR `
       : "";
-  const parts = [adminVillage, adminSector, adminDistrict].filter(Boolean);
-  return `${prefix}${label}${parts.length ? ` · ${parts.join(", ")}` : ""}`;
+  return `${prefix}${label}`;
 }
 
 function contentTypeFromPath(filePath) {
@@ -166,6 +195,11 @@ function contentTypeFromPath(filePath) {
       ext
     ] ?? "image/jpeg"
   );
+}
+
+function contentTypeFromVideoPath(filePath) {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  return { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm" }[ext] ?? "video/mp4";
 }
 
 async function resolveVillageCentroid({ adminDistrict, adminSector, adminCell, adminVillage }) {
@@ -460,6 +494,51 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
     console.log(`  ✓ photo ${i + 1}/${photoPaths.length} → ${uploaded.imageUrl}`);
   }
 
+  // Upload video if specified and not already present.
+  const recoveryVideoPath = spec.video ? resolve(listingDir, spec.video) : null;
+  if (recoveryVideoPath && existsSync(recoveryVideoPath)) {
+    const hasVideo = await pool.query(
+      `SELECT 1 FROM listing_video WHERE listing_id = $1 LIMIT 1`,
+      [listingId],
+    );
+    if (!hasVideo.rows.length) {
+      const vContentType = contentTypeFromVideoPath(recoveryVideoPath);
+      const vBaseName = recoveryVideoPath.split("/").pop() ?? "video.mp4";
+      const vIntent = createVideoUploadIntent({ listingId, userId: listing.agent_user_id, contentType: vContentType, fileName: vBaseName });
+
+      const vBuffer = readFileSync(recoveryVideoPath);
+      const vFormData = new FormData();
+      vFormData.append("token", vIntent.token);
+      vFormData.append("file", new Blob([vBuffer], { type: vContentType }), vBaseName);
+
+      const vRes = await fetch(vIntent.uploadUrl, {
+        method: "POST",
+        body: vFormData,
+        headers: { Origin: UPLOAD_ORIGIN },
+      });
+      if (!vRes.ok) {
+        const body = await vRes.text().catch(() => `HTTP ${vRes.status}`);
+        throw new Error(`Video upload failed for ${vBaseName}: ${body}`);
+      }
+      const uploadedVideo = await vRes.json();
+
+      await pool.query(
+        `INSERT INTO listing_video (
+          id, listing_id, video_url, video_storage_key,
+          content_type, file_size_bytes, uploaded_by_user_id, status
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'ready')`,
+        [
+          genVideoId(), listingId,
+          uploadedVideo.videoUrl, uploadedVideo.storageKey,
+          uploadedVideo.contentType ?? vContentType,
+          uploadedVideo.fileSizeBytes ?? vBuffer.length,
+          listing.agent_user_id,
+        ],
+      );
+      console.log(`  ✓ video → ${uploadedVideo.videoUrl}`);
+    }
+  }
+
   // Activate if requested.
   if (spec.activate) {
     if (spec.asking_price_rwf == null) {
@@ -569,11 +648,7 @@ async function run() {
       adminDistrict: p.admin_district, adminSector: p.admin_sector,
       adminCell: p.admin_cell, adminVillage: p.admin_village,
     });
-    const name = displayName({
-      assetType: p.asset_type, bedrooms: p.bedrooms,
-      adminVillage: p.admin_village, adminSector: p.admin_sector,
-      adminDistrict: p.admin_district,
-    });
+    const name = displayName({ assetType: p.asset_type, bedrooms: p.bedrooms });
     console.log(`  Name   : ${name}`);
     console.log(`  Loc    : ${[p.admin_village, p.admin_cell, p.admin_sector, p.admin_district].filter(Boolean).join(", ")}`);
     console.log(`  Anchor : ${centroid ? `${centroid.centroid_lat.toFixed(6)}, ${centroid.centroid_lon.toFixed(6)}` : "⚠ no centroid"}`);
@@ -585,6 +660,10 @@ async function run() {
   const missing = photoPaths.filter((fp) => !existsSync(fp));
   if (missing.length > 0) throw new Error(`Missing photo files:\n  ${missing.join("\n  ")}`);
   console.log(`  Photos : ${photoPaths.length}`);
+
+  const videoFilePath = spec.video ? resolve(listingDir, spec.video) : null;
+  if (videoFilePath && !existsSync(videoFilePath)) throw new Error(`Missing video file: ${videoFilePath}`);
+  if (videoFilePath) console.log(`  Video  : ${videoFilePath.split("/").pop()}`);
 
   if (dryRun) {
     if (mode === "UPI") {
@@ -624,11 +703,7 @@ async function run() {
         adminCell: p.admin_cell, adminVillage: p.admin_village,
       });
       const locationSource = p.pin_lat != null ? "pin_derived" : "admin_unit";
-      const name = displayName({
-        assetType: p.asset_type, bedrooms: p.bedrooms,
-        adminVillage: p.admin_village, adminSector: p.admin_sector,
-        adminDistrict: p.admin_district,
-      });
+      const name = displayName({ assetType: p.asset_type, bedrooms: p.bedrooms });
       const hasProfile = p.bedrooms != null || p.bathrooms != null ||
         p.interior_area_sqm != null || p.year_built != null;
       const assetId = genAssetId();
@@ -671,9 +746,10 @@ async function run() {
           id, parcel_id, property_asset_id, agency_id, agent_user_id,
           status, marketing_type, visibility, currency, asking_price_rwf,
           location_hidden, seed_source
-        ) VALUES ($1,NULL,$2,$3,$4,'draft',$5,$6,'RWF',$7,TRUE,'script_import_v1')`,
+        ) VALUES ($1,NULL,$2,$3,$4,'draft',$5,$6,'RWF',$7,$8,'script_import_v1')`,
         [listingId, assetId, spec.agency_id ?? null, agent.id,
-         spec.marketing_type, spec.visibility ?? "public", spec.asking_price_rwf ?? null],
+         spec.marketing_type, spec.visibility ?? "public", spec.asking_price_rwf ?? null,
+         p.location_hidden ?? false],
       );
       console.log(`  ✓ listing         : ${listingId}`);
     }
@@ -733,6 +809,45 @@ async function run() {
       );
       console.log(`  ✓ photo ${i + 1}/${photoPaths.length} → ${uploaded.imageUrl}`);
     }
+  }
+
+  // ── Upload video ───────────────────────────────────────────────────────────
+
+  if (videoFilePath) {
+    const vContentType = contentTypeFromVideoPath(videoFilePath);
+    const vBaseName = videoFilePath.split("/").pop() ?? "video.mp4";
+    const vIntent = createVideoUploadIntent({ listingId, userId: agent.id, contentType: vContentType, fileName: vBaseName });
+
+    const vBuffer = readFileSync(videoFilePath);
+    const vFormData = new FormData();
+    vFormData.append("token", vIntent.token);
+    vFormData.append("file", new Blob([vBuffer], { type: vContentType }), vBaseName);
+
+    const vRes = await fetch(vIntent.uploadUrl, {
+      method: "POST",
+      body: vFormData,
+      headers: { Origin: UPLOAD_ORIGIN },
+    });
+    if (!vRes.ok) {
+      const body = await vRes.text().catch(() => `HTTP ${vRes.status}`);
+      throw new Error(`Video upload failed for ${vBaseName}: ${body}`);
+    }
+    const uploadedVideo = await vRes.json();
+
+    await pool.query(
+      `INSERT INTO listing_video (
+        id, listing_id, video_url, video_storage_key,
+        content_type, file_size_bytes, uploaded_by_user_id, status
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,'ready')`,
+      [
+        genVideoId(), listingId,
+        uploadedVideo.videoUrl, uploadedVideo.storageKey,
+        uploadedVideo.contentType ?? vContentType,
+        uploadedVideo.fileSizeBytes ?? vBuffer.length,
+        agent.id,
+      ],
+    );
+    console.log(`  ✓ video → ${uploadedVideo.videoUrl}`);
   }
 
   // ── Activate ───────────────────────────────────────────────────────────────
