@@ -5,6 +5,8 @@ import { createListingImageUploadIntent, getListingImageUploadConfig, isListingI
 import { getEditablePortalListingSummary } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
 
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+
 export const dynamic = "force-dynamic";
 
 export async function POST(
@@ -60,6 +62,10 @@ export async function POST(
 
       if (!fileName || !contentType) {
         throw new Error("Each file must include fileName and contentType.");
+      }
+
+      if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+        throw new Error(`Unsupported file type: ${contentType}. Allowed types are JPEG, PNG, WebP, and HEIC.`);
       }
 
       return createListingImageUploadIntent({

@@ -31,6 +31,7 @@ interface UploadedImagePayload {
 
 const MAX_EDGE_PX = 1800;
 const JPEG_QUALITY = 0.78;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
 function formatBytes(bytes?: number) {
   if (!bytes) {
@@ -147,6 +148,13 @@ export function ListingPhotoManager({
 
     if (selectedFiles.length > remainingSlots) {
       setError(`You can only add ${remainingSlots} more photo${remainingSlots === 1 ? "" : "s"} to this listing.`);
+      event.target.value = "";
+      return;
+    }
+
+    const invalidFiles = selectedFiles.filter((f) => !ALLOWED_IMAGE_TYPES.has(f.type));
+    if (invalidFiles.length > 0) {
+      setError(`Unsupported file type${invalidFiles.length > 1 ? "s" : ""}: ${invalidFiles.map((f) => f.name).join(", ")}. Please upload JPEG, PNG, WebP, or HEIC images.`);
       event.target.value = "";
       return;
     }
