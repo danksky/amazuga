@@ -728,6 +728,68 @@ resource "vercel_project_environment_variable" "listing_image_upload_secret_prev
   comment    = "Preview shared secret used to sign listing image upload intents."
 }
 
+# --- Vercel env vars: listing video upload (same worker/bucket/secret as images) ---
+
+resource "vercel_project_environment_variable" "listing_video_upload_url" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_VIDEO_UPLOAD_URL"
+  value      = local.listing_media_upload_url
+  sensitive  = false
+  target     = ["production"]
+  comment    = "Production listing media upload worker URL (shared with image uploads)."
+}
+
+resource "vercel_project_environment_variable" "listing_video_upload_url_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_VIDEO_UPLOAD_URL"
+  value      = local.listing_media_preview_upload_url
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Preview listing media upload worker URL (shared with image uploads)."
+}
+
+resource "vercel_project_environment_variable" "listing_videos_public_base_url" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_VIDEOS_PUBLIC_BASE_URL"
+  value      = local.listing_media_public_base_url
+  sensitive  = false
+  target     = ["production"]
+  comment    = "Production public base URL for listing videos stored in R2 (shared bucket with images)."
+}
+
+resource "vercel_project_environment_variable" "listing_videos_public_base_url_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_VIDEOS_PUBLIC_BASE_URL"
+  value      = local.listing_media_preview_public_base_url
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Preview public base URL for listing videos stored in R2 (shared bucket with images)."
+}
+
+resource "vercel_project_environment_variable" "listing_video_upload_secret" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_VIDEO_UPLOAD_SECRET"
+  value      = random_password.listing_media_upload_secret.result
+  sensitive  = true
+  target     = ["production"]
+  comment    = "Production shared secret for signing listing video upload intents (shared with image secret)."
+}
+
+resource "vercel_project_environment_variable" "listing_video_upload_secret_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "LISTING_VIDEO_UPLOAD_SECRET"
+  value      = random_password.listing_media_upload_secret_preview.result
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview shared secret for signing listing video upload intents (shared with image secret)."
+}
+
 resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret_production" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id

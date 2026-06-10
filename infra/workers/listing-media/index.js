@@ -242,20 +242,33 @@ const listingMediaWorker = {
       return json({ error: "Upload token is invalid or expired." }, { status: 401, headers: corsHeaders });
     }
 
-    if (file.type !== "image/jpeg" || payload.contentType !== "image/jpeg") {
+    const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg"]);
+    const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+    const isVideoUpload = ALLOWED_VIDEO_TYPES.has(payload.contentType);
+    const isImageUpload = ALLOWED_IMAGE_TYPES.has(payload.contentType);
+
+    if (!isImageUpload && !isVideoUpload) {
+      return json({ error: "Unsupported file type." }, { status: 400, headers: corsHeaders });
+    }
+
+    if (isImageUpload && file.type !== "image/jpeg") {
       return json({ error: "Listing photo uploads must arrive as JPEG files." }, { status: 400, headers: corsHeaders });
     }
 
-    if (typeof payload.maxBytes === "number" && file.size > payload.maxBytes) {
-      return json({ error: "Processed upload exceeded the maximum allowed size." }, { status: 400, headers: corsHeaders });
+    if (isVideoUpload && !ALLOWED_VIDEO_TYPES.has(file.type)) {
+      return json({ error: "Unsupported video type." }, { status: 400, headers: corsHeaders });
     }
 
-    const isAgentIdPhoto = payload.listingId === AGENT_ID_PHOTO_LISTING_ID;
-    const imageId = crypto.randomUUID();
+    if (typeof payload.maxBytes === "number" && file.size > payload.maxBytes) {
+      return json({ error: "Upload exceeded the maximum allowed size." }, { status: 400, headers: corsHeaders });
+    }
 
+    const mediaId = crypto.randomUUID();
+
+    // Agent ID photos — private bucket, no public URL.
+    const isAgentIdPhoto = payload.listingId === AGENT_ID_PHOTO_LISTING_ID;
     if (isAgentIdPhoto) {
-      // Agent ID photos go into the private bucket, no public URL.
-      const storageKey = `${AGENT_ID_PHOTO_LISTING_ID}/${imageId}/gallery.jpg`;
+      const storageKey = `${AGENT_ID_PHOTO_LISTING_ID}/${mediaId}/gallery.jpg`;
       await env.AGENT_ID_PHOTOS_BUCKET.put(storageKey, file.stream(), {
         httpMetadata: {
           contentType: "image/jpeg",
@@ -273,8 +286,34 @@ const listingMediaWorker = {
       );
     }
 
-    // Listing photos go into the public bucket.
-    const storageKey = `listing-images/${payload.listingId}/${imageId}/gallery.jpg`;
+    if (isVideoUpload) {
+      const ext = payload.contentType === "video/quicktime" ? "mov" : payload.contentType === "video/webm" ? "webm" : "mp4";
+      const storageKey = `listing-videos/${payload.listingId}/${mediaId}/video.${ext}`;
+      await env.LISTING_MEDIA_BUCKET.put(storageKey, file.stream(), {
+        httpMetadata: {
+          contentType: payload.contentType,
+          cacheControl: "public, max-age=86400",
+        },
+        customMetadata: {
+          listingId: String(payload.listingId),
+          userId: String(payload.userId),
+          intentId: String(payload.intentId),
+        },
+      });
+
+      return json(
+        {
+          videoUrl: buildPublicUrl(env, storageKey),
+          storageKey,
+          contentType: payload.contentType,
+          fileSizeBytes: file.size,
+        },
+        { status: 201, headers: corsHeaders },
+      );
+    }
+
+    // Listing photos — public bucket.
+    const storageKey = `listing-images/${payload.listingId}/${mediaId}/gallery.jpg`;
     await env.LISTING_MEDIA_BUCKET.put(storageKey, file.stream(), {
       httpMetadata: {
         contentType: "image/jpeg",

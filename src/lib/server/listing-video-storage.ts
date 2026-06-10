@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac, randomUUID } from "node:crypto";
 
-const DEFAULT_MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
+const DEFAULT_MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB (Cloudflare Workers request body limit)
 const DEFAULT_DELETE_TIMEOUT_MS = 10_000;
 
 function encodeBase64Url(value: string) {

@@ -27,7 +27,7 @@ interface UploadedMediaPayload {
   fileSizeBytes?: number;
 }
 
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 const MAX_DURATION_SECONDS = 120; // 2 minutes
 const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 
@@ -144,7 +144,7 @@ export function ListingVideoManager({
     }
 
     if (file.size > MAX_VIDEO_BYTES) {
-      setError(`${file.name} is too large (${formatBytes(file.size)}). Maximum video size is 500 MB.`);
+      setError(`${file.name} is too large (${formatBytes(file.size)}). Maximum video size is 100 MB.`);
       return;
     }
 
@@ -288,7 +288,7 @@ export function ListingVideoManager({
         <div>
           <h2 className={styles.mediaTitle}>Listing video</h2>
           <div className={styles.mediaBody}>
-            One optional video per listing. Maximum 2 minutes and 500 MB. MP4, MOV, or WebM.
+            One optional video per listing. Maximum 2 minutes and 100 MB. MP4, MOV, or WebM.
           </div>
         </div>
         {video ? <div className={styles.mediaMeta}>1 / 1 uploaded</div> : <div className={styles.mediaMeta}>0 / 1 uploaded</div>}
