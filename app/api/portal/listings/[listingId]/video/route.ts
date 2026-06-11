@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { getListingImageUploadConfig } from "@/lib/server/listing-image-storage";
+import { generateAndStoreOgImage } from "@/lib/server/og-image";
 import { deleteListingVideoFromStorage, getListingVideoUploadConfig } from "@/lib/server/listing-video-storage";
 import { addListingVideoToDb, getEditablePortalListingSummary, removeListingVideoFromDb } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
@@ -98,6 +99,8 @@ export async function POST(
     );
   }
 
+  generateAndStoreOgImage(listingId).catch(console.error);
+
   if (listing.propertyRouteId) {
     revalidatePath(routes.public.property(listing.propertyRouteId));
   }
@@ -151,6 +154,8 @@ export async function DELETE(
       userId: currentUser.id,
     }).catch(console.error);
   }
+
+  generateAndStoreOgImage(listingId).catch(console.error);
 
   if (listing.propertyRouteId) {
     revalidatePath(routes.public.property(listing.propertyRouteId));

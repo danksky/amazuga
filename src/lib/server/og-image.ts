@@ -244,7 +244,7 @@ interface ListingOgData {
 async function getListingOgData(listingId: string): Promise<ListingOgData | null> {
   const pool = getPgPool();
 
-  const [listingResult, imageResult] = await Promise.all([
+  const [listingResult, imageResult, videoResult] = await Promise.all([
     pool.query<{
       asking_price_rwf: string | number | null;
       marketing_type: string | null;
@@ -285,6 +285,10 @@ async function getListingOgData(listingId: string): Promise<ListingOgData | null
        LIMIT 3`,
       [listingId],
     ),
+    pool.query<{ thumbnail_url: string | null }>(
+      `SELECT thumbnail_url FROM listing_video WHERE listing_id = $1 AND status = 'ready' LIMIT 1`,
+      [listingId],
+    ),
   ]);
 
   const row = listingResult.rows[0];
@@ -293,6 +297,14 @@ async function getListingOgData(listingId: string): Promise<ListingOgData | null
   const priceRwf = Number(row.asking_price_rwf);
   if (!isFinite(priceRwf) || priceRwf <= 0) return null;
 
+  const imageUrls = imageResult.rows.map((r: { image_url: string }) => r.image_url);
+  const videoThumbnailUrl = imageResult.rows[2] === undefined
+    ? (videoResult.rows[0]?.thumbnail_url ?? null)
+    : null;
+  if (videoThumbnailUrl) {
+    while (imageUrls.length < 3) imageUrls.push(videoThumbnailUrl);
+  }
+
   return {
     priceRwf,
     marketingType: row.marketing_type as "sale" | "rent",
@@ -300,7 +312,7 @@ async function getListingOgData(listingId: string): Promise<ListingOgData | null
     beds: row.bedrooms != null ? Number(row.bedrooms) : null,
     baths: row.bathrooms != null ? Number(row.bathrooms) : null,
     areaSqm: row.interior_area_sqm != null ? Number(row.interior_area_sqm) : null,
-    imageUrls: imageResult.rows.map((r: { image_url: string }) => r.image_url),
+    imageUrls,
   };
 }
 
