@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   serverExternalPackages: ["sharp"],
+  outputFileTracingIncludes: {
+    "**": ["./public/fonts/**"],
+  },
 };
 
 export default nextConfig;

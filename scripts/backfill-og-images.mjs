@@ -36,6 +36,21 @@ const CONCURRENCY = 3;
 if (!DATABASE_URL) { console.error("No DATABASE_URL or DATABASE_URL_PREVIEW set"); process.exit(1); }
 if (!UPLOAD_URL || !UPLOAD_SECRET) { console.error("LISTING_IMAGE_UPLOAD_URL / LISTING_IMAGE_UPLOAD_SECRET not set"); process.exit(1); }
 
+// ---------- font loading ----------
+
+let _fontCache = null;
+
+async function getFonts() {
+  if (_fontCache) return _fontCache;
+  const fontsDir = path.join(__dirname, "..", "public", "fonts");
+  const [boldBuf, regularBuf] = await Promise.all([
+    fs.readFile(path.join(fontsDir, "Inter-Bold.ttf")),
+    fs.readFile(path.join(fontsDir, "Inter-Regular.ttf")),
+  ]);
+  _fontCache = { bold: boldBuf.toString("base64"), regular: regularBuf.toString("base64") };
+  return _fontCache;
+}
+
 // ---------- canvas geometry ----------
 
 const OG_W = 1200;
@@ -102,7 +117,7 @@ function approxW(text, size, weight = "400") {
   return text.length * size * (weight === "700" ? 0.62 : 0.55);
 }
 
-function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
+function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType, fontBoldB64, fontRegularB64) {
   const W = OG_W, H = OG_H, pad = 52;
   const stateLabel = listingType === "rent" ? "FOR RENT" : "FOR SALE";
   const BF = 22, BH = 35, BR = BH / 2, BD = 11, BPX = 20;
@@ -139,6 +154,10 @@ function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <defs>
+    <style>
+      @font-face { font-family: 'Inter'; font-weight: 700; src: url('data:font/truetype;base64,${fontBoldB64}') format('truetype'); }
+      @font-face { font-family: 'Inter'; font-weight: 400; src: url('data:font/truetype;base64,${fontRegularB64}') format('truetype'); }
+    </style>
     <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="black" flood-opacity="0.5"/>
     </filter>
@@ -151,20 +170,20 @@ function buildOverlaySvg(priceLabel, factsLabel, propertyType, listingType) {
   <path d="${yellowPath}" fill="#fad201" stroke="none"/>
   <path d="${bluePath}" fill="#00a1de" stroke="none"/>
   <text x="${bx + BPX}" y="${by + BH / 2}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="${BF}" font-weight="700" fill="white" dominant-baseline="middle"
   >${escXml(propertyType.toUpperCase())}</text>
   <text x="${yellowTopLeft + BPX}" y="${by + BH / 2}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="${BF}" font-weight="700" fill="black" dominant-baseline="middle"
   >${escXml(stateLabel)}</text>
   <text x="${pad}" y="${priceY}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="58" font-weight="700" fill="white" dominant-baseline="hanging"
     filter="url(#sh)"
   >${escXml(priceLabel)}</text>
   <text x="${W - pad}" y="${pad}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="28" font-weight="500" fill="white"
     text-anchor="end" dominant-baseline="hanging"
     filter="url(#sh)"
@@ -194,6 +213,8 @@ async function buildOgImageBuffer({ photoBuffers, priceRwf, marketingType, prope
   const priceLabel = buildPriceLabel(priceRwf, marketingType);
   const factsLabel = buildFactsLabel(beds, baths, areaSqm);
 
+  const fonts = await getFonts();
+
   const logoPath = path.join(__dirname, "..", "public", "amazuga-logo-white.png");
   const logoRaw = await fs.readFile(logoPath);
   const logoMeta = await sharp(logoRaw).metadata();
@@ -206,7 +227,7 @@ async function buildOgImageBuffer({ photoBuffers, priceRwf, marketingType, prope
   const logoBuf = await sharp(logoResized).composite([{ input: alphaHalf, blend: "dest-in" }]).png().toBuffer();
 
   const collageBuf = await buildCollage(photoBuffers);
-  const svgBuf = Buffer.from(buildOverlaySvg(priceLabel, factsLabel, propertyType, marketingType));
+  const svgBuf = Buffer.from(buildOverlaySvg(priceLabel, factsLabel, propertyType, marketingType, fonts.bold, fonts.regular));
   const pad = 52;
 
   return sharp(collageBuf)
