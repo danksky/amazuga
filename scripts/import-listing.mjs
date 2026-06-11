@@ -27,9 +27,11 @@
  */
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 import { Pool } from "pg";
 
@@ -196,6 +198,28 @@ function md5hex(v) { return createHash("md5").update(v).digest("hex"); }
 function upiAssetId(parcelId) { return "ast_" + md5hex("claim-primary:" + parcelId).slice(0, 20); }
 function upiDisplayCode(parcelId) { return "AST-" + md5hex("claim-display:" + parcelId).slice(0, 10).toUpperCase(); }
 function recordId(prefix) { return `${prefix}-${Date.now()}`; }
+
+// ─── Video thumbnail extraction ────────────────────────────────────────────────
+
+function captureVideoThumbnail(videoPath) {
+  const tmpPath = join(tmpdir(), `amazuga-thumb-${randomUUID()}.jpg`);
+  try {
+    execFileSync("ffmpeg", [
+      "-y",
+      "-ss", "0",
+      "-i", videoPath,
+      "-frames:v", "1",
+      "-q:v", "3",
+      tmpPath,
+    ], { stdio: "pipe" });
+    const buffer = readFileSync(tmpPath);
+    return buffer;
+  } catch {
+    return null;
+  } finally {
+    try { unlinkSync(tmpPath); } catch { /* ignore */ }
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -551,20 +575,44 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
       }
       const uploadedVideo = await vRes.json();
 
+      // Extract and upload thumbnail via ffmpeg.
+      let thumbnailUrl = null;
+      let thumbnailStorageKey = null;
+      const thumbBuffer = captureVideoThumbnail(recoveryVideoPath);
+      if (thumbBuffer) {
+        const thumbIntent = createUploadIntent({
+          listingId, userId: listing.agent_user_id,
+          contentType: "image/jpeg", fileName: "thumbnail.jpg",
+        });
+        const thumbForm = new FormData();
+        thumbForm.append("token", thumbIntent.token);
+        thumbForm.append("file", new Blob([thumbBuffer], { type: "image/jpeg" }), "thumbnail.jpg");
+        const thumbRes = await fetch(thumbIntent.uploadUrl, {
+          method: "POST", body: thumbForm, headers: { Origin: UPLOAD_ORIGIN },
+        });
+        if (thumbRes.ok) {
+          const thumbData = await thumbRes.json();
+          thumbnailUrl = thumbData.imageUrl ?? null;
+          thumbnailStorageKey = thumbData.storageKey ?? null;
+        }
+      }
+
       await pool.query(
         `INSERT INTO listing_video (
           id, listing_id, video_url, video_storage_key,
+          thumbnail_url, thumbnail_storage_key,
           content_type, file_size_bytes, uploaded_by_user_id, status
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'ready')`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'ready')`,
         [
           genVideoId(), listingId,
           uploadedVideo.videoUrl, uploadedVideo.storageKey,
+          thumbnailUrl, thumbnailStorageKey,
           uploadedVideo.contentType ?? vContentType,
           uploadedVideo.fileSizeBytes ?? vBuffer.length,
           listing.agent_user_id,
         ],
       );
-      console.log(`  ✓ video → ${uploadedVideo.videoUrl}`);
+      console.log(`  ✓ video → ${uploadedVideo.videoUrl}${thumbnailUrl ? " (thumbnail captured)" : " (no thumbnail)"}`);
     }
   }
 
@@ -864,20 +912,44 @@ async function run() {
     }
     const uploadedVideo = await vRes.json();
 
+    // Extract and upload thumbnail via ffmpeg.
+    let thumbnailUrl = null;
+    let thumbnailStorageKey = null;
+    const thumbBuffer = captureVideoThumbnail(videoFilePath);
+    if (thumbBuffer) {
+      const thumbIntent = createUploadIntent({
+        listingId, userId: agent.id,
+        contentType: "image/jpeg", fileName: "thumbnail.jpg",
+      });
+      const thumbForm = new FormData();
+      thumbForm.append("token", thumbIntent.token);
+      thumbForm.append("file", new Blob([thumbBuffer], { type: "image/jpeg" }), "thumbnail.jpg");
+      const thumbRes = await fetch(thumbIntent.uploadUrl, {
+        method: "POST", body: thumbForm, headers: { Origin: UPLOAD_ORIGIN },
+      });
+      if (thumbRes.ok) {
+        const thumbData = await thumbRes.json();
+        thumbnailUrl = thumbData.imageUrl ?? null;
+        thumbnailStorageKey = thumbData.storageKey ?? null;
+      }
+    }
+
     await pool.query(
       `INSERT INTO listing_video (
         id, listing_id, video_url, video_storage_key,
+        thumbnail_url, thumbnail_storage_key,
         content_type, file_size_bytes, uploaded_by_user_id, status
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,'ready')`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'ready')`,
       [
         genVideoId(), listingId,
         uploadedVideo.videoUrl, uploadedVideo.storageKey,
+        thumbnailUrl, thumbnailStorageKey,
         uploadedVideo.contentType ?? vContentType,
         uploadedVideo.fileSizeBytes ?? vBuffer.length,
         agent.id,
       ],
     );
-    console.log(`  ✓ video → ${uploadedVideo.videoUrl}`);
+    console.log(`  ✓ video → ${uploadedVideo.videoUrl}${thumbnailUrl ? " (thumbnail captured)" : " (no thumbnail)"}`);
   }
 
   // ── Activate ───────────────────────────────────────────────────────────────
