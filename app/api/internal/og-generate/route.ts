@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const force = body?.force === true;
     const { rows } = await getPgPool().query<{ id: string }>(
       force
-        ? `SELECT DISTINCT l.id FROM listing l
+        ? `SELECT l.id FROM listing l
            INNER JOIN listing_video lv ON lv.listing_id = l.id
            WHERE l.status = 'active' ORDER BY l.created_at DESC LIMIT $1`
         : `SELECT id FROM listing WHERE status = 'active' AND og_image_url IS NULL ORDER BY created_at DESC LIMIT $1`,
