@@ -24,11 +24,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, listingId: body.listingId });
   }
 
-  // Backfill mode: regenerate OG for active listings missing og_image_url.
+  // Backfill mode: regenerate OG for active listings missing og_image_url,
+  // or force=true to regenerate all active listings that have a video.
   if (body?.backfill === true) {
     const limit = typeof body.limit === "number" && body.limit > 0 ? body.limit : 50;
+    const force = body?.force === true;
     const { rows } = await getPgPool().query<{ id: string }>(
-      `SELECT id FROM listing WHERE status = 'active' AND og_image_url IS NULL ORDER BY created_at DESC LIMIT $1`,
+      force
+        ? `SELECT DISTINCT l.id FROM listing l
+           INNER JOIN listing_video lv ON lv.listing_id = l.id
+           WHERE l.status = 'active' ORDER BY l.created_at DESC LIMIT $1`
+        : `SELECT id FROM listing WHERE status = 'active' AND og_image_url IS NULL ORDER BY created_at DESC LIMIT $1`,
       [limit],
     );
 
