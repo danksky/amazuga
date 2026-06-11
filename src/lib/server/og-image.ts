@@ -8,6 +8,20 @@ import sharp from "sharp";
 
 import { getPgPool } from "@/lib/server/postgres";
 
+// ---------- font loading (embedded into SVG so librsvg works on serverless) ----------
+
+let _fontCache: { bold: string; regular: string } | null = null;
+
+async function getFonts(): Promise<{ bold: string; regular: string }> {
+  if (_fontCache) return _fontCache;
+  const [boldBuf, regularBuf] = await Promise.all([
+    fs.readFile(path.join(process.cwd(), "public", "fonts", "Inter-Bold.ttf")),
+    fs.readFile(path.join(process.cwd(), "public", "fonts", "Inter-Regular.ttf")),
+  ]);
+  _fontCache = { bold: boldBuf.toString("base64"), regular: regularBuf.toString("base64") };
+  return _fontCache;
+}
+
 // ---------- canvas geometry (mirrors property-page.module.css gallery ratios) ----------
 
 const OG_W = 1200;
@@ -85,6 +99,8 @@ function buildOverlaySvg(
   factsLabel: string,
   propertyType: string,
   listingType: "sale" | "rent",
+  fontBoldB64: string,
+  fontRegularB64: string,
 ): string {
   const W = OG_W;
   const H = OG_H;
@@ -132,6 +148,10 @@ function buildOverlaySvg(
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <defs>
+    <style>
+      @font-face { font-family: 'Inter'; font-weight: 700; src: url('data:font/truetype;base64,${fontBoldB64}') format('truetype'); }
+      @font-face { font-family: 'Inter'; font-weight: 400; src: url('data:font/truetype;base64,${fontRegularB64}') format('truetype'); }
+    </style>
     <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="black" flood-opacity="0.5"/>
     </filter>
@@ -147,24 +167,24 @@ function buildOverlaySvg(
   <path d="${bluePath}" fill="#00a1de" stroke="none"/>
 
   <text x="${bx + BPX}" y="${by + BH / 2}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="${BF}" font-weight="700" fill="white" dominant-baseline="middle"
   >${escXml(propertyType.toUpperCase())}</text>
 
   <text x="${yellowTopLeft + BPX}" y="${by + BH / 2}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="${BF}" font-weight="700" fill="black" dominant-baseline="middle"
   >${escXml(stateLabel)}</text>
 
   <text x="${pad}" y="${priceY}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
+    font-family="Inter"
     font-size="58" font-weight="700" fill="white" dominant-baseline="hanging"
     filter="url(#sh)"
   >${escXml(priceLabel)}</text>
 
   <text x="${W - pad}" y="${pad}"
-    font-family="Helvetica Neue,Helvetica,Arial,sans-serif"
-    font-size="28" font-weight="500" fill="white"
+    font-family="Inter"
+    font-size="28" font-weight="400" fill="white"
     text-anchor="end" dominant-baseline="hanging"
     filter="url(#sh)"
   >${escXml(factsLabel)}</text>
@@ -205,6 +225,8 @@ export async function buildOgImageBuffer(params: OgImageParams): Promise<Buffer>
   const priceLabel = buildPriceLabel(priceRwf, marketingType);
   const factsLabel = buildFactsLabel(beds, baths, areaSqm);
 
+  const fonts = await getFonts();
+
   const logoPath = path.join(process.cwd(), "public", "amazuga-logo-white.png");
   const logoRaw = await fs.readFile(logoPath);
   const logoMeta = await sharp(logoRaw).metadata();
@@ -217,7 +239,7 @@ export async function buildOgImageBuffer(params: OgImageParams): Promise<Buffer>
   const logoBuf = await sharp(logoResized).composite([{ input: alphaHalf, blend: "dest-in" }]).png().toBuffer();
 
   const collageBuf = await buildCollage(photoBuffers);
-  const svgBuf = Buffer.from(buildOverlaySvg(priceLabel, factsLabel, propertyType, marketingType));
+  const svgBuf = Buffer.from(buildOverlaySvg(priceLabel, factsLabel, propertyType, marketingType, fonts.bold, fonts.regular));
   const pad = 52;
 
   return sharp(collageBuf)
