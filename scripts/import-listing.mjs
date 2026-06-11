@@ -127,6 +127,35 @@ function createUploadIntent({ listingId, userId, contentType, fileName }) {
 const VIDEO_UPLOAD_URL = getEnv("LISTING_VIDEO_UPLOAD_URL");
 const VIDEO_UPLOAD_SECRET = getEnv("LISTING_VIDEO_UPLOAD_SECRET");
 
+// ─── OG image generation ───────────────────────────────────────────────────────
+
+const CRON_SECRET = getEnv("CRON_SECRET");
+// APP_URL used to call /api/internal/og-generate after activation.
+// Set NEXT_APP_URL in .env.local (e.g. http://localhost:3000 or https://preview.amazuga.com).
+const APP_URL = (getEnv("NEXT_APP_URL") ?? "http://localhost:3000").replace(/\/+$/, "");
+
+async function triggerOgGenerate(listingId) {
+  if (!CRON_SECRET) {
+    console.log(`  ⚠ CRON_SECRET not set — skipping OG image generation`);
+    return;
+  }
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/og-generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${CRON_SECRET}` },
+      body: JSON.stringify({ listingId }),
+    });
+    if (res.ok) {
+      console.log(`  ✓ OG image generated`);
+    } else {
+      const text = await res.text().catch(() => `HTTP ${res.status}`);
+      console.log(`  ⚠ OG image generation failed: ${text}`);
+    }
+  } catch (err) {
+    console.log(`  ⚠ OG image generation error: ${err.message}`);
+  }
+}
+
 function createVideoUploadIntent({ listingId, userId, contentType, fileName }) {
   if (!VIDEO_UPLOAD_URL || !VIDEO_UPLOAD_SECRET) {
     throw new Error(
@@ -554,6 +583,7 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
         [genPriceHistoryId(), listingId, spec.asking_price_rwf, listing.agent_user_id],
       );
       console.log(`\n  ✓ Activated at ${Number(spec.asking_price_rwf).toLocaleString()} RWF`);
+      await triggerOgGenerate(listingId);
     }
   }
 
@@ -866,6 +896,7 @@ async function run() {
         [genPriceHistoryId(), listingId, spec.asking_price_rwf, agent.id],
       );
       console.log(`\n  ✓ Activated at ${Number(spec.asking_price_rwf).toLocaleString()} RWF`);
+      await triggerOgGenerate(listingId);
     }
   }
 
