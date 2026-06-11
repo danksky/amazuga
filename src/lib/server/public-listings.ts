@@ -751,7 +751,8 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
           pap.bedrooms,
           pap.bathrooms,
           pap.interior_area_sqm,
-          pap.year_built
+          pap.year_built,
+          l.og_image_url
         FROM property_asset pa
         LEFT JOIN listing l
           ON l.property_asset_id = pa.id
