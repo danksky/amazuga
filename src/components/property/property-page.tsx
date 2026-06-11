@@ -478,7 +478,7 @@ export function PropertyPage({
                 ) : secondaryItem ? (
                   <div className={`${styles.gallerySecondary} ${styles.gallerySecondaryAction} ${styles.gallerySecondaryFull}`}>
                     {secondaryItem.type === "video" ? (
-                      <div className={styles.galleryVideoThumb}>
+                      <div className={styles.galleryVideoThumb} onClick={() => openGalleryModal(1)} style={{ cursor: "pointer" }}>
                         {secondaryItem.thumbnailUrl
                           ? <img alt={`${property.title} video`} className={styles.galleryImage} src={secondaryItem.thumbnailUrl} />
                           : <div className={styles.galleryImage} />}
