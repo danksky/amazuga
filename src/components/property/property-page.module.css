@@ -833,6 +833,12 @@
     height: 280px;
   }
 
+  .gallerySecondaryFull {
+    height: 200px;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
   .galleryStack {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: none;
