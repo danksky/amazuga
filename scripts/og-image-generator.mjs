@@ -37,7 +37,12 @@ async function getFonts() {
 // ---------- image compositing ----------
 
 async function coverCrop(input, w, h) {
-  return sharp(input).resize(w, h, { fit: "cover", position: "centre" }).jpeg({ quality: 92 }).toBuffer();
+  const meta = await sharp(input).metadata();
+  const isPortrait = (meta.height ?? 0) > (meta.width ?? 0);
+  return sharp(input)
+    .resize(w, h, { fit: "cover", position: isPortrait ? "top" : "centre" })
+    .jpeg({ quality: 92 })
+    .toBuffer();
 }
 
 async function buildCollage(photos) {
