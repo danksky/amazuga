@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import maplibregl from "maplibre-gl";
 import { PMTiles, Protocol } from "pmtiles";
 
+import { applyAmazugaBasemapPalette } from "@/lib/openfreemap-style";
 import type { BrowseMapCard, BrowseMapPin, BrowseMapResult } from "@/lib/server/browse-map";
 import type { BrowseFilters } from "@/lib/browse-types";
 
@@ -357,13 +358,6 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
     // ---- Map style -----------------------------------------------------
 
     const sources: Record<string, maplibregl.SourceSpecification> = {
-      carto: {
-        type: "raster",
-        tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      },
       // Empty initial GeoJSON; updated via source.setData() after each fetch
       "listing-pins": {
         type: "geojson",
@@ -382,9 +376,7 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
       };
     }
 
-    const layers: maplibregl.LayerSpecification[] = [
-      { id: "carto", type: "raster", source: "carto" },
-    ];
+    const layers: maplibregl.LayerSpecification[] = [];
 
     if (PARCEL_PMTILES_URL) {
       layers.push({
@@ -436,11 +428,7 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
 
     const map = new maplibregl.Map({
       container,
-      style: {
-        version: 8,
-        sources,
-        layers,
-      },
+      style: "https://tiles.openfreemap.org/styles/bright",
       ...(isMobile
         ? {
             bounds: MOBILE_DEFAULT_BOUNDS,
@@ -458,6 +446,15 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
     // ---- Events --------------------------------------------------------
 
     map.on("load", () => {
+      applyAmazugaBasemapPalette(map);
+
+      for (const [id, source] of Object.entries(sources)) {
+        map.addSource(id, source);
+      }
+      for (const layer of layers) {
+        map.addLayer(layer);
+      }
+
       map.resize();
 
       // Tracks whether the current click cycle hit a feature (prevents background deselect)
