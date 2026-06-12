@@ -15,6 +15,8 @@ interface SearchBarProps {
   filters?: string[];
   onFiltersOpenChange?: (isOpen: boolean) => void;
   onFiltersChange?: (filters: BrowseFilters) => void;
+  mode?: "buy" | "rent";
+  onModeChange?: (mode: "buy" | "rent") => void;
 }
 
 const PROPERTY_TYPE_OPTIONS = ["House", "Apartment", "Land parcel"];
@@ -66,6 +68,8 @@ export function SearchBar({
   filters = [],
   onFiltersOpenChange,
   onFiltersChange,
+  mode,
+  onModeChange,
 }: SearchBarProps) {
   const router = useRouter();
 
@@ -511,7 +515,27 @@ export function SearchBar({
 
   return (
     <div className={styles.root}>
-      <form className={styles.wrap} onSubmit={handleSearchSubmit}>
+      <form className={`${styles.wrap} ${mode !== undefined ? styles.wrapWithMode : ""}`} onSubmit={handleSearchSubmit}>
+        {mode !== undefined ? (
+          <div className={styles.modeToggle}>
+            <div className={styles.modeTabs}>
+              <button
+                className={`${styles.modeTab} ${mode === "buy" ? styles.modeTabActive : ""}`}
+                onClick={() => onModeChange?.("buy")}
+                type="button"
+              >
+                Buy
+              </button>
+              <button
+                className={`${styles.modeTab} ${mode === "rent" ? styles.modeTabActive : ""}`}
+                onClick={() => onModeChange?.("rent")}
+                type="button"
+              >
+                Rent
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className={styles.inputWrap} ref={inputWrapRef}>
           {selectedLocation ? (
             <div className={styles.locationChip}>
@@ -591,7 +615,7 @@ export function SearchBar({
           )}
         </div>
         <div className={styles.controls}>
-          <Button type="submit">Search</Button>
+          <Button className={styles.desktopSearchButton} type="submit">Search</Button>
           <button className={styles.mobileFiltersButton} onClick={openFilters} type="button">
             Filters
           </button>

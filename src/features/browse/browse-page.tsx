@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/search/search-bar";
@@ -19,6 +20,7 @@ interface BrowsePageProps {
 }
 
 export function BrowsePage({ mode }: BrowsePageProps) {
+  const router = useRouter();
   const [showMobileMap, setShowMobileMap] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cards, setCards] = useState<BrowseMapCard[]>([]);
@@ -112,8 +114,10 @@ export function BrowsePage({ mode }: BrowsePageProps) {
       <div className={styles.stack}>
         <SearchBar
           filters={filters}
+          mode={mode}
           onFiltersOpenChange={setFiltersOpen}
           onFiltersChange={setActiveFilters}
+          onModeChange={(newMode) => router.push(`/${newMode}`)}
         />
         <div className={`${styles.layout} ${showMobileMap ? styles.mobileMapVisible : ""}`}>
           <div className={styles.mapCard}>

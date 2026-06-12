@@ -15,6 +15,50 @@
   background: transparent;
 }
 
+.wrapWithMode {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.modeToggle {
+  display: flex;
+  align-items: center;
+}
+
+.modeTabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.modeTab {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 130ms ease, color 130ms ease;
+  white-space: nowrap;
+}
+
+.modeTab:hover {
+  color: var(--foreground);
+}
+
+.modeTabActive {
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 .inputWrap {
   position: relative;
   min-width: 0;
@@ -571,24 +615,36 @@
     inset: 64px 0 0;
   }
 
-  .wrap {
-    grid-template-columns: 1fr;
-    padding: 12px 24px;
+  .wrap,
+  .wrapWithMode {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    grid-template-columns: unset;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+
+  .inputWrap {
+    position: static;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .suggestionsOuter {
+    left: 0;
+    right: 0;
   }
 
   .controls {
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
-  .filters {
-    justify-content: flex-start;
-  }
-
-  .mobileFiltersButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  .desktopSearchButton {
+    display: none;
   }
 
   .filters {
@@ -599,7 +655,9 @@
     display: none;
   }
 
-  .wrap {
-    padding: 12px 16px;
+  .mobileFiltersButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
