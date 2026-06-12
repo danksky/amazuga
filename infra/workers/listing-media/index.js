@@ -119,6 +119,43 @@ function buildPublicUrl(env, storageKey) {
   return `${env.PUBLIC_BASE_URL.replace(/\/+$/, "")}/${storageKey}`;
 }
 
+// Strip proprietary top-level atoms (e.g. WhatsApp's `beam` atom) from an MP4
+// container. iOS WebKit rejects files that have unknown atoms between ftyp and
+// moov. Returns a sanitized ArrayBuffer, or null if no changes were needed.
+function sanitizeMp4Atoms(buf) {
+  const KNOWN = new Set(["ftyp", "moov", "mdat", "free", "skip", "wide", "moof", "mfra", "sidx", "ssix", "prft", "pdin", "bloc", "uuid", "meta", "iods", "styp"]);
+  const view = new DataView(buf);
+  const chunks = [];
+  let offset = 0;
+  let stripped = false;
+
+  while (offset + 8 <= buf.byteLength) {
+    const size = view.getUint32(offset);
+    if (size < 8) break;
+    const type = String.fromCharCode(
+      view.getUint8(offset + 4), view.getUint8(offset + 5),
+      view.getUint8(offset + 6), view.getUint8(offset + 7),
+    );
+    if (KNOWN.has(type)) {
+      chunks.push(buf.slice(offset, offset + size));
+    } else {
+      stripped = true;
+    }
+    offset += size;
+  }
+
+  if (!stripped) return null;
+
+  const total = chunks.reduce((s, c) => s + c.byteLength, 0);
+  const result = new Uint8Array(total);
+  let pos = 0;
+  for (const chunk of chunks) {
+    result.set(new Uint8Array(chunk), pos);
+    pos += chunk.byteLength;
+  }
+  return result.buffer;
+}
+
 // Server-to-server read endpoint for private agent ID photos.
 // Called by the Next.js admin proxy route; never exposed to browsers.
 async function handleAdminRead(request, env) {
@@ -289,7 +326,18 @@ const listingMediaWorker = {
     if (isVideoUpload) {
       const ext = payload.contentType === "video/quicktime" ? "mov" : payload.contentType === "video/webm" ? "webm" : "mp4";
       const storageKey = `listing-videos/${payload.listingId}/${mediaId}/video.${ext}`;
-      await env.LISTING_MEDIA_BUCKET.put(storageKey, file.stream(), {
+
+      // Strip proprietary atoms (e.g. WhatsApp's `beam` atom) before storing.
+      // iOS WebKit rejects MP4s with unknown atoms between ftyp and moov.
+      let videoBody;
+      if (payload.contentType === "video/mp4" || payload.contentType === "video/quicktime") {
+        const rawBuf = await file.arrayBuffer();
+        videoBody = sanitizeMp4Atoms(rawBuf) ?? rawBuf;
+      } else {
+        videoBody = file.stream();
+      }
+
+      await env.LISTING_MEDIA_BUCKET.put(storageKey, videoBody, {
         httpMetadata: {
           contentType: payload.contentType,
           cacheControl: "public, max-age=86400",

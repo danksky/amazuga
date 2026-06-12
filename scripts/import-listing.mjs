@@ -274,6 +274,19 @@ function captureVideoThumbnail(videoPath) {
   }
 }
 
+// Remux video with ffmpeg to strip proprietary atoms (e.g. WhatsApp's `beam` atom)
+// and ensure moov-before-mdat ordering (faststart). iOS WebKit rejects videos with
+// unknown atoms between ftyp and moov.
+function remuxVideoForUpload(videoPath) {
+  const tmpPath = join(tmpdir(), `amazuga-remux-${randomUUID()}.mp4`);
+  try {
+    execFileSync("ffmpeg", ["-y", "-i", videoPath, "-c", "copy", "-movflags", "+faststart", tmpPath], { stdio: "pipe" });
+    return tmpPath;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PROPERTY_TYPE_LABELS = {
@@ -612,7 +625,10 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
       const vBaseName = recoveryVideoPath.split("/").pop() ?? "video.mp4";
       const vIntent = createVideoUploadIntent({ listingId, userId: listing.agent_user_id, contentType: vContentType, fileName: vBaseName });
 
-      const vBuffer = readFileSync(recoveryVideoPath);
+      const remuxedPath = remuxVideoForUpload(recoveryVideoPath);
+      const vUploadPath = remuxedPath ?? recoveryVideoPath;
+      if (!remuxedPath) console.log(`  ⚠ ffmpeg remux failed, uploading original`);
+      const vBuffer = readFileSync(vUploadPath);
       const vFormData = new FormData();
       vFormData.append("token", vIntent.token);
       vFormData.append("file", new Blob([vBuffer], { type: vContentType }), vBaseName);
@@ -622,6 +638,7 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
         body: vFormData,
         headers: { Origin: UPLOAD_ORIGIN },
       });
+      if (remuxedPath) { try { unlinkSync(remuxedPath); } catch { /* ignore */ } }
       if (!vRes.ok) {
         const body = await vRes.text().catch(() => `HTTP ${vRes.status}`);
         throw new Error(`Video upload failed for ${vBaseName}: ${body}`);
@@ -949,7 +966,10 @@ async function run() {
     const vBaseName = videoFilePath.split("/").pop() ?? "video.mp4";
     const vIntent = createVideoUploadIntent({ listingId, userId: agent.id, contentType: vContentType, fileName: vBaseName });
 
-    const vBuffer = readFileSync(videoFilePath);
+    const remuxedPath = remuxVideoForUpload(videoFilePath);
+    const vUploadPath = remuxedPath ?? videoFilePath;
+    if (!remuxedPath) console.log(`  ⚠ ffmpeg remux failed, uploading original`);
+    const vBuffer = readFileSync(vUploadPath);
     const vFormData = new FormData();
     vFormData.append("token", vIntent.token);
     vFormData.append("file", new Blob([vBuffer], { type: vContentType }), vBaseName);
@@ -959,6 +979,7 @@ async function run() {
       body: vFormData,
       headers: { Origin: UPLOAD_ORIGIN },
     });
+    if (remuxedPath) { try { unlinkSync(remuxedPath); } catch { /* ignore */ } }
     if (!vRes.ok) {
       const body = await vRes.text().catch(() => `HTTP ${vRes.status}`);
       throw new Error(`Video upload failed for ${vBaseName}: ${body}`);
