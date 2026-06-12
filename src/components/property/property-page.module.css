@@ -842,6 +842,7 @@
   .galleryStack {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: none;
+    height: 200px;
     border-left: 0;
     border-top: 1px solid var(--border);
   }
