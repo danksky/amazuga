@@ -35,6 +35,8 @@ import { execFileSync } from "node:child_process";
 
 import { Pool } from "pg";
 
+import { buildOgImageBuffer, storeOgImage } from "./og-image-generator.mjs";
+
 // ─── Env loading ───────────────────────────────────────────────────────────────
 
 function parseEnvFile(filePath) {
@@ -131,28 +133,79 @@ const VIDEO_UPLOAD_SECRET = getEnv("LISTING_VIDEO_UPLOAD_SECRET");
 
 // ─── OG image generation ───────────────────────────────────────────────────────
 
-const CRON_SECRET = getEnv("CRON_SECRET");
-// APP_URL used to call /api/internal/og-generate after activation.
-// Set NEXT_APP_URL in .env.local (e.g. http://localhost:3000 or https://preview.amazuga.com).
-const APP_URL = (getEnv("NEXT_APP_URL") ?? "http://localhost:3000").replace(/\/+$/, "");
-
-async function triggerOgGenerate(listingId) {
-  if (!CRON_SECRET) {
-    console.log(`  ⚠ CRON_SECRET not set — skipping OG image generation`);
+async function generateOgForListing(listingId) {
+  if (!UPLOAD_URL || !UPLOAD_SECRET) {
+    console.log(`  ⚠ Upload env vars not set — skipping OG image generation`);
     return;
   }
   try {
-    const res = await fetch(`${APP_URL}/api/internal/og-generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${CRON_SECRET}` },
-      body: JSON.stringify({ listingId }),
-    });
-    if (res.ok) {
-      console.log(`  ✓ OG image generated`);
-    } else {
-      const text = await res.text().catch(() => `HTTP ${res.status}`);
-      console.log(`  ⚠ OG image generation failed: ${text}`);
+    const { rows } = await pool.query(`
+      SELECT
+        l.asking_price_rwf,
+        l.marketing_type,
+        COALESCE(
+          NULLIF(BTRIM(pap.property_type), ''),
+          CASE pa.asset_type
+            WHEN 'house'               THEN 'House'
+            WHEN 'apartment_unit'      THEN 'Apartment'
+            WHEN 'apartment_building'  THEN 'Apartment'
+            WHEN 'land'                THEN 'Land'
+            WHEN 'commercial_building' THEN 'Commercial'
+            WHEN 'commercial_unit'     THEN 'Commercial'
+            ELSE 'Property'
+          END
+        ) AS property_type,
+        pap.bedrooms,
+        pap.bathrooms,
+        pap.interior_area_sqm,
+        ARRAY(
+          SELECT image_url FROM listing_image
+          WHERE listing_id = l.id AND status = 'ready'
+          ORDER BY sort_order ASC, created_at ASC
+          LIMIT 3
+        ) AS image_urls
+      FROM listing l
+      JOIN property_asset pa ON pa.id = l.property_asset_id
+      LEFT JOIN property_asset_profile pap ON pap.property_asset_id = pa.id
+      WHERE l.id = $1
+    `, [listingId]);
+
+    const row = rows[0];
+    if (!row || !row.image_urls?.length) {
+      console.log(`  ⚠ No images found for listing — skipping OG image generation`);
+      return;
     }
+
+    const priceRwf = Number(row.asking_price_rwf);
+    if (!isFinite(priceRwf) || priceRwf <= 0) {
+      console.log(`  ⚠ No valid price — skipping OG image generation`);
+      return;
+    }
+
+    const photoBuffers = await Promise.all(
+      row.image_urls.map(async (url) => {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+        return Buffer.from(await res.arrayBuffer());
+      }),
+    );
+
+    const jpegBuffer = await buildOgImageBuffer({
+      photoBuffers,
+      priceRwf,
+      marketingType: row.marketing_type,
+      propertyType: row.property_type ?? "Property",
+      beds: row.bedrooms != null ? Number(row.bedrooms) : null,
+      baths: row.bathrooms != null ? Number(row.bathrooms) : null,
+      areaSqm: row.interior_area_sqm != null ? Number(row.interior_area_sqm) : null,
+    });
+
+    const imageUrl = await storeOgImage(listingId, jpegBuffer, UPLOAD_URL, UPLOAD_SECRET);
+    await pool.query(
+      `UPDATE listing SET og_image_url = $1, updated_at = NOW() WHERE id = $2`,
+      [imageUrl, listingId],
+    );
+    console.log(`  ✓ OG image generated`);
   } catch (err) {
     console.log(`  ⚠ OG image generation error: ${err.message}`);
   }
@@ -631,7 +684,7 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
         [genPriceHistoryId(), listingId, spec.asking_price_rwf, listing.agent_user_id],
       );
       console.log(`\n  ✓ Activated at ${Number(spec.asking_price_rwf).toLocaleString()} RWF`);
-      await triggerOgGenerate(listingId);
+      await generateOgForListing(listingId);
     }
   }
 
@@ -968,7 +1021,7 @@ async function run() {
         [genPriceHistoryId(), listingId, spec.asking_price_rwf, agent.id],
       );
       console.log(`\n  ✓ Activated at ${Number(spec.asking_price_rwf).toLocaleString()} RWF`);
-      await triggerOgGenerate(listingId);
+      await generateOgForListing(listingId);
     }
   }
 
