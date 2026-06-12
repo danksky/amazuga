@@ -32,8 +32,10 @@ const PRIMARY_RATIO = 1.45 / (1.45 + 0.85);
 // ---------- image compositing ----------
 
 async function coverCrop(input: Buffer, w: number, h: number): Promise<Buffer> {
+  const meta = await sharp(input).metadata();
+  const isPortrait = (meta.height ?? 0) > (meta.width ?? 0);
   return sharp(input)
-    .resize(w, h, { fit: "cover", position: "centre" })
+    .resize(w, h, { fit: "cover", position: isPortrait ? "top" : "centre" })
     .jpeg({ quality: 92 })
     .toBuffer();
 }
