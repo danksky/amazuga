@@ -29,7 +29,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   const [activeFilters, setActiveFilters] = useState<BrowseFilters>({});
   // Holds the last rich batch so we can fill in when the current view is sparse.
   const fallbackRef = useRef<BrowseMapCard[]>([]);
-  const searchBarWrapRef = useRef<HTMLDivElement>(null);
+  const searchBarRef = useRef<HTMLDivElement>(null);
 
   const title = mode === "buy" ? "Homes for sale in Rwanda" : "Homes for rent in Rwanda";
   const filters = ["Price", "Beds & baths", "Property type"];
@@ -84,14 +84,16 @@ export function BrowsePage({ mode }: BrowsePageProps) {
     };
   }, [showMobileMap]);
 
-  // Track the search bar's bottom edge so the fixed map card always starts exactly there.
+  // Track the search bar height so the fixed map card always starts exactly below it.
+  // Using height + nav constant (64px) instead of getBoundingClientRect().bottom so the
+  // value is stable regardless of scroll position or iOS viewport keyboard shifts.
   useEffect(() => {
-    const el = searchBarWrapRef.current;
+    const el = searchBarRef.current;
     if (!el) return;
     function update() {
       document.documentElement.style.setProperty(
         "--browse-map-top",
-        `${el!.getBoundingClientRect().bottom}px`,
+        `${64 + el!.getBoundingClientRect().height}px`,
       );
     }
     const observer = new ResizeObserver(update);
@@ -141,15 +143,14 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
-        <div ref={searchBarWrapRef}>
-          <SearchBar
-            filters={filters}
-            mode={mode}
-            onFiltersOpenChange={setFiltersOpen}
-            onFiltersChange={setActiveFilters}
-            onModeChange={(newMode) => router.push(`/${newMode}`)}
-          />
-        </div>
+        <SearchBar
+          ref={searchBarRef}
+          filters={filters}
+          mode={mode}
+          onFiltersOpenChange={setFiltersOpen}
+          onFiltersChange={setActiveFilters}
+          onModeChange={(newMode) => router.push(`/${newMode}`)}
+        />
         <div className={`${styles.layout} ${showMobileMap ? styles.mobileMapVisible : ""}`}>
           <div className={styles.mapCard}>
             <BrowseMap

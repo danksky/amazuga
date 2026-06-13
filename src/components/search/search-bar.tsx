@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,7 @@ function Chevron({ direction = "down" }: { direction?: "down" | "up" }) {
   );
 }
 
-export function SearchBar({
+export const SearchBar = forwardRef<HTMLDivElement, SearchBarProps>(function SearchBar({
   placeholder = "Search by location, district, or sector",
   helperText,
   filters = [],
@@ -80,7 +80,7 @@ export function SearchBar({
   onFiltersChange,
   mode,
   onModeChange,
-}: SearchBarProps) {
+}: SearchBarProps, ref) {
   const router = useRouter();
 
   // Text input & UPI search
@@ -550,7 +550,7 @@ export function SearchBar({
   }
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} ref={ref}>
       <form className={`${styles.wrap} ${mode !== undefined ? styles.wrapWithMode : ""}`} onSubmit={handleSearchSubmit}>
         {mode !== undefined ? (
           <div className={styles.modeToggle}>
@@ -808,4 +808,4 @@ export function SearchBar({
       ) : null}
     </div>
   );
-}
+});
