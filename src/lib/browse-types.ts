@@ -7,6 +7,8 @@ export interface LocationSuggestion {
   district?: string;
   sector?: string;
   cell?: string;
+  /** Bounding box [minLon, minLat, maxLon, maxLat] from admin_boundary_preview. */
+  bbox?: [number, number, number, number];
 }
 
 export interface BrowseFilters {

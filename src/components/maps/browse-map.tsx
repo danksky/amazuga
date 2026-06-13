@@ -168,10 +168,15 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
     filtersRef.current = filters;
   });
 
+  const adminBoundaryAbortRef = useRef<AbortController | null>(null);
+  const flyToBoundaryRef = useRef<(() => void) | null>(null);
+  const boundaryLocationKeyRef = useRef<string | null>(null);
+
   const didMountRef = useRef(false);
   useEffect(() => {
     if (!didMountRef.current) { didMountRef.current = true; return; }
     if (fetchBrowseDataRef.current) void fetchBrowseDataRef.current();
+    flyToBoundaryRef.current?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
@@ -363,6 +368,11 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       },
+      // Admin boundary for the selected location chip — starts empty
+      "admin-boundary": {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      },
     };
 
     if (PARCEL_PMTILES_URL) {
@@ -392,6 +402,27 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
         },
       });
     }
+
+    // Admin boundary fill + outline — visible whenever a location chip is active
+    layers.push({
+      id: "admin-boundary-fill",
+      type: "fill",
+      source: "admin-boundary",
+      paint: {
+        "fill-color": "#f59e0b",
+        "fill-opacity": 0.07,
+      },
+    });
+    layers.push({
+      id: "admin-boundary-outline",
+      type: "line",
+      source: "admin-boundary",
+      paint: {
+        "line-color": "#f59e0b",
+        "line-width": 2,
+        "line-dasharray": [4, 3],
+      },
+    });
 
     if (OFF_MARKET_PMTILES_URL) {
       layers.push({
@@ -525,13 +556,63 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
         deselectParcel();
       });
 
+      // ---- Admin boundary ------------------------------------------------
+
+      function flyToBoundary() {
+        const loc = filtersRef.current?.location;
+        const newKey = loc
+          ? `${loc.level}:${loc.district ?? ""}:${loc.sector ?? ""}:${loc.cell ?? ""}:${loc.name}`
+          : null;
+
+        const source = map.getSource("admin-boundary") as maplibregl.GeoJSONSource | undefined;
+        if (!source) return;
+
+        if (!loc) {
+          boundaryLocationKeyRef.current = null;
+          source.setData({ type: "FeatureCollection", features: [] });
+          return;
+        }
+
+        if (newKey === boundaryLocationKeyRef.current) return;
+        boundaryLocationKeyRef.current = newKey;
+
+        // Fly to bounding box
+        if (loc.bbox) {
+          map.fitBounds(
+            [[loc.bbox[0], loc.bbox[1]], [loc.bbox[2], loc.bbox[3]]],
+            { padding: 60, duration: 800, maxZoom: 17 },
+          );
+        }
+
+        // Fetch and display boundary polygon
+        adminBoundaryAbortRef.current?.abort();
+        const controller = new AbortController();
+        adminBoundaryAbortRef.current = controller;
+
+        const params = new URLSearchParams({ level: loc.level });
+        if (loc.district) params.set("district", loc.district);
+        if (loc.sector)   params.set("sector",   loc.sector);
+        if (loc.cell)     params.set("cell",      loc.cell);
+        if (loc.level === "village") params.set("village", loc.name);
+
+        fetch(`/api/public/browse/admin-boundary?${params}`, { signal: controller.signal })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((geojson) => { if (geojson) source.setData(geojson); })
+          .catch(() => {});
+      }
+
+      flyToBoundaryRef.current = flyToBoundary;
+
+      // Show boundary for any location that was already active before the map loaded
+      flyToBoundary();
+
       void fetchBrowseData();
     });
 
     map.on("moveend", () => {
       const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
       if (isMobile) {
-        setShowSearchArea(true);
+        if (!filtersRef.current?.location) setShowSearchArea(true);
       } else if (viewportExceedsEnvelope() || zoomChangedSignificantly()) {
         scheduleFetch();
       }
@@ -545,6 +626,8 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
     return () => {
       fetchBrowseDataRef.current = null;
       updatePinsRef.current = null;
+      flyToBoundaryRef.current = null;
+      adminBoundaryAbortRef.current?.abort();
       resizeObserver.disconnect();
       abortControllerRef.current?.abort();
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
@@ -557,7 +640,7 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
   return (
     <div className={styles.container}>
       <div ref={mapContainerRef} className={styles.map} />
-      {showSearchArea && !isFetching ? (
+      {showSearchArea && !isFetching && !filters?.location ? (
         <button
           className={styles.searchAreaButton}
           onClick={() => void fetchBrowseDataRef.current?.()}

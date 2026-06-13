@@ -11,6 +11,10 @@ interface LocationRow {
   district: string | null;
   sector: string | null;
   cell: string | null;
+  bbox_min_lon: number | null;
+  bbox_min_lat: number | null;
+  bbox_max_lon: number | null;
+  bbox_max_lat: number | null;
 }
 
 export async function GET(request: Request) {
@@ -29,7 +33,8 @@ export async function GET(request: Request) {
   try {
     const result = await getPgPool().query<LocationRow>(
       `
-      SELECT level, name, parent_name, district, sector, cell
+      SELECT level, name, parent_name, district, sector, cell,
+             bbox_min_lon, bbox_min_lat, bbox_max_lon, bbox_max_lat
       FROM browse_location_mv
       WHERE lower(name) LIKE lower($1) || '%'
         AND (
@@ -61,6 +66,14 @@ export async function GET(request: Request) {
         district: r.district ?? undefined,
         sector: r.sector ?? undefined,
         cell: r.cell ?? undefined,
+        bbox: (
+          r.bbox_min_lon != null &&
+          r.bbox_min_lat != null &&
+          r.bbox_max_lon != null &&
+          r.bbox_max_lat != null
+        )
+          ? [r.bbox_min_lon, r.bbox_min_lat, r.bbox_max_lon, r.bbox_max_lat] as [number, number, number, number]
+          : undefined,
       })),
     });
   } catch (error) {

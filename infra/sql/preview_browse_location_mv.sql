@@ -13,7 +13,11 @@ CREATE TABLE browse_location_mv (
     district     text,              -- raw value for ILIKE filtering
     sector       text,
     cell         text,
-    parcel_count integer NOT NULL   -- used to rank suggestions (denser areas first)
+    parcel_count integer NOT NULL,  -- used to rank suggestions (denser areas first)
+    bbox_min_lon float8,            -- bounding box from admin_boundary_preview (nullable)
+    bbox_min_lat float8,
+    bbox_max_lon float8,
+    bbox_max_lat float8
 );
 
 CREATE INDEX browse_location_mv_name_idx

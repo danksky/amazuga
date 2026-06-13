@@ -181,7 +181,11 @@ CREATE TABLE browse_location_mv (
     district     text,
     sector       text,
     cell         text,
-    parcel_count integer NOT NULL
+    parcel_count integer NOT NULL,
+    bbox_min_lon float8,
+    bbox_min_lat float8,
+    bbox_max_lon float8,
+    bbox_max_lat float8
 );
 """
 
@@ -195,6 +199,56 @@ CREATE INDEX browse_location_mv_level_idx
 COPY_SQL = """
 COPY browse_location_mv (level, name, parent_name, district, sector, cell, parcel_count)
 FROM STDIN WITH (FORMAT TEXT, NULL '\\N', DELIMITER E'\\t')
+"""
+
+# After COPY, join admin_boundary_preview to fill bbox columns.
+# Four separate UPDATEs because the join condition differs per level.
+BBOX_UPDATE_SQL = """
+UPDATE browse_location_mv blm
+SET bbox_min_lon = ab.bbox_min_lon,
+    bbox_min_lat = ab.bbox_min_lat,
+    bbox_max_lon = ab.bbox_max_lon,
+    bbox_max_lat = ab.bbox_max_lat
+FROM admin_boundary_preview ab
+WHERE blm.level = 'district'
+  AND ab.level  = 'district'
+  AND lower(blm.name) = lower(ab.district);
+
+UPDATE browse_location_mv blm
+SET bbox_min_lon = ab.bbox_min_lon,
+    bbox_min_lat = ab.bbox_min_lat,
+    bbox_max_lon = ab.bbox_max_lon,
+    bbox_max_lat = ab.bbox_max_lat
+FROM admin_boundary_preview ab
+WHERE blm.level     = 'sector'
+  AND ab.level      = 'sector'
+  AND lower(blm.district) = lower(ab.district)
+  AND lower(blm.name)     = lower(ab.sector);
+
+UPDATE browse_location_mv blm
+SET bbox_min_lon = ab.bbox_min_lon,
+    bbox_min_lat = ab.bbox_min_lat,
+    bbox_max_lon = ab.bbox_max_lon,
+    bbox_max_lat = ab.bbox_max_lat
+FROM admin_boundary_preview ab
+WHERE blm.level     = 'cell'
+  AND ab.level      = 'cell'
+  AND lower(blm.district) = lower(ab.district)
+  AND lower(blm.sector)   = lower(ab.sector)
+  AND lower(blm.name)     = lower(ab.cell);
+
+UPDATE browse_location_mv blm
+SET bbox_min_lon = ab.bbox_min_lon,
+    bbox_min_lat = ab.bbox_min_lat,
+    bbox_max_lon = ab.bbox_max_lon,
+    bbox_max_lat = ab.bbox_max_lat
+FROM admin_boundary_preview ab
+WHERE blm.level     = 'village'
+  AND ab.level      = 'village'
+  AND lower(blm.district) = lower(ab.district)
+  AND lower(blm.sector)   = lower(ab.sector)
+  AND lower(blm.cell)     = lower(ab.cell)
+  AND lower(blm.name)     = lower(ab.village);
 """
 
 
@@ -218,6 +272,20 @@ def upload(df: pd.DataFrame) -> None:
 
     print("Building indexes ...")
     cur.execute(INDEXES)
+
+    print("Joining bboxes from admin_boundary_preview ...")
+    try:
+        for statement in BBOX_UPDATE_SQL.strip().split(";"):
+            statement = statement.strip()
+            if statement:
+                cur.execute(statement)
+        matched = cur.rowcount  # rowcount of the last UPDATE
+        print(f"  bbox update done (last UPDATE affected {matched} rows)")
+    except Exception as e:
+        # admin_boundary_preview may not exist on a fresh environment — non-fatal.
+        print(f"  WARNING: bbox update skipped ({e})", file=sys.stderr)
+        conn.rollback()
+        conn.autocommit = True
 
     conn.commit()
     cur.close()
