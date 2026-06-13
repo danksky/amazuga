@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import maplibregl, { LngLatBoundsLike } from "maplibre-gl";
 import { PMTiles, Protocol } from "pmtiles";
 
+import { applyAmazugaBasemapPalette } from "@/lib/openfreemap-style";
 import { loadFocusedParcelGeometry } from "@/lib/parcel-focus-geometry";
 import type { Property } from "@/types/domain";
 
@@ -38,51 +39,52 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
 
     const map = new maplibregl.Map({
       container: mapRef.current,
-      style: {
-        version: 8,
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-        sources: {
-          carto: {
-            type: "raster",
-            tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          },
-          parcels: {
-            type: "vector",
-            url: `pmtiles://${PMTILES_URL}`,
-          },
-          focusedParcel: {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: [],
-            },
-          },
-          propertyCentroid: {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: [
-                {
-                  type: "Feature",
-                  geometry: {
-                    type: "Point",
-                    coordinates: centroid,
-                  },
-                  properties: {},
-                },
-              ],
-            },
-          },
+      style: "https://tiles.openfreemap.org/styles/bright",
+      center: centroid,
+      zoom: 17,
+      attributionControl: false,
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+    });
+
+    resizeObserver.observe(mapRef.current);
+
+    map.on("load", () => {
+      applyAmazugaBasemapPalette(map);
+
+      map.addSource("parcels", {
+        type: "vector",
+        url: `pmtiles://${PMTILES_URL}`,
+      });
+      map.addSource("focusedParcel", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: [],
         },
-        layers: [
-          {
-            id: "carto",
-            type: "raster",
-            source: "carto",
-          },
+      });
+      map.addSource("propertyCentroid", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: centroid,
+              },
+              properties: {},
+            },
+          ],
+        },
+      });
+
+      const overlayLayers: maplibregl.LayerSpecification[] = [
           {
             id: "parcel-outline",
             type: "line",
@@ -151,22 +153,12 @@ export function PropertyParcelMap({ property }: PropertyParcelMapProps) {
               "circle-stroke-width": 2,
             },
           },
-        ],
-      },
-      center: centroid,
-      zoom: 17,
-      attributionControl: false,
-    });
+        ];
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+      for (const layer of overlayLayers) {
+        map.addLayer(layer);
+      }
 
-    const resizeObserver = new ResizeObserver(() => {
-      map.resize();
-    });
-
-    resizeObserver.observe(mapRef.current);
-
-    map.on("load", () => {
       map.resize();
 
       const bbox = propertyBbox;
