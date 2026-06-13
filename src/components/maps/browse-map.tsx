@@ -429,6 +429,7 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
     const map = new maplibregl.Map({
       container,
       style: "https://tiles.openfreemap.org/styles/bright",
+      attributionControl: false,
       ...(isMobile
         ? {
             bounds: MOBILE_DEFAULT_BOUNDS,
@@ -565,6 +566,9 @@ export function BrowseMap({ mode, visible, filters, onResultsChange, onLoadingCh
           Search this area
         </button>
       ) : null}
+      <div className={styles.attribution}>
+        <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">© OpenStreetMap contributors</a>
+      </div>
     </div>
   );
 }
