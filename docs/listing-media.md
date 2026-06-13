@@ -24,10 +24,10 @@ Preview listing images use a separate bucket and public base URL:
 
 - `https://preview-media.amazuga.com/<storage_key>`
 
-## Preview Video Flow
+## Video Flow
 
-Preview listing videos use Cloudflare Stream. Production and legacy preview
-rows remain on R2 until their own migration is explicitly scheduled.
+New listing videos use Cloudflare Stream. Legacy rows retain their R2 URLs
+until they are migrated.
 
 1. The app creates a one-time Stream direct upload URL.
 2. The browser sends the video as a multipart `file` upload directly to Stream.
@@ -35,22 +35,29 @@ rows remain on R2 until their own migration is explicitly scheduled.
 4. Property pages use the Stream iframe when `stream_uid` is present and retain
    the legacy `<video>` player for R2 rows.
 
-The preview app requires:
+The app requires:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_STREAM_API_TOKEN` with Stream Read and Stream Edit
 
 Before running Terraform, export the same secret for the provider-managed
-Preview environment variable:
+Preview and Production environment variables:
 
 ```bash
 export TF_VAR_cloudflare_stream_api_token="$CLOUDFLARE_STREAM_API_TOKEN"
 ```
 
-Run `npm run migrate-preview-videos-to-stream` after applying
-`infra/sql/migrations/0014_stream_video.sql` to copy existing preview videos
-into Stream. The migration script requires `DATABASE_URL_PREVIEW` and never
-falls back to the production database.
+After applying `infra/sql/migrations/0014_stream_video.sql`, migrate existing
+videos into Stream:
+
+```bash
+npm run migrate-preview-videos-to-stream
+MIGRATE_PRODUCTION_VIDEOS=yes npm run migrate-production-videos-to-stream
+```
+
+The production command requires both `DATABASE_URL` and the explicit
+`MIGRATE_PRODUCTION_VIDEOS=yes` confirmation. It never falls back to the
+preview database.
 
 Private agent ID photos are stored separately from public listing images and
 have no public R2 domain. Production uses `amazuga-agent-id-photos`; preview

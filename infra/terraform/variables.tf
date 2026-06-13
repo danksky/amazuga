@@ -12,7 +12,7 @@ variable "cloudflare_cache_purge_token" {
 }
 
 variable "cloudflare_stream_api_token" {
-  description = "Cloudflare API token with Stream Read and Stream Edit, used only by the preview app."
+  description = "Cloudflare API token with Stream Read and Stream Edit for listing videos."
   type        = string
   sensitive   = true
   default     = null

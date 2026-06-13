@@ -12,7 +12,8 @@
     "start": "next start",
     "lint": "eslint .",
     "import-listing": "node scripts/import-listing.mjs",
-    "migrate-preview-videos-to-stream": "node scripts/migrate-preview-videos-to-stream.mjs"
+    "migrate-preview-videos-to-stream": "node scripts/migrate-preview-videos-to-stream.mjs --environment=preview",
+    "migrate-production-videos-to-stream": "node scripts/migrate-preview-videos-to-stream.mjs --environment=production"
   },
   "dependencies": {
     "@logtail/node": "^0.5.8",

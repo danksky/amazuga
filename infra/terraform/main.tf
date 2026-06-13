@@ -796,8 +796,8 @@ resource "vercel_project_environment_variable" "cloudflare_account_id_preview" {
   key        = "CLOUDFLARE_ACCOUNT_ID"
   value      = var.cloudflare_account_id
   sensitive  = false
-  target     = ["preview"]
-  comment    = "Cloudflare account used by the preview Stream integration."
+  target     = ["production", "preview"]
+  comment    = "Cloudflare account used by the listing video Stream integration."
 }
 
 resource "vercel_project_environment_variable" "cloudflare_stream_api_token_preview" {
@@ -808,8 +808,8 @@ resource "vercel_project_environment_variable" "cloudflare_stream_api_token_prev
   key        = "CLOUDFLARE_STREAM_API_TOKEN"
   value      = var.cloudflare_stream_api_token
   sensitive  = true
-  target     = ["preview"]
-  comment    = "Preview-only token with Cloudflare Stream Read and Stream Edit."
+  target     = ["production", "preview"]
+  comment    = "Token with Cloudflare Stream Read and Stream Edit for listing videos."
 
   lifecycle {
     prevent_destroy = true

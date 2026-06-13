@@ -44,14 +44,35 @@ const env = {
   ...parseEnvFile(join(projectRoot, ".env.local")),
   ...process.env,
 };
-const databaseUrl = env.DATABASE_URL_PREVIEW?.trim();
+const environment = process.argv
+  .find((arg) => arg.startsWith("--environment="))
+  ?.slice("--environment=".length) || "preview";
+
+if (!["preview", "production"].includes(environment)) {
+  throw new Error("--environment must be either preview or production");
+}
+if (environment === "production" && env.MIGRATE_PRODUCTION_VIDEOS !== "yes") {
+  throw new Error(
+    "Production migration requires MIGRATE_PRODUCTION_VIDEOS=yes",
+  );
+}
+
+const databaseUrl = (
+  environment === "production"
+    ? env.DATABASE_URL
+    : env.DATABASE_URL_PREVIEW
+)?.trim();
 const streamConfig = {
   accountId: env.CLOUDFLARE_ACCOUNT_ID?.trim(),
   apiToken: env.CLOUDFLARE_STREAM_API_TOKEN?.trim(),
 };
 
 if (!databaseUrl) {
-  throw new Error("DATABASE_URL_PREVIEW is required; this script never falls back to production");
+  throw new Error(
+    environment === "production"
+      ? "DATABASE_URL is required for the production migration"
+      : "DATABASE_URL_PREVIEW is required for the preview migration",
+  );
 }
 if (!streamConfig.accountId || !streamConfig.apiToken) {
   throw new Error("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_STREAM_API_TOKEN are required");
@@ -71,7 +92,7 @@ async function run() {
     ORDER BY created_at ASC, id ASC
   `);
 
-  console.log(`Found ${result.rows.length} preview video(s) to migrate.`);
+  console.log(`Found ${result.rows.length} ${environment} video(s) to migrate.`);
 
   for (const [index, row] of result.rows.entries()) {
     console.log(`[${index + 1}/${result.rows.length}] Copying listing ${row.listing_id}...`);

@@ -22,5 +22,5 @@ This project spans two repositories:
 - **App** — Next.js 14, TypeScript, deployed on Vercel
 - **Database** — Postgres on Neon
 - **Map tiles** — PMTiles on Cloudflare R2, served via Cloudflare Workers
-- **Listing media** — Cloudflare R2 with a custom upload/serve Worker
+- **Listing media** — Cloudflare R2 for images and Cloudflare Stream for videos
 - **Infrastructure** — Terraform (Cloudflare, Neon, Vercel)
