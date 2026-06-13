@@ -17,6 +17,7 @@ interface SearchBarProps {
   onFiltersChange?: (filters: BrowseFilters) => void;
   mode?: "buy" | "rent";
   onModeChange?: (mode: "buy" | "rent") => void;
+  pinned?: boolean;
 }
 
 const PROPERTY_TYPE_OPTIONS = ["House", "Apartment", "Land parcel"];
@@ -80,6 +81,7 @@ export const SearchBar = forwardRef<HTMLDivElement, SearchBarProps>(function Sea
   onFiltersChange,
   mode,
   onModeChange,
+  pinned = false,
 }: SearchBarProps, ref) {
   const router = useRouter();
 
@@ -550,7 +552,7 @@ export const SearchBar = forwardRef<HTMLDivElement, SearchBarProps>(function Sea
   }
 
   return (
-    <div className={styles.root} ref={ref}>
+    <div className={`${styles.root} ${pinned ? styles.rootPinned : ""}`} ref={ref}>
       <form className={`${styles.wrap} ${mode !== undefined ? styles.wrapWithMode : ""}`} onSubmit={handleSearchSubmit}>
         {mode !== undefined ? (
           <div className={styles.modeToggle}>

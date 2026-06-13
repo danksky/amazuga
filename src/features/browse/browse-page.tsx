@@ -69,6 +69,9 @@ export function BrowsePage({ mode }: BrowsePageProps) {
 
   useEffect(() => {
     if (showMobileMap) {
+      // Scroll to top before locking overflow so the sticky→fixed transition
+      // starts from a known position rather than wherever iOS froze the viewport.
+      window.scrollTo({ top: 0, behavior: "instant" });
       document.body.style.overflow = "hidden";
       document.body.style.overscrollBehavior = "none";
       document.documentElement.style.overscrollBehavior = "none";
@@ -147,6 +150,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
           ref={searchBarRef}
           filters={filters}
           mode={mode}
+          pinned={showMobileMap}
           onFiltersOpenChange={setFiltersOpen}
           onFiltersChange={setActiveFilters}
           onModeChange={(newMode) => router.push(`/${newMode}`)}
@@ -182,7 +186,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
         </div>
         {!filtersOpen ? (
           <div className={styles.mobileToggle}>
-            <Button onClick={() => { setShowMobileMap((current) => !current); window.scrollTo({ top: 0, behavior: "instant" }); }} type="button">
+            <Button onClick={() => setShowMobileMap((current) => !current)} type="button">
               {showMobileMap ? "Show listings" : "Use map"}
             </Button>
           </div>

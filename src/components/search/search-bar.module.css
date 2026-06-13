@@ -713,6 +713,13 @@
     z-index: 15;
   }
 
+  .rootPinned {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+  }
+
   .mobileOverlay {
     inset: 64px 0 0;
   }
