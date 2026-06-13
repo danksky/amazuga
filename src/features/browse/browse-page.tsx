@@ -29,6 +29,7 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   const [activeFilters, setActiveFilters] = useState<BrowseFilters>({});
   // Holds the last rich batch so we can fill in when the current view is sparse.
   const fallbackRef = useRef<BrowseMapCard[]>([]);
+  const searchBarWrapRef = useRef<HTMLDivElement>(null);
 
   const title = mode === "buy" ? "Homes for sale in Rwanda" : "Homes for rent in Rwanda";
   const filters = ["Price", "Beds & baths", "Property type"];
@@ -67,9 +68,37 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   }, [selectedListingId]);
 
   useEffect(() => {
-    document.body.style.overflow = showMobileMap ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (showMobileMap) {
+      document.body.style.overflow = "hidden";
+      document.body.style.overscrollBehavior = "none";
+      document.documentElement.style.overscrollBehavior = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.overscrollBehavior = "";
+      document.documentElement.style.overscrollBehavior = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.overscrollBehavior = "";
+      document.documentElement.style.overscrollBehavior = "";
+    };
   }, [showMobileMap]);
+
+  // Track the search bar's bottom edge so the fixed map card always starts exactly there.
+  useEffect(() => {
+    const el = searchBarWrapRef.current;
+    if (!el) return;
+    function update() {
+      document.documentElement.style.setProperty(
+        "--browse-map-top",
+        `${el!.getBoundingClientRect().bottom}px`,
+      );
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    update();
+    return () => observer.disconnect();
+  }, []);
 
   const handleResultsChange = useCallback((incoming: BrowseMapCard[]) => {
     if (incoming.length > fallbackRef.current.length) {
@@ -112,13 +141,15 @@ export function BrowsePage({ mode }: BrowsePageProps) {
   return (
     <div className={`container ${styles.page}`}>
       <div className={styles.stack}>
-        <SearchBar
-          filters={filters}
-          mode={mode}
-          onFiltersOpenChange={setFiltersOpen}
-          onFiltersChange={setActiveFilters}
-          onModeChange={(newMode) => router.push(`/${newMode}`)}
-        />
+        <div ref={searchBarWrapRef}>
+          <SearchBar
+            filters={filters}
+            mode={mode}
+            onFiltersOpenChange={setFiltersOpen}
+            onFiltersChange={setActiveFilters}
+            onModeChange={(newMode) => router.push(`/${newMode}`)}
+          />
+        </div>
         <div className={`${styles.layout} ${showMobileMap ? styles.mobileMapVisible : ""}`}>
           <div className={styles.mapCard}>
             <BrowseMap

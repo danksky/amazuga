@@ -168,8 +168,13 @@
 
   .mobileMapVisible .mapCard {
     display: block;
-    height: calc(100dvh - 130px);
-    margin-inline: calc(50% - 50vw);
+    position: fixed;
+    top: var(--browse-map-top, 130px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: auto;
+    z-index: 10;
     border-left: 0;
     border-right: 0;
     border-radius: 0;
