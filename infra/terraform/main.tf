@@ -810,6 +810,10 @@ resource "vercel_project_environment_variable" "cloudflare_stream_api_token_prev
   sensitive  = true
   target     = ["preview"]
   comment    = "Preview-only token with Cloudflare Stream Read and Stream Edit."
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret_production" {

@@ -40,6 +40,13 @@ The preview app requires:
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_STREAM_API_TOKEN` with Stream Read and Stream Edit
 
+Before running Terraform, export the same secret for the provider-managed
+Preview environment variable:
+
+```bash
+export TF_VAR_cloudflare_stream_api_token="$CLOUDFLARE_STREAM_API_TOKEN"
+```
+
 Run `npm run migrate-preview-videos-to-stream` after applying
 `infra/sql/migrations/0014_stream_video.sql` to copy existing preview videos
 into Stream. The migration script requires `DATABASE_URL_PREVIEW` and never
