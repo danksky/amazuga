@@ -42,6 +42,16 @@ function parseBedValue(val: string): number | undefined {
   return parseFloat(val.replace("+", ""));
 }
 
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" className={styles.searchIconSvg} viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="6.5" cy="6.5" fill="none" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+      <line stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" x1="10" x2="14" y1="10" y2="14" />
+    </svg>
+  );
+}
+
 function Chevron({ direction = "down" }: { direction?: "down" | "up" }) {
   return (
     <svg
@@ -84,8 +94,11 @@ export function SearchBar({
   const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestAbortRef = useRef<AbortController | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const mobileSuggestionsRef = useRef<HTMLDivElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
+  const [canMobileScrollUp, setCanMobileScrollUp] = useState(false);
+  const [canMobileScrollDown, setCanMobileScrollDown] = useState(false);
 
   function checkScrollBounds() {
     const el = suggestionsRef.current;
@@ -93,6 +106,17 @@ export function SearchBar({
     setCanScrollUp(el.scrollTop > 0);
     setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
   }
+
+  function checkMobileScrollBounds() {
+    const el = mobileSuggestionsRef.current;
+    if (!el) return;
+    setCanMobileScrollUp(el.scrollTop > 0);
+    setCanMobileScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  }
+
+  // Mobile search expand
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const mobileSearchPanelRef = useRef<HTMLDivElement>(null);
 
   // Filter dropdowns
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -141,15 +165,19 @@ export function SearchBar({
     onFiltersOpenChange?.(false);
   }
 
-  // Close desktop dropdowns on outside click
+  // Close dropdowns / mobile panel on outside click
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
-      if (
-        !desktopFiltersRef.current?.contains(event.target as Node) &&
-        !inputWrapRef.current?.contains(event.target as Node)
-      ) {
+      const insideBar = inputWrapRef.current?.contains(event.target as Node);
+      const insideDesktopFilters = desktopFiltersRef.current?.contains(event.target as Node);
+      const insideMobilePanel = mobileSearchPanelRef.current?.contains(event.target as Node);
+
+      if (!insideDesktopFilters && !insideBar) {
         setActiveDesktopFilter(null);
         setShowSuggestions(false);
+      }
+      if (!insideBar && !insideMobilePanel) {
+        setMobileSearchOpen(false);
       }
     }
     document.addEventListener("mousedown", handlePointerDown);
@@ -197,7 +225,11 @@ export function SearchBar({
   useEffect(() => {
     if (showSuggestions && suggestions.length > 0) {
       setCanScrollUp(false);
-      requestAnimationFrame(checkScrollBounds);
+      setCanMobileScrollUp(false);
+      requestAnimationFrame(() => {
+        checkScrollBounds();
+        checkMobileScrollBounds();
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSuggestions, suggestions]);
@@ -207,6 +239,7 @@ export function SearchBar({
     setSelectedLocation(suggestion);
     setShowSuggestions(false);
     setSuggestions([]);
+    setMobileSearchOpen(false);
     applyFilters({ location: suggestion });
   }
 
@@ -216,9 +249,9 @@ export function SearchBar({
     applyFilters({ location: undefined });
   }
 
-  async function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function performSearch() {
     setShowSuggestions(false);
+    setMobileSearchOpen(false);
 
     const normalizedQuery = query.trim();
     if (!normalizedQuery) {
@@ -249,11 +282,9 @@ export function SearchBar({
       return;
     }
 
-    // Treat as location search — pick first suggestion if available
     if (suggestions.length > 0) {
       selectSuggestion(suggestions[0]);
     } else {
-      // Trigger a fresh lookup and pick the first result
       try {
         const response = await fetch(`/api/public/browse/locations?q=${encodeURIComponent(normalizedQuery)}`);
         if (response.ok) {
@@ -268,6 +299,11 @@ export function SearchBar({
       }
       setSearchMessage("No matching location found.");
     }
+  }
+
+  async function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await performSearch();
   }
 
   function formatPriceDisplay(value: number | undefined) {
@@ -551,9 +587,10 @@ export function SearchBar({
             </div>
           ) : (
             <>
+              {/* Desktop: real input */}
               <input
                 autoComplete="off"
-                className={styles.input}
+                className={`${styles.input} ${styles.desktopSearchInput}`}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   if (searchMessage) setSearchMessage(null);
@@ -565,7 +602,7 @@ export function SearchBar({
               {query.length > 0 ? (
                 <button
                   aria-label="Clear search"
-                  className={styles.inputClearButton}
+                  className={`${styles.inputClearButton} ${styles.desktopSearchInput}`}
                   onClick={() => {
                     suggestAbortRef.current?.abort();
                     if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
@@ -579,9 +616,20 @@ export function SearchBar({
                   ×
                 </button>
               ) : null}
+              {/* Mobile: tap-to-expand trigger */}
+              <button
+                className={styles.mobileSearchTrigger}
+                onClick={() => setMobileSearchOpen((prev) => !prev)}
+                type="button"
+              >
+                {mobileSearchOpen ? <span className={styles.mobileSearchTriggerClose}>×</span> : <SearchIcon />}
+                Search
+              </button>
+              {/* Desktop suggestions */}
               {showSuggestions && suggestions.length > 0 ? (
                 <div className={[
                   styles.suggestionsOuter,
+                  styles.desktopSearchInput,
                   canScrollUp && styles.fadeTop,
                   canScrollDown && styles.fadeBottom,
                 ].filter(Boolean).join(" ")}>
@@ -643,6 +691,81 @@ export function SearchBar({
         <div className={styles.helper}>{searchMessage}</div>
       ) : helperText ? (
         <div className={styles.helper}>{helperText}</div>
+      ) : null}
+      {mobileSearchOpen ? (
+        <div className={styles.mobileSearchExpanded} ref={mobileSearchPanelRef}>
+          <div className={styles.mobileSearchInputRow}>
+            <SearchIcon />
+            <input
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              autoComplete="off"
+              className={styles.mobileSearchInput}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                if (searchMessage) setSearchMessage(null);
+              }}
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); void performSearch(); }
+                if (e.key === "Escape") setMobileSearchOpen(false);
+              }}
+              placeholder={placeholder}
+              value={query}
+            />
+            <button
+              aria-label={query.length > 0 ? "Clear search" : "Close search"}
+              className={styles.inputClearButton}
+              onClick={() => {
+                if (query.length > 0) {
+                  suggestAbortRef.current?.abort();
+                  if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+                  setQuery("");
+                  setSuggestions([]);
+                  setShowSuggestions(false);
+                  setSearchMessage(null);
+                } else {
+                  setMobileSearchOpen(false);
+                }
+              }}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+          {showSuggestions && suggestions.length > 0 ? (
+            <div className={[
+              styles.mobileSuggestionsOuter,
+              canMobileScrollUp && styles.fadeTop,
+              canMobileScrollDown && styles.fadeBottom,
+            ].filter(Boolean).join(" ")}>
+              <div
+                className={styles.mobileSuggestions}
+                onScroll={checkMobileScrollBounds}
+                ref={mobileSuggestionsRef}
+              >
+                {suggestions.map((s, i) => (
+                  <button
+                    className={styles.suggestionItem}
+                    key={`mobile-suggest-${s.level}-${s.name}-${i}`}
+                    onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                    type="button"
+                  >
+                    <span className={styles.suggestionName}>{s.name}</span>
+                    {s.parentName ? (
+                      <span className={styles.suggestionMeta}>
+                        {LEVEL_LABEL[s.level]} {s.parentName}
+                        {(s.level === "village" || s.level === "cell") && s.district && s.district !== s.parentName
+                          ? ` · ${s.district}`
+                          : null}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {filtersOpen ? (
         <div className={styles.mobileOverlay}>
