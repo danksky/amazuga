@@ -33,8 +33,9 @@ export function streamHlsUrl(uid) {
   return `https://videodelivery.net/${encodeURIComponent(uid)}/manifest/video.m3u8`;
 }
 
-export function streamThumbnailUrl(uid, time = "2s") {
-  return `https://videodelivery.net/${encodeURIComponent(uid)}/thumbnails/thumbnail.jpg?time=${encodeURIComponent(time)}`;
+export function streamThumbnailUrl(uid, time) {
+  const baseUrl = `https://videodelivery.net/${encodeURIComponent(uid)}/thumbnails/thumbnail.jpg`;
+  return time ? `${baseUrl}?time=${encodeURIComponent(time)}` : baseUrl;
 }
 
 export async function createStreamDirectUpload(config, listingId) {

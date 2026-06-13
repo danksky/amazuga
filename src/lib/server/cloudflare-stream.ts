@@ -88,8 +88,9 @@ export function streamIframeUrl(uid: string): string {
   return `https://iframe.videodelivery.net/${encodeURIComponent(uid)}?muted=true&controls=true&playsinline=true`;
 }
 
-export function streamThumbnailUrl(uid: string, time = "2s"): string {
-  return `https://videodelivery.net/${encodeURIComponent(uid)}/thumbnails/thumbnail.jpg?time=${encodeURIComponent(time)}`;
+export function streamThumbnailUrl(uid: string, time?: string): string {
+  const baseUrl = `https://videodelivery.net/${encodeURIComponent(uid)}/thumbnails/thumbnail.jpg`;
+  return time ? `${baseUrl}?time=${encodeURIComponent(time)}` : baseUrl;
 }
 
 export function streamHlsUrl(uid: string): string {

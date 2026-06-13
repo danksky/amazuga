@@ -69,7 +69,7 @@ export async function POST(
       listingId,
       streamUid,
       videoUrl: streamHlsUrl(streamUid),
-      thumbnailUrl: streamThumbnailUrl(streamUid, "2s"),
+      thumbnailUrl: streamThumbnailUrl(streamUid),
     });
   } catch (error) {
     deleteStreamVideo(streamUid).catch(console.error);
