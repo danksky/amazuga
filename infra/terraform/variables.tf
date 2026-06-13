@@ -11,6 +11,13 @@ variable "cloudflare_cache_purge_token" {
   default     = null
 }
 
+variable "cloudflare_stream_api_token" {
+  description = "Cloudflare API token with Stream Read and Stream Edit, used only by the preview app."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 variable "cloudflare_account_id" {
   description = "Cloudflare account ID that owns the R2 bucket."
   type        = string

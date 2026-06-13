@@ -790,6 +790,28 @@ resource "vercel_project_environment_variable" "listing_video_upload_secret_prev
   comment    = "Preview shared secret for signing listing video upload intents (shared with image secret)."
 }
 
+resource "vercel_project_environment_variable" "cloudflare_account_id_preview" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "CLOUDFLARE_ACCOUNT_ID"
+  value      = var.cloudflare_account_id
+  sensitive  = false
+  target     = ["preview"]
+  comment    = "Cloudflare account used by the preview Stream integration."
+}
+
+resource "vercel_project_environment_variable" "cloudflare_stream_api_token_preview" {
+  count = var.cloudflare_stream_api_token != null ? 1 : 0
+
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "CLOUDFLARE_STREAM_API_TOKEN"
+  value      = var.cloudflare_stream_api_token
+  sensitive  = true
+  target     = ["preview"]
+  comment    = "Preview-only token with Cloudflare Stream Read and Stream Edit."
+}
+
 resource "vercel_project_environment_variable" "agent_id_photo_admin_read_secret_production" {
   project_id = vercel_project.amazuga.id
   team_id    = var.vercel_team_id

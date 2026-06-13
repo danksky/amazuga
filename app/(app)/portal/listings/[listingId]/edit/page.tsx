@@ -5,6 +5,7 @@ import { submitListingEditAction } from "@/features/portal/actions";
 import { ListingForm } from "@/features/portal/listing-form";
 import { requireCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
+import { isCloudflareStreamConfigured } from "@/lib/server/cloudflare-stream";
 import { getPortalAccessState, getPortalEntryHref } from "@/lib/server/portal-access";
 import { getEditablePortalListingData } from "@/lib/server/portal-listing-editor";
 import { isListingImageUploadConfigured } from "@/lib/server/listing-image-storage";
@@ -33,7 +34,14 @@ export default async function PortalListingEditRoute({
 
   return (
     <PortalShell access={access}>
-      <ListingForm agencies={data.agencies} listing={data.listing} mode="edit" submitAction={submitListingEditAction} uploadEnabled={isListingImageUploadConfigured()} />
+      <ListingForm
+        agencies={data.agencies}
+        listing={data.listing}
+        mode="edit"
+        submitAction={submitListingEditAction}
+        uploadEnabled={isListingImageUploadConfigured()}
+        videoUploadEnabled={isCloudflareStreamConfigured()}
+      />
     </PortalShell>
   );
 }

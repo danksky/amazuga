@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
-import { createListingImageUploadIntent, isListingImageUploadConfigured } from "@/lib/server/listing-image-storage";
-import { createListingVideoUploadIntent, isListingVideoUploadConfigured } from "@/lib/server/listing-video-storage";
+import {
+  createStreamDirectUpload,
+  isCloudflareStreamConfigured,
+  MAX_STREAM_VIDEO_BYTES,
+} from "@/lib/server/cloudflare-stream";
 import { getEditablePortalListingSummary } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
 
@@ -24,12 +27,8 @@ export async function POST(
     return NextResponse.json({ error: "Current user cannot edit listings." }, { status: 403 });
   }
 
-  if (!isListingVideoUploadConfigured()) {
+  if (!isCloudflareStreamConfigured()) {
     return NextResponse.json({ error: "Listing video upload is not configured." }, { status: 503 });
-  }
-
-  if (!isListingImageUploadConfigured()) {
-    return NextResponse.json({ error: "Listing image upload is not configured (needed for thumbnail)." }, { status: 503 });
   }
 
   const { listingId } = await context.params;
@@ -49,9 +48,13 @@ export async function POST(
   const body = await request.json().catch(() => null);
   const fileName = typeof body?.fileName === "string" ? body.fileName.trim() : "";
   const contentType = typeof body?.contentType === "string" ? body.contentType.trim() : "";
+  const fileSizeBytes = typeof body?.fileSizeBytes === "number" ? body.fileSizeBytes : 0;
 
-  if (!fileName || !contentType) {
-    return NextResponse.json({ error: "fileName and contentType are required." }, { status: 400 });
+  if (!fileName || !contentType || !Number.isFinite(fileSizeBytes) || fileSizeBytes <= 0) {
+    return NextResponse.json(
+      { error: "fileName, contentType, and fileSizeBytes are required." },
+      { status: 400 },
+    );
   }
 
   if (!ALLOWED_VIDEO_TYPES.has(contentType)) {
@@ -61,25 +64,19 @@ export async function POST(
     );
   }
 
-  const safeBaseName = fileName
-    .replace(/\.[^.]+$/, "")
-    .replace(/[^a-z0-9-_]+/gi, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "") || "listing-video";
+  if (fileSizeBytes > MAX_STREAM_VIDEO_BYTES) {
+    return NextResponse.json({ error: "Video exceeds the 30 MB upload limit." }, { status: 400 });
+  }
 
-  const videoIntent = createListingVideoUploadIntent({
-    listingId,
-    userId: currentUser.id,
-    contentType,
-    fileName: `${safeBaseName}.${contentType === "video/webm" ? "webm" : contentType === "video/quicktime" ? "mov" : "mp4"}`,
-  });
-
-  const thumbnailIntent = createListingImageUploadIntent({
-    listingId,
-    userId: currentUser.id,
-    contentType: "image/jpeg",
-    fileName: `${safeBaseName}-thumbnail.jpg`,
-  });
-
-  return NextResponse.json({ videoIntent, thumbnailIntent });
+  try {
+    const { uid, uploadURL } = await createStreamDirectUpload(listingId);
+    return NextResponse.json({
+      streamUid: uid,
+      uploadURL,
+      maxVideoBytes: MAX_STREAM_VIDEO_BYTES,
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Could not create a video upload URL." }, { status: 502 });
+  }
 }

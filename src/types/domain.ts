@@ -109,6 +109,7 @@ export interface Listing {
   locationHidden: boolean;
   imageUrls: string[];
   videoUrl?: string;
+  videoStreamUid?: string;
   videoThumbnailUrl?: string;
   ogImageUrl?: string;
   createdAt: string;

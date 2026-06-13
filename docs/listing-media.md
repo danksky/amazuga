@@ -24,6 +24,27 @@ Preview listing images use a separate bucket and public base URL:
 
 - `https://preview-media.amazuga.com/<storage_key>`
 
+## Preview Video Flow
+
+Preview listing videos use Cloudflare Stream. Production and legacy preview
+rows remain on R2 until their own migration is explicitly scheduled.
+
+1. The app creates a one-time Stream direct upload URL.
+2. The browser sends the video as a multipart `file` upload directly to Stream.
+3. The app stores the Stream UID, HLS URL, and generated thumbnail URL.
+4. Property pages use the Stream iframe when `stream_uid` is present and retain
+   the legacy `<video>` player for R2 rows.
+
+The preview app requires:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_STREAM_API_TOKEN` with Stream Read and Stream Edit
+
+Run `npm run migrate-preview-videos-to-stream` after applying
+`infra/sql/migrations/0014_stream_video.sql` to copy existing preview videos
+into Stream. The migration script requires `DATABASE_URL_PREVIEW` and never
+falls back to the production database.
+
 Private agent ID photos are stored separately from public listing images and
 have no public R2 domain. Production uses `amazuga-agent-id-photos`; preview
 uses `amazuga-agent-id-photos-preview`.

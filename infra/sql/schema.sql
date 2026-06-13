@@ -577,11 +577,12 @@ CREATE INDEX IF NOT EXISTS listing_image_cleanup_job_status_run_after_idx
   ON listing_image_cleanup_job (status, run_after);
 
 
--- Optional single video per listing. Thumbnail is captured client-side
--- (first frame, JPEG) and uploaded separately via the image upload URL.
+-- Optional single video per listing. New videos use Cloudflare Stream while
+-- the nullable R2 storage fields preserve compatibility with legacy videos.
 CREATE TABLE IF NOT EXISTS listing_video (
   id                        TEXT PRIMARY KEY,
   listing_id                TEXT NOT NULL REFERENCES listing(id) ON DELETE CASCADE,
+  stream_uid                TEXT UNIQUE,
   video_url                 TEXT NOT NULL,
   video_storage_key         TEXT,
   thumbnail_url             TEXT,

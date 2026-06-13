@@ -3,29 +3,20 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { routes } from "@/lib/routes";
-import { getListingImageUploadConfig } from "@/lib/server/listing-image-storage";
+import {
+  deleteStreamVideo,
+  getStreamVideo,
+  streamHlsUrl,
+  streamThumbnailUrl,
+} from "@/lib/server/cloudflare-stream";
 import { generateAndStoreOgImage } from "@/lib/server/og-image";
-import { deleteListingVideoFromStorage, getListingVideoUploadConfig } from "@/lib/server/listing-video-storage";
+import { deleteListingVideoFromStorage } from "@/lib/server/listing-video-storage";
 import { addListingVideoToDb, getEditablePortalListingSummary, removeListingVideoFromDb } from "@/lib/server/portal-listing-editor";
 import { hasCapability } from "@/types/permissions";
 
 export const dynamic = "force-dynamic";
 
-function isAllowedVideoUrl(url: string, publicBaseUrl: string) {
-  return url.startsWith(`${publicBaseUrl.replace(/\/+$/, "")}/`);
-}
-
-function isAllowedVideoStorageKey(storageKey: string, listingId: string) {
-  return storageKey.startsWith(`listing-videos/${listingId}/`);
-}
-
-function isAllowedThumbnailUrl(url: string, publicBaseUrl: string) {
-  return url.startsWith(`${publicBaseUrl.replace(/\/+$/, "")}/`);
-}
-
-function isAllowedThumbnailStorageKey(storageKey: string, listingId: string) {
-  return storageKey.startsWith(`listing-images/${listingId}/`);
-}
+const STREAM_UID_PATTERN = /^[a-f0-9]{32}$/i;
 
 export async function POST(
   request: Request,
@@ -48,35 +39,27 @@ export async function POST(
     return NextResponse.json({ error: "Listing not found or inaccessible." }, { status: 404 });
   }
 
-  const videoConfig = getListingVideoUploadConfig();
-  const imageConfig = getListingImageUploadConfig();
-
-  if (!videoConfig.publicBaseUrl) {
-    return NextResponse.json({ error: "Listing video public base URL is not configured." }, { status: 503 });
-  }
-
-  if (!imageConfig.publicBaseUrl) {
-    return NextResponse.json({ error: "Listing image public base URL is not configured." }, { status: 503 });
-  }
-
   const body = await request.json().catch(() => null);
-  const videoUrl = typeof body?.videoUrl === "string" ? body.videoUrl.trim() : "";
-  const videoStorageKey = typeof body?.videoStorageKey === "string" ? body.videoStorageKey.trim() : "";
-  const thumbnailUrl = typeof body?.thumbnailUrl === "string" ? body.thumbnailUrl.trim() : "";
-  const thumbnailStorageKey = typeof body?.thumbnailStorageKey === "string" ? body.thumbnailStorageKey.trim() : "";
+  const streamUid = typeof body?.streamUid === "string" ? body.streamUid.trim() : "";
 
-  if (!videoUrl || !videoStorageKey) {
-    return NextResponse.json({ error: "Missing video metadata." }, { status: 400 });
+  if (!STREAM_UID_PATTERN.test(streamUid)) {
+    return NextResponse.json({ error: "A valid Stream video identifier is required." }, { status: 400 });
   }
 
-  if (!isAllowedVideoUrl(videoUrl, videoConfig.publicBaseUrl) || !isAllowedVideoStorageKey(videoStorageKey, listingId)) {
-    return NextResponse.json({ error: "Video metadata did not pass validation." }, { status: 400 });
-  }
-
-  if (thumbnailUrl && thumbnailStorageKey) {
-    if (!isAllowedThumbnailUrl(thumbnailUrl, imageConfig.publicBaseUrl) || !isAllowedThumbnailStorageKey(thumbnailStorageKey, listingId)) {
-      return NextResponse.json({ error: "Thumbnail metadata did not pass validation." }, { status: 400 });
+  try {
+    const streamVideo = await getStreamVideo(streamUid);
+    if (streamVideo.listingId !== listingId) {
+      return NextResponse.json({ error: "Stream video did not pass listing validation." }, { status: 400 });
     }
+    if (streamVideo.status === "error") {
+      return NextResponse.json(
+        { error: streamVideo.errorReason || "Cloudflare could not process this video." },
+        { status: 400 },
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Could not verify the uploaded Stream video." }, { status: 502 });
   }
 
   let video;
@@ -84,15 +67,12 @@ export async function POST(
     video = await addListingVideoToDb({
       userId: currentUser.id,
       listingId,
-      videoUrl,
-      videoStorageKey,
-      thumbnailUrl: thumbnailUrl || undefined,
-      thumbnailStorageKey: thumbnailStorageKey || undefined,
-      durationSeconds: typeof body?.durationSeconds === "number" ? Math.round(body.durationSeconds) : undefined,
-      contentType: typeof body?.contentType === "string" ? body.contentType : undefined,
-      fileSizeBytes: typeof body?.fileSizeBytes === "number" ? body.fileSizeBytes : undefined,
+      streamUid,
+      videoUrl: streamHlsUrl(streamUid),
+      thumbnailUrl: streamThumbnailUrl(streamUid, "2s"),
     });
   } catch (error) {
+    deleteStreamVideo(streamUid).catch(console.error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not attach the uploaded video." },
       { status: 400 },
@@ -145,8 +125,10 @@ export async function DELETE(
     return NextResponse.json({ error: "No video found for this listing." }, { status: 404 });
   }
 
-  // Best-effort storage deletion — don't block the response on failure.
-  if (removed.video_storage_key) {
+  // Best-effort media deletion; legacy R2 rows keep their original path.
+  if (removed.stream_uid) {
+    deleteStreamVideo(removed.stream_uid).catch(console.error);
+  } else if (removed.video_storage_key) {
     deleteListingVideoFromStorage({
       listingId,
       videoId: removed.id,

@@ -1,0 +1,2 @@
+ALTER TABLE listing_video
+  ADD COLUMN IF NOT EXISTS stream_uid TEXT UNIQUE;

@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "import-listing": "node scripts/import-listing.mjs"
+    "import-listing": "node scripts/import-listing.mjs",
+    "migrate-preview-videos-to-stream": "node scripts/migrate-preview-videos-to-stream.mjs"
   },
   "dependencies": {
     "@logtail/node": "^0.5.8",

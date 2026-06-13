@@ -61,6 +61,7 @@ interface EditableListingImageRow {
 
 interface EditableListingVideoRow {
   id: string;
+  stream_uid: string | null;
   video_url: string;
   video_storage_key: string | null;
   thumbnail_url: string | null;
@@ -146,6 +147,7 @@ export interface PortalEditableListing {
   }>;
   video?: {
     id: string;
+    streamUid?: string;
     videoUrl: string;
     videoStorageKey?: string;
     thumbnailUrl?: string;
@@ -419,6 +421,7 @@ async function getEditableListingVideo(listingId: string) {
     `
       SELECT
         lv.id,
+        lv.stream_uid,
         lv.video_url,
         lv.video_storage_key,
         lv.thumbnail_url,
@@ -441,6 +444,7 @@ async function getEditableListingVideo(listingId: string) {
 
   return {
     id: row.id,
+    streamUid: row.stream_uid || undefined,
     videoUrl: row.video_url,
     videoStorageKey: row.video_storage_key || undefined,
     thumbnailUrl: row.thumbnail_url || undefined,
@@ -994,8 +998,9 @@ export async function queueListingImageDeletion(input: {
 export async function addListingVideoToDb(input: {
   userId: string;
   listingId: string;
+  streamUid?: string;
   videoUrl: string;
-  videoStorageKey: string;
+  videoStorageKey?: string;
   thumbnailUrl?: string;
   thumbnailStorageKey?: string;
   durationSeconds?: number;
@@ -1015,6 +1020,7 @@ export async function addListingVideoToDb(input: {
       INSERT INTO listing_video (
         id,
         listing_id,
+        stream_uid,
         video_url,
         video_storage_key,
         thumbnail_url,
@@ -1025,9 +1031,10 @@ export async function addListingVideoToDb(input: {
         uploaded_by_user_id,
         status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ready')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ready')
       RETURNING
         id,
+        stream_uid,
         video_url,
         video_storage_key,
         thumbnail_url,
@@ -1041,8 +1048,9 @@ export async function addListingVideoToDb(input: {
     [
       id,
       input.listingId,
+      input.streamUid || null,
       input.videoUrl,
-      input.videoStorageKey,
+      input.videoStorageKey || null,
       input.thumbnailUrl || null,
       input.thumbnailStorageKey || null,
       input.durationSeconds || null,
@@ -1057,6 +1065,7 @@ export async function addListingVideoToDb(input: {
 
   return {
     id: row.id,
+    streamUid: row.stream_uid || undefined,
     videoUrl: row.video_url,
     videoStorageKey: row.video_storage_key || undefined,
     thumbnailUrl: row.thumbnail_url || undefined,
@@ -1082,6 +1091,7 @@ export async function removeListingVideoFromDb(input: {
         AND status = 'ready'
       RETURNING
         id,
+        stream_uid,
         video_url,
         video_storage_key,
         thumbnail_url,

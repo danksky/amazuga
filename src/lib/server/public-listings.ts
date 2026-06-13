@@ -267,7 +267,13 @@ function buildPropertyFromRow(row: ListingParcelRow): Property {
   };
 }
 
-function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = [], videoUrl?: string, videoThumbnailUrl?: string): Listing | undefined {
+function buildListingFromRow(
+  row: ListingParcelRow,
+  imageUrls: string[] = [],
+  videoUrl?: string,
+  videoThumbnailUrl?: string,
+  videoStreamUid?: string,
+): Listing | undefined {
   if (
     !row.listing_id ||
     !row.agent_user_id ||
@@ -295,6 +301,7 @@ function buildListingFromRow(row: ListingParcelRow, imageUrls: string[] = [], vi
     locationHidden: row.location_hidden ?? false,
     imageUrls,
     videoUrl: videoUrl || undefined,
+    videoStreamUid: videoStreamUid || undefined,
     videoThumbnailUrl: videoThumbnailUrl || undefined,
     ogImageUrl: row.og_image_url ?? undefined,
     createdAt: row.listing_created_at,
@@ -364,10 +371,18 @@ async function getListingImages(listingId: string) {
   return result.rows.map((row) => row.image_url);
 }
 
-async function getListingVideo(listingId: string): Promise<{ videoUrl: string; thumbnailUrl?: string } | undefined> {
-  const result = await getPgPool().query<{ video_url: string; thumbnail_url: string | null }>(
+async function getListingVideo(listingId: string): Promise<{
+  videoUrl: string;
+  thumbnailUrl?: string;
+  streamUid?: string;
+} | undefined> {
+  const result = await getPgPool().query<{
+    stream_uid: string | null;
+    video_url: string;
+    thumbnail_url: string | null;
+  }>(
     `
-      SELECT video_url, thumbnail_url
+      SELECT stream_uid, video_url, thumbnail_url
       FROM listing_video
       WHERE listing_id = $1
         AND status = 'ready'
@@ -382,6 +397,7 @@ async function getListingVideo(listingId: string): Promise<{ videoUrl: string; t
   return {
     videoUrl: row.video_url,
     thumbnailUrl: row.thumbnail_url || undefined,
+    streamUid: row.stream_uid || undefined,
   };
 }
 
@@ -545,7 +561,13 @@ export async function getBrowseListingCards(marketingType: MarketingType): Promi
       const property = buildPropertyFromRow(row);
       const imageUrls = row.listing_id ? await getListingImages(row.listing_id) : [];
       const video = row.listing_id ? await getListingVideo(row.listing_id) : undefined;
-      const listing = buildListingFromRow(row, imageUrls, video?.videoUrl, video?.thumbnailUrl);
+      const listing = buildListingFromRow(
+        row,
+        imageUrls,
+        video?.videoUrl,
+        video?.thumbnailUrl,
+        video?.streamUid,
+      );
 
       if (!listing) {
         return undefined;
@@ -795,7 +817,13 @@ export async function getPublicPropertyPageData(propertyId: string, viewerUserId
     row.listing_id ? getListingImages(row.listing_id) : Promise.resolve([]),
     row.listing_id ? getListingVideo(row.listing_id) : Promise.resolve(undefined),
   ]);
-  const listing = buildListingFromRow(row, imageUrls, video?.videoUrl, video?.thumbnailUrl);
+  const listing = buildListingFromRow(
+    row,
+    imageUrls,
+    video?.videoUrl,
+    video?.thumbnailUrl,
+    video?.streamUid,
+  );
   const agency = row.agency_id ? await getAgencyByIdFromDb(row.agency_id) : undefined;
   const contactName = row.agent_full_name?.trim()
     || (row.listing_id ? (row.agency_id ? agency?.businessName : "For sale by owner") : undefined);

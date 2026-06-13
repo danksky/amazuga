@@ -198,6 +198,11 @@
   outline: none;
 }
 
+.galleryModalStream {
+  width: 100%;
+  height: 100%;
+}
+
 .galleryModalArrow {
   position: absolute;
   top: 50%;

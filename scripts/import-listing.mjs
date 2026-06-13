@@ -24,17 +24,23 @@
  *   LISTING_IMAGES_PUBLIC_BASE_URL — CDN public base URL
  *   LISTING_IMAGE_UPLOAD_SECRET    — HMAC signing secret for upload tokens
  *   LISTING_IMAGE_UPLOAD_ORIGIN    — Origin header for upload worker (default: http://localhost:3001)
+ *   CLOUDFLARE_ACCOUNT_ID          — Cloudflare account containing Stream
+ *   CLOUDFLARE_STREAM_API_TOKEN    — Token with Stream Read and Stream Edit
  */
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
 
 import { Pool } from "pg";
 
+import {
+  createStreamDirectUpload,
+  streamHlsUrl,
+  streamThumbnailUrl,
+  waitForStreamVideo,
+} from "./cloudflare-stream.mjs";
 import { buildOgImageBuffer, storeOgImage } from "./og-image-generator.mjs";
 
 // ─── Env loading ───────────────────────────────────────────────────────────────
@@ -126,10 +132,13 @@ function createUploadIntent({ listingId, userId, contentType, fileName }) {
   };
 }
 
-// ─── Video upload signing ──────────────────────────────────────────────────────
+// ─── Cloudflare Stream ────────────────────────────────────────────────────────
 
-const VIDEO_UPLOAD_URL = getEnv("LISTING_VIDEO_UPLOAD_URL");
-const VIDEO_UPLOAD_SECRET = getEnv("LISTING_VIDEO_UPLOAD_SECRET");
+const STREAM_CONFIG = {
+  accountId: getEnv("CLOUDFLARE_ACCOUNT_ID"),
+  apiToken: getEnv("CLOUDFLARE_STREAM_API_TOKEN"),
+};
+const MAX_VIDEO_BYTES = 30 * 1024 * 1024;
 
 // ─── OG image generation ───────────────────────────────────────────────────────
 
@@ -211,30 +220,6 @@ async function generateOgForListing(listingId) {
   }
 }
 
-function createVideoUploadIntent({ listingId, userId, contentType, fileName }) {
-  if (!VIDEO_UPLOAD_URL || !VIDEO_UPLOAD_SECRET) {
-    throw new Error(
-      "Video upload env vars not configured. Set LISTING_VIDEO_UPLOAD_URL and " +
-        "LISTING_VIDEO_UPLOAD_SECRET in .env.local",
-    );
-  }
-  const encoded = Buffer.from(JSON.stringify({
-    version: 1,
-    intentId: randomUUID(),
-    listingId,
-    userId,
-    contentType,
-    fileName,
-    maxBytes: 30 * 1024 * 1024,
-    exp: Date.now() + 15 * 60 * 1000,
-  }), "utf8").toString("base64url");
-  const sig = createHmac("sha256", VIDEO_UPLOAD_SECRET).update(encoded).digest("base64url");
-  return {
-    token: `${encoded}.${sig}`,
-    uploadUrl: VIDEO_UPLOAD_URL,
-  };
-}
-
 // ─── Generators ───────────────────────────────────────────────────────────────
 
 const uid = () => randomUUID().replace(/-/g, "");
@@ -251,41 +236,6 @@ function md5hex(v) { return createHash("md5").update(v).digest("hex"); }
 function upiAssetId(parcelId) { return "ast_" + md5hex("claim-primary:" + parcelId).slice(0, 20); }
 function upiDisplayCode(parcelId) { return "AST-" + md5hex("claim-display:" + parcelId).slice(0, 10).toUpperCase(); }
 function recordId(prefix) { return `${prefix}-${Date.now()}`; }
-
-// ─── Video thumbnail extraction ────────────────────────────────────────────────
-
-function captureVideoThumbnail(videoPath) {
-  const tmpPath = join(tmpdir(), `amazuga-thumb-${randomUUID()}.jpg`);
-  try {
-    execFileSync("ffmpeg", [
-      "-y",
-      "-ss", "0",
-      "-i", videoPath,
-      "-frames:v", "1",
-      "-q:v", "3",
-      tmpPath,
-    ], { stdio: "pipe" });
-    const buffer = readFileSync(tmpPath);
-    return buffer;
-  } catch {
-    return null;
-  } finally {
-    try { unlinkSync(tmpPath); } catch { /* ignore */ }
-  }
-}
-
-// Remux video with ffmpeg to strip proprietary atoms (e.g. WhatsApp's `beam` atom)
-// and ensure moov-before-mdat ordering (faststart). iOS WebKit rejects videos with
-// unknown atoms between ftyp and moov.
-function remuxVideoForUpload(videoPath) {
-  const tmpPath = join(tmpdir(), `amazuga-remux-${randomUUID()}.mp4`);
-  try {
-    execFileSync("ffmpeg", ["-y", "-i", videoPath, "-c", "copy", "-movflags", "+faststart", tmpPath], { stdio: "pipe" });
-    return tmpPath;
-  } catch {
-    return null;
-  }
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -319,6 +269,38 @@ function contentTypeFromPath(filePath) {
 function contentTypeFromVideoPath(filePath) {
   const ext = filePath.split(".").pop()?.toLowerCase();
   return { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm" }[ext] ?? "video/mp4";
+}
+
+async function uploadVideoToStream(videoFilePath, listingId) {
+  const fileBuffer = readFileSync(videoFilePath);
+  if (fileBuffer.length > MAX_VIDEO_BYTES) {
+    throw new Error(`Video exceeds the 30 MB upload limit: ${videoFilePath}`);
+  }
+
+  const contentType = contentTypeFromVideoPath(videoFilePath);
+  const fileName = videoFilePath.split("/").pop() ?? "video.mp4";
+  const directUpload = await createStreamDirectUpload(STREAM_CONFIG, listingId);
+  const formData = new FormData();
+  formData.append("file", new Blob([fileBuffer], { type: contentType }), fileName);
+
+  const uploadResponse = await fetch(directUpload.uploadURL, {
+    method: "POST",
+    body: formData,
+  });
+  if (!uploadResponse.ok) {
+    const details = await uploadResponse.text().catch(() => `HTTP ${uploadResponse.status}`);
+    throw new Error(`Cloudflare Stream upload failed for ${fileName}: ${details}`);
+  }
+
+  const video = await waitForStreamVideo(STREAM_CONFIG, directUpload.uid);
+  return {
+    streamUid: directUpload.uid,
+    videoUrl: streamHlsUrl(directUpload.uid),
+    thumbnailUrl: streamThumbnailUrl(directUpload.uid),
+    durationSeconds: video.duration == null ? null : Math.round(video.duration),
+    contentType,
+    fileSizeBytes: fileBuffer.length,
+  };
 }
 
 async function resolveVillageCentroid({ adminDistrict, adminSector, adminCell, adminVillage }) {
@@ -621,68 +603,26 @@ async function uploadPhotosToExisting({ spec, listingDir, listingId, force }) {
       [listingId],
     );
     if (!hasVideo.rows.length) {
-      const vContentType = contentTypeFromVideoPath(recoveryVideoPath);
-      const vBaseName = recoveryVideoPath.split("/").pop() ?? "video.mp4";
-      const vIntent = createVideoUploadIntent({ listingId, userId: listing.agent_user_id, contentType: vContentType, fileName: vBaseName });
-
-      const remuxedPath = remuxVideoForUpload(recoveryVideoPath);
-      const vUploadPath = remuxedPath ?? recoveryVideoPath;
-      if (!remuxedPath) console.log(`  ⚠ ffmpeg remux failed, uploading original`);
-      const vBuffer = readFileSync(vUploadPath);
-      const vFormData = new FormData();
-      vFormData.append("token", vIntent.token);
-      vFormData.append("file", new Blob([vBuffer], { type: vContentType }), vBaseName);
-
-      const vRes = await fetch(vIntent.uploadUrl, {
-        method: "POST",
-        body: vFormData,
-        headers: { Origin: UPLOAD_ORIGIN },
-      });
-      if (remuxedPath) { try { unlinkSync(remuxedPath); } catch { /* ignore */ } }
-      if (!vRes.ok) {
-        const body = await vRes.text().catch(() => `HTTP ${vRes.status}`);
-        throw new Error(`Video upload failed for ${vBaseName}: ${body}`);
-      }
-      const uploadedVideo = await vRes.json();
-
-      // Extract and upload thumbnail via ffmpeg.
-      let thumbnailUrl = null;
-      let thumbnailStorageKey = null;
-      const thumbBuffer = captureVideoThumbnail(recoveryVideoPath);
-      if (thumbBuffer) {
-        const thumbIntent = createUploadIntent({
-          listingId, userId: listing.agent_user_id,
-          contentType: "image/jpeg", fileName: "thumbnail.jpg",
-        });
-        const thumbForm = new FormData();
-        thumbForm.append("token", thumbIntent.token);
-        thumbForm.append("file", new Blob([thumbBuffer], { type: "image/jpeg" }), "thumbnail.jpg");
-        const thumbRes = await fetch(thumbIntent.uploadUrl, {
-          method: "POST", body: thumbForm, headers: { Origin: UPLOAD_ORIGIN },
-        });
-        if (thumbRes.ok) {
-          const thumbData = await thumbRes.json();
-          thumbnailUrl = thumbData.imageUrl ?? null;
-          thumbnailStorageKey = thumbData.storageKey ?? null;
-        }
-      }
+      const uploadedVideo = await uploadVideoToStream(recoveryVideoPath, listingId);
 
       await pool.query(
         `INSERT INTO listing_video (
-          id, listing_id, video_url, video_storage_key,
-          thumbnail_url, thumbnail_storage_key,
-          content_type, file_size_bytes, uploaded_by_user_id, status
+          id, listing_id, stream_uid, video_url, thumbnail_url,
+          duration_seconds, content_type, file_size_bytes,
+          uploaded_by_user_id, status
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'ready')`,
         [
           genVideoId(), listingId,
-          uploadedVideo.videoUrl, uploadedVideo.storageKey,
-          thumbnailUrl, thumbnailStorageKey,
-          uploadedVideo.contentType ?? vContentType,
-          uploadedVideo.fileSizeBytes ?? vBuffer.length,
+          uploadedVideo.streamUid,
+          uploadedVideo.videoUrl,
+          uploadedVideo.thumbnailUrl,
+          uploadedVideo.durationSeconds,
+          uploadedVideo.contentType,
+          uploadedVideo.fileSizeBytes,
           listing.agent_user_id,
         ],
       );
-      console.log(`  ✓ video → ${uploadedVideo.videoUrl}${thumbnailUrl ? " (thumbnail captured)" : " (no thumbnail)"}`);
+      console.log(`  ✓ video → ${uploadedVideo.videoUrl}`);
     }
   }
 
@@ -962,68 +902,26 @@ async function run() {
   // ── Upload video ───────────────────────────────────────────────────────────
 
   if (videoFilePath) {
-    const vContentType = contentTypeFromVideoPath(videoFilePath);
-    const vBaseName = videoFilePath.split("/").pop() ?? "video.mp4";
-    const vIntent = createVideoUploadIntent({ listingId, userId: agent.id, contentType: vContentType, fileName: vBaseName });
-
-    const remuxedPath = remuxVideoForUpload(videoFilePath);
-    const vUploadPath = remuxedPath ?? videoFilePath;
-    if (!remuxedPath) console.log(`  ⚠ ffmpeg remux failed, uploading original`);
-    const vBuffer = readFileSync(vUploadPath);
-    const vFormData = new FormData();
-    vFormData.append("token", vIntent.token);
-    vFormData.append("file", new Blob([vBuffer], { type: vContentType }), vBaseName);
-
-    const vRes = await fetch(vIntent.uploadUrl, {
-      method: "POST",
-      body: vFormData,
-      headers: { Origin: UPLOAD_ORIGIN },
-    });
-    if (remuxedPath) { try { unlinkSync(remuxedPath); } catch { /* ignore */ } }
-    if (!vRes.ok) {
-      const body = await vRes.text().catch(() => `HTTP ${vRes.status}`);
-      throw new Error(`Video upload failed for ${vBaseName}: ${body}`);
-    }
-    const uploadedVideo = await vRes.json();
-
-    // Extract and upload thumbnail via ffmpeg.
-    let thumbnailUrl = null;
-    let thumbnailStorageKey = null;
-    const thumbBuffer = captureVideoThumbnail(videoFilePath);
-    if (thumbBuffer) {
-      const thumbIntent = createUploadIntent({
-        listingId, userId: agent.id,
-        contentType: "image/jpeg", fileName: "thumbnail.jpg",
-      });
-      const thumbForm = new FormData();
-      thumbForm.append("token", thumbIntent.token);
-      thumbForm.append("file", new Blob([thumbBuffer], { type: "image/jpeg" }), "thumbnail.jpg");
-      const thumbRes = await fetch(thumbIntent.uploadUrl, {
-        method: "POST", body: thumbForm, headers: { Origin: UPLOAD_ORIGIN },
-      });
-      if (thumbRes.ok) {
-        const thumbData = await thumbRes.json();
-        thumbnailUrl = thumbData.imageUrl ?? null;
-        thumbnailStorageKey = thumbData.storageKey ?? null;
-      }
-    }
+    const uploadedVideo = await uploadVideoToStream(videoFilePath, listingId);
 
     await pool.query(
       `INSERT INTO listing_video (
-        id, listing_id, video_url, video_storage_key,
-        thumbnail_url, thumbnail_storage_key,
-        content_type, file_size_bytes, uploaded_by_user_id, status
+        id, listing_id, stream_uid, video_url, thumbnail_url,
+        duration_seconds, content_type, file_size_bytes,
+        uploaded_by_user_id, status
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'ready')`,
       [
         genVideoId(), listingId,
-        uploadedVideo.videoUrl, uploadedVideo.storageKey,
-        thumbnailUrl, thumbnailStorageKey,
-        uploadedVideo.contentType ?? vContentType,
-        uploadedVideo.fileSizeBytes ?? vBuffer.length,
+        uploadedVideo.streamUid,
+        uploadedVideo.videoUrl,
+        uploadedVideo.thumbnailUrl,
+        uploadedVideo.durationSeconds,
+        uploadedVideo.contentType,
+        uploadedVideo.fileSizeBytes,
         agent.id,
       ],
     );
-    console.log(`  ✓ video → ${uploadedVideo.videoUrl}${thumbnailUrl ? " (thumbnail captured)" : " (no thumbnail)"}`);
+    console.log(`  ✓ video → ${uploadedVideo.videoUrl}`);
   }
 
   // ── Activate ───────────────────────────────────────────────────────────────

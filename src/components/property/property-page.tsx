@@ -316,11 +316,18 @@ export function PropertyPage({
   });
   type MediaItem =
     | { type: "image"; url: string }
-    | { type: "video"; url: string; thumbnailUrl?: string };
+    | { type: "video"; url: string; thumbnailUrl?: string; streamUid?: string };
 
   const galleryMedia: MediaItem[] = [
     ...(listing?.imageUrls ?? []).map((url): MediaItem => ({ type: "image", url })),
-    ...(listing?.videoUrl ? [{ type: "video" as const, url: listing.videoUrl, thumbnailUrl: listing.videoThumbnailUrl }] : []),
+    ...(listing?.videoUrl
+      ? [{
+          type: "video" as const,
+          url: listing.videoUrl,
+          thumbnailUrl: listing.videoThumbnailUrl,
+          streamUid: listing.videoStreamUid,
+        }]
+      : []),
   ];
   const primaryItem = galleryMedia[0];
   const secondaryItem = galleryMedia[1];
@@ -747,16 +754,28 @@ export function PropertyPage({
                 Close
               </button>
               {activeGalleryItem.type === "video" ? (
-                <video
-                  autoPlay
-                  className={styles.galleryModalVideo}
-                  controls
-                  key={activeGalleryItem.url}
-                  muted
-                  playsInline
-                  poster={activeGalleryItem.thumbnailUrl}
-                  src={activeGalleryItem.url}
-                />
+                activeGalleryItem.streamUid ? (
+                  <iframe
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    className={`${styles.galleryModalVideo} ${styles.galleryModalStream}`}
+                    key={activeGalleryItem.streamUid}
+                    src={`https://iframe.videodelivery.net/${encodeURIComponent(activeGalleryItem.streamUid)}?autoplay=true&muted=true&controls=true&playsinline=true`}
+                    style={{ border: "none" }}
+                    title={`${property.title} video`}
+                  />
+                ) : (
+                  <video
+                    autoPlay
+                    className={styles.galleryModalVideo}
+                    controls
+                    key={activeGalleryItem.url}
+                    muted
+                    playsInline
+                    poster={activeGalleryItem.thumbnailUrl}
+                    src={activeGalleryItem.url}
+                  />
+                )
               ) : (
                 <img
                   alt={`${property.title} view ${activeGalleryIndex + 1}`}

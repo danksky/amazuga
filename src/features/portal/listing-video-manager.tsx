@@ -7,6 +7,7 @@ import styles from "./listing-form.module.css";
 
 interface ListingVideo {
   id: string;
+  streamUid?: string;
   videoUrl: string;
   thumbnailUrl?: string;
   durationSeconds?: number;
@@ -15,20 +16,7 @@ interface ListingVideo {
   status: "ready" | "pending_delete" | "delete_failed";
 }
 
-interface UploadIntent {
-  token: string;
-  uploadUrl: string;
-}
-
-interface UploadedMediaPayload {
-  videoUrl?: string;
-  imageUrl?: string;
-  storageKey: string;
-  fileSizeBytes?: number;
-}
-
 const MAX_VIDEO_BYTES = 30 * 1024 * 1024; // 30 MB
-const MAX_DURATION_SECONDS = 120; // 2 minutes
 const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 
 function formatBytes(bytes?: number) {
@@ -42,71 +30,6 @@ function formatDuration(seconds?: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function getVideoMetadata(file: File): Promise<{ durationSeconds: number }> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve({ durationSeconds: video.duration });
-    };
-    video.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error(`Could not read metadata from ${file.name}.`));
-    };
-    video.src = objectUrl;
-  });
-}
-
-function captureFirstFrame(file: File): Promise<{ blob: Blob; width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.muted = true;
-    video.playsInline = true;
-
-    video.onloadeddata = () => {
-      video.currentTime = 0;
-    };
-
-    video.onseeked = () => {
-      URL.revokeObjectURL(objectUrl);
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext("2d");
-
-      if (!context) {
-        reject(new Error("Could not access canvas context for thumbnail."));
-        return;
-      }
-
-      context.drawImage(video, 0, 0);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Could not create thumbnail."));
-            return;
-          }
-          resolve({ blob, width: video.videoWidth, height: video.videoHeight });
-        },
-        "image/jpeg",
-        0.75,
-      );
-    };
-
-    video.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error(`Could not generate thumbnail from ${file.name}.`));
-    };
-
-    video.src = objectUrl;
-    video.load();
-  });
 }
 
 export function ListingVideoManager({
@@ -151,79 +74,45 @@ export function ListingVideoManager({
     setPending(true);
 
     try {
-      const { durationSeconds } = await getVideoMetadata(file);
-
-      if (durationSeconds > MAX_DURATION_SECONDS) {
-        const mins = Math.floor(durationSeconds / 60);
-        const secs = Math.round(durationSeconds % 60);
-        setError(`Video is too long (${mins}:${String(secs).padStart(2, "0")}). Maximum duration is 2 minutes.`);
-        setPending(false);
-        return;
-      }
-
-      setStatus("Generating thumbnail…");
-      const thumbnail = await captureFirstFrame(file);
-      const thumbnailFile = new File([thumbnail.blob], "thumbnail.jpg", {
-        type: "image/jpeg",
-        lastModified: Date.now(),
-      });
-
-      setStatus("Requesting upload slots…");
+      setStatus("Requesting upload slot…");
       const intentResponse = await fetch(
         `/api/portal/listings/${encodeURIComponent(listingId)}/video/upload-intent`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type,
+            fileSizeBytes: file.size,
+          }),
         },
       );
 
       const intentPayload = await intentResponse.json().catch(() => null);
 
       if (!intentResponse.ok) {
-        throw new Error(intentPayload?.error || "Could not create video upload intents.");
+        throw new Error(intentPayload?.error || "Could not create a video upload URL.");
       }
 
-      const videoIntent = intentPayload.videoIntent as UploadIntent;
-      const thumbnailIntent = intentPayload.thumbnailIntent as UploadIntent;
+      const streamUid = typeof intentPayload?.streamUid === "string" ? intentPayload.streamUid : "";
+      const uploadURL = typeof intentPayload?.uploadURL === "string" ? intentPayload.uploadURL : "";
+
+      if (!streamUid || !uploadURL) {
+        throw new Error("Cloudflare did not return a valid video upload URL.");
+      }
 
       setStatus("Uploading video…");
-      const videoFormData = new FormData();
-      videoFormData.append("token", videoIntent.token);
-      videoFormData.append("file", file);
-
-      const videoUploadResponse = await fetch(videoIntent.uploadUrl, {
+      const uploadBody = new FormData();
+      uploadBody.append("file", file, file.name);
+      const videoUploadResponse = await fetch(uploadURL, {
         method: "POST",
-        body: videoFormData,
+        body: uploadBody,
       });
-      const videoUploadPayload = (await videoUploadResponse.json().catch(() => null)) as UploadedMediaPayload | null;
 
       if (!videoUploadResponse.ok) {
-        throw new Error((videoUploadPayload as { error?: string })?.error || `Could not upload ${file.name}.`);
+        const details = await videoUploadResponse.text().catch(() => "");
+        throw new Error(details || `Could not upload ${file.name}.`);
       }
-
-      const uploadedVideoUrl = videoUploadPayload?.videoUrl ?? videoUploadPayload?.imageUrl ?? "";
-      const videoStorageKey = videoUploadPayload?.storageKey ?? "";
-
-      setStatus("Uploading thumbnail…");
-      const thumbFormData = new FormData();
-      thumbFormData.append("token", thumbnailIntent.token);
-      thumbFormData.append("file", thumbnailFile);
-      thumbFormData.append("width", String(thumbnail.width));
-      thumbFormData.append("height", String(thumbnail.height));
-
-      const thumbUploadResponse = await fetch(thumbnailIntent.uploadUrl, {
-        method: "POST",
-        body: thumbFormData,
-      });
-      const thumbUploadPayload = (await thumbUploadResponse.json().catch(() => null)) as UploadedMediaPayload | null;
-
-      if (!thumbUploadResponse.ok) {
-        throw new Error((thumbUploadPayload as { error?: string })?.error || "Could not upload thumbnail.");
-      }
-
-      const thumbnailUrl = thumbUploadPayload?.imageUrl ?? "";
-      const thumbnailStorageKey = thumbUploadPayload?.storageKey ?? "";
 
       setStatus("Saving…");
       const saveResponse = await fetch(
@@ -231,15 +120,7 @@ export function ListingVideoManager({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            videoUrl: uploadedVideoUrl,
-            videoStorageKey,
-            thumbnailUrl: thumbnailUrl || undefined,
-            thumbnailStorageKey: thumbnailStorageKey || undefined,
-            durationSeconds,
-            contentType: file.type,
-            fileSizeBytes: file.size,
-          }),
+          body: JSON.stringify({ streamUid }),
         },
       );
 
@@ -288,7 +169,7 @@ export function ListingVideoManager({
         <div>
           <h2 className={styles.mediaTitle}>Listing video</h2>
           <div className={styles.mediaBody}>
-            One optional video per listing. Maximum 2 minutes and 30 MB. MP4, MOV, or WebM.
+            One optional video per listing. Maximum 30 MB. MP4, MOV, or WebM.
           </div>
         </div>
         {video ? <div className={styles.mediaMeta}>1 / 1 uploaded</div> : <div className={styles.mediaMeta}>0 / 1 uploaded</div>}
@@ -324,7 +205,17 @@ export function ListingVideoManager({
       ) : (
         <div className={styles.mediaGrid}>
           <article className={styles.mediaCard} style={{ gridColumn: "1 / -1" }}>
-            {video.thumbnailUrl ? (
+            {video.streamUid ? (
+              <div className={styles.mediaThumbWrap}>
+                <iframe
+                  allow="fullscreen; picture-in-picture"
+                  allowFullScreen
+                  className={styles.mediaStream}
+                  src={`https://iframe.videodelivery.net/${encodeURIComponent(video.streamUid)}?muted=true&controls=true&playsinline=true`}
+                  title="Listing video"
+                />
+              </div>
+            ) : video.thumbnailUrl ? (
               <div className={styles.mediaThumbWrap}>
                 <img alt="Video thumbnail" className={styles.mediaThumb} src={video.thumbnailUrl} />
               </div>

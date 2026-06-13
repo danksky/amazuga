@@ -132,6 +132,7 @@ export function ListingForm({
   selectedPropertyRouteId,
   submitAction,
   uploadEnabled = false,
+  videoUploadEnabled = false,
 }: {
   agencies: PortalListingAgencyOption[];
   cancelHref?: string;
@@ -142,6 +143,7 @@ export function ListingForm({
   selectedPropertyRouteId?: string;
   submitAction: (formData: FormData) => void | Promise<void>;
   uploadEnabled?: boolean;
+  videoUploadEnabled?: boolean;
 }) {
   const [publishAttempted, setPublishAttempted] = useState(false);
   const [askingPriceHasValue, setAskingPriceHasValue] = useState(Boolean(listing?.askingPrice));
@@ -463,7 +465,7 @@ export function ListingForm({
               <ListingVideoManager
                 initialVideo={listing.video}
                 listingId={listing.id}
-                uploadEnabled={uploadEnabled}
+                uploadEnabled={videoUploadEnabled}
               />
             </section>
           ) : null}
