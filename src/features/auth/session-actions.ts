@@ -205,13 +205,19 @@ export async function requestSignUpOtpAction(formData: FormData) {
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
 
-  // If an account already exists, send them back to sign-up with a prompt to sign in instead.
   const existing = await getUserByPhoneFromDb(phone);
+  const supabase = await createSupabaseServerClient();
+
   if (existing) {
-    redirect(`${routes.auth.signup}?error=phone-exists&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+    // Account already exists — send an OTP and drop them into the sign-in verify step.
+    const { error } = await supabase.auth.signInWithOtp({ phone });
+    if (error) {
+      console.error("[requestSignUpOtpAction] signInWithOtp error (existing user):", error.status, error.message, error.code);
+      redirect(`${routes.auth.login}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
+    }
+    redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
   }
 
-  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({ phone });
 
   if (error) {
@@ -236,6 +242,7 @@ export async function verifySignUpOtpAction(formData: FormData) {
   const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
 
   if (error || !data.user) {
+    console.error("[verifySignUpOtpAction] verifyOtp failed:", error?.status, error?.message, error?.code, "phone:", phone);
     redirect(
       `${routes.auth.signup}?step=verify&phone=${encodeURIComponent(phone)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&error=invalid-otp&next=${encodeURIComponent(next)}`,
     );
@@ -255,10 +262,9 @@ export async function requestMockSignUpOtpAction(formData: FormData) {
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
 
-  // If an account already exists, send them back to sign-up with a prompt to sign in instead.
   const existing = await getUserByPhoneFromDb(phone);
   if (existing) {
-    redirect(`${routes.auth.signup}?error=phone-exists&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
+    redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
   }
 
   redirect(
