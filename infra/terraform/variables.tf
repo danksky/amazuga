@@ -508,6 +508,14 @@ variable "africas_talking_sandbox" {
   default     = "true"
 }
 
+# --- Resend ---
+
+variable "resend_api_key" {
+  description = "Resend API key used as the SMTP password for Supabase transactional email."
+  type        = string
+  sensitive   = true
+}
+
 # --- Telnyx env vars (Vercel) ---
 
 variable "telnyx_api_key" {
