@@ -40,6 +40,7 @@ export async function submitAgencyRegistrationAction(formData: FormData) {
     createdByUserId: currentUser.id,
     businessName: getRequiredString(formData, "businessName"),
     tin: getRequiredString(formData, "tin"),
+    whatsappPhone: getOptionalString(formData, "whatsappPhone"),
     websiteUrl: getOptionalString(formData, "website"),
     instagramUrl: getOptionalString(formData, "instagram"),
     googleMapsUrl: getOptionalString(formData, "googleMapsListing"),

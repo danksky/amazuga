@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { routes } from "@/lib/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createPhoneUserInDb, createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, getUserByPhoneFromDb, upsertOtpUserInDb } from "@/lib/server/users";
+import { createPhoneUserInDb, createUserInDb, getUserByEmailFromDb, getUserByIdFromDb, getUserByPhoneFromDb, upsertEmailUserInDb, upsertOtpUserInDb } from "@/lib/server/users";
 
 
 function getRequiredString(formData: FormData, key: string) {
@@ -298,6 +298,183 @@ export async function verifyMockSignUpOtpAction(formData: FormData) {
 
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, newUser.id, { httpOnly: true, sameSite: "lax", path: "/" });
+  redirect(next);
+}
+
+// --- Mock email actions (used when AUTH_MODE=mock-email) ---
+// Any email accepts code 000000. Mirrors the mock phone flow.
+
+export async function requestMockEmailOtpAction(formData: FormData) {
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const next = getNextDestination(formData, routes.public.buy);
+
+  const user = await getUserByEmailFromDb(email);
+  if (!user) {
+    redirect(`${routes.auth.login}?error=email-not-found&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
+}
+
+export async function verifyMockEmailOtpAction(formData: FormData) {
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const token = getRequiredString(formData, "token");
+  const next = getNextDestination(formData, routes.public.buy);
+
+  if (token !== "000000") {
+    redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&error=invalid-otp&next=${encodeURIComponent(next)}`);
+  }
+
+  const user = await getUserByEmailFromDb(email);
+  if (!user) {
+    redirect(routes.auth.login);
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, user.id, { httpOnly: true, sameSite: "lax", path: "/" });
+  redirect(next);
+}
+
+export async function requestMockSignUpEmailOtpAction(formData: FormData) {
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const next = getNextDestination(formData, routes.public.buy);
+
+  const existing = await getUserByEmailFromDb(email);
+  if (existing) {
+    redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(
+    `${routes.auth.signup}?step=verify&email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&next=${encodeURIComponent(next)}`,
+  );
+}
+
+export async function verifyMockSignUpEmailOtpAction(formData: FormData) {
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const token = getRequiredString(formData, "token");
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const next = getNextDestination(formData, routes.public.buy);
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  if (token !== "000000") {
+    redirect(`${routes.auth.signup}?step=verify&email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&error=invalid-otp&next=${encodeURIComponent(next)}`);
+  }
+
+  const existing = await getUserByEmailFromDb(email);
+  if (existing) {
+    const cookieStore = await cookies();
+    cookieStore.set(AUTH_COOKIE_NAME, existing.id, { httpOnly: true, sameSite: "lax", path: "/" });
+    redirect(next);
+  }
+
+  const newUser = await createUserInDb({ email, fullName });
+  if (!newUser) throw new Error("Failed to create user");
+
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, newUser.id, { httpOnly: true, sameSite: "lax", path: "/" });
+  redirect(next);
+}
+
+// --- Email OTP actions (used when AUTH_MODE=email) ---
+
+export async function requestEmailOtpAction(formData: FormData) {
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const next = getNextDestination(formData, routes.public.buy);
+
+  const existingUser = await getUserByEmailFromDb(email);
+  if (!existingUser) {
+    redirect(`${routes.auth.signup}?email=${encodeURIComponent(email)}`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithOtp({ email });
+
+  if (error) {
+    console.error("[requestEmailOtpAction] signInWithOtp error:", error.status, error.message, error.code);
+    redirect(`${routes.auth.login}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
+}
+
+export async function verifyEmailOtpAction(formData: FormData) {
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const token = getRequiredString(formData, "token");
+  const next = getNextDestination(formData, routes.public.buy);
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+
+  if (error) {
+    console.error("[verifyEmailOtpAction] verifyOtp failed:", error.status, error.message, error.code, "email:", email);
+    redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&error=invalid-otp&next=${encodeURIComponent(next)}`);
+  }
+
+  const user = await getUserByEmailFromDb(email);
+  if (!user) {
+    redirect(`${routes.auth.signup}?email=${encodeURIComponent(email)}`);
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, user.id, { httpOnly: true, sameSite: "lax", path: "/" });
+  redirect(next);
+}
+
+export async function requestSignUpEmailOtpAction(formData: FormData) {
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const next = getNextDestination(formData, routes.public.buy);
+
+  const existing = await getUserByEmailFromDb(email);
+  const supabase = await createSupabaseServerClient();
+
+  if (existing) {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) {
+      console.error("[requestSignUpEmailOtpAction] signInWithOtp error (existing user):", error.status, error.message, error.code);
+      redirect(`${routes.auth.login}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
+    }
+    redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({ email });
+  if (error) {
+    console.error("[requestSignUpEmailOtpAction] signInWithOtp error:", error.status, error.message, error.code);
+    redirect(`${routes.auth.signup}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(
+    `${routes.auth.signup}?step=verify&email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&next=${encodeURIComponent(next)}`,
+  );
+}
+
+export async function verifySignUpEmailOtpAction(formData: FormData) {
+  const email = getRequiredString(formData, "email").toLowerCase();
+  const token = getRequiredString(formData, "token");
+  const firstName = getRequiredString(formData, "firstName");
+  const lastName = getRequiredString(formData, "lastName");
+  const next = getNextDestination(formData, routes.public.buy);
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+
+  if (error || !data.user) {
+    console.error("[verifySignUpEmailOtpAction] verifyOtp failed:", error?.status, error?.message, error?.code, "email:", email);
+    redirect(
+      `${routes.auth.signup}?step=verify&email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&error=invalid-otp&next=${encodeURIComponent(next)}`,
+    );
+  }
+
+  const user = await upsertEmailUserInDb({ supabaseAuthId: data.user.id, email, fullName });
+  if (!user) throw new Error("Failed to upsert user after email OTP verification");
+
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, user.id, { httpOnly: true, sameSite: "lax", path: "/" });
   redirect(next);
 }
 

@@ -50,6 +50,7 @@ interface AgencyApplicationRow {
   created_by_user_id: string;
   business_name: string;
   tin: string;
+  whatsapp_phone: string | null;
   website_url: string | null;
   google_maps_url: string | null;
   instagram_url: string | null;
@@ -245,6 +246,7 @@ function toAgencyApplication(row: AgencyApplicationRow): AgencyApplication {
     createdByUserId: row.created_by_user_id,
     businessName: row.business_name,
     tin: row.tin,
+    whatsappPhone: row.whatsapp_phone || undefined,
     websiteUrl: row.website_url || undefined,
     googleMapsUrl: row.google_maps_url || undefined,
     instagramUrl: row.instagram_url || undefined,
@@ -1056,6 +1058,7 @@ export async function listAgencyApplicationsFromDb() {
         created_by_user_id,
         business_name,
         tin,
+        whatsapp_phone,
         website_url,
         google_maps_url,
         instagram_url,
@@ -1423,6 +1426,7 @@ export async function createAgencyApplicationInDb(input: {
   createdByUserId: string;
   businessName: string;
   tin: string;
+  whatsappPhone?: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
   instagramUrl?: string;
@@ -1435,18 +1439,20 @@ export async function createAgencyApplicationInDb(input: {
         created_by_user_id,
         business_name,
         tin,
+        whatsapp_phone,
         website_url,
         google_maps_url,
         instagram_url,
         status,
         seed_source
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 'manual_workflow_v1')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 'manual_workflow_v1')
       RETURNING
         id,
         created_by_user_id,
         business_name,
         tin,
+        whatsapp_phone,
         website_url,
         google_maps_url,
         instagram_url,
@@ -1458,6 +1464,7 @@ export async function createAgencyApplicationInDb(input: {
       input.createdByUserId,
       input.businessName,
       input.tin,
+      input.whatsappPhone || null,
       input.websiteUrl || null,
       input.googleMapsUrl || null,
       input.instagramUrl || null,
@@ -1785,6 +1792,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         created_by_user_id,
         business_name,
         tin,
+        whatsapp_phone,
         website_url,
         google_maps_url,
         instagram_url,
@@ -1828,6 +1836,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         created_from_application_id,
         business_name,
         tin,
+        whatsapp_phone,
         website_url,
         google_maps_url,
         instagram_url,
@@ -1845,9 +1854,10 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
         $6,
         $7,
         $8,
-        'approved',
         $9,
+        'approved',
         $10,
+        $11,
         'manual_workflow_v1'
       )
       RETURNING
@@ -1871,6 +1881,7 @@ export async function ensureAgencyFromApprovedApplicationInDb(applicationId: str
       application.id,
       application.businessName,
       application.tin,
+      application.whatsappPhone || null,
       application.websiteUrl || null,
       application.googleMapsUrl || null,
       application.instagramUrl || null,

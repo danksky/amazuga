@@ -120,6 +120,7 @@ locals {
     "https://%s",
     cloudflare_workers_custom_domain.listing_media_preview.hostname
   )
+  email_otp_template = "<h2>Your sign-in code</h2><p>Enter this code to sign in to Amazuga:</p><p style=\"font-size:32px;font-weight:bold;letter-spacing:6px;color:#1a1a1a\">{{ .Token }}</p><p style=\"color:#666\">This code expires in 10 minutes. If you did not request this, you can safely ignore this email.</p>"
 }
 
 data "cloudflare_zone" "amazuga" {
@@ -924,6 +925,20 @@ resource "supabase_settings" "production" {
       hook_send_sms_secrets  = "v1,${var.supabase_hook_secret}"
       sms_otp_exp            = 60
       sms_otp_length         = 6
+
+      # Email OTP via Resend SMTP
+      site_url                            = "https://amazuga.com"
+      smtp_admin_email                    = "noreply@amazuga.com"
+      smtp_host                           = "smtp.resend.com"
+      smtp_port                           = "465"
+      smtp_user                           = "resend"
+      smtp_pass                           = var.resend_api_key
+      smtp_sender_name                    = "Amazuga"
+      mailer_autoconfirm                  = true
+      mailer_otp_exp                      = 600
+      mailer_otp_length                   = 6
+      mailer_subjects_magic_link          = "Your Amazuga sign-in code"
+      mailer_templates_magic_link_content = local.email_otp_template
     },
     var.supabase_sms_test_otp_production != null ? {
       sms_test_otp             = var.supabase_sms_test_otp_production
@@ -948,6 +963,20 @@ resource "supabase_settings" "preview" {
       hook_send_sms_secrets  = "v1,${var.supabase_hook_secret_preview}"
       sms_otp_exp            = 60
       sms_otp_length         = 6
+
+      # Email OTP via Resend SMTP
+      site_url                            = "https://preview.amazuga.com"
+      smtp_admin_email                    = "noreply@amazuga.com"
+      smtp_host                           = "smtp.resend.com"
+      smtp_port                           = "465"
+      smtp_user                           = "resend"
+      smtp_pass                           = var.resend_api_key
+      smtp_sender_name                    = "Amazuga"
+      mailer_autoconfirm                  = true
+      mailer_otp_exp                      = 600
+      mailer_otp_length                   = 6
+      mailer_subjects_magic_link          = "Your Amazuga sign-in code"
+      mailer_templates_magic_link_content = local.email_otp_template
     },
     var.supabase_sms_test_otp != null ? {
       sms_test_otp             = var.supabase_sms_test_otp

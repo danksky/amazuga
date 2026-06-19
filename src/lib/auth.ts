@@ -12,6 +12,8 @@ import type { User } from "@/types/domain";
 export const AUTH_COOKIE_NAME = "amazuga_mock_auth";
 
 export const isOtpMode = () => process.env.AUTH_MODE === "otp";
+export const isEmailMode = () => process.env.AUTH_MODE === "email";
+export const isMockEmailMode = () => process.env.AUTH_MODE === "mock-email";
 
 export const getCurrentUser = cache(async () => {
   if (isOtpMode()) {

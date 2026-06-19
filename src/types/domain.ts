@@ -189,6 +189,7 @@ export interface AgencyApplication {
   createdByUserId: string;
   businessName: string;
   tin: string;
+  whatsappPhone?: string;
   websiteUrl?: string;
   googleMapsUrl?: string;
   instagramUrl?: string;

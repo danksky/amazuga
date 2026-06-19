@@ -1,14 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/features/auth/phone-input";
 import {
+  requestEmailOtpAction,
+  requestMockEmailOtpAction,
   requestMockOtpAction,
+  requestMockSignUpEmailOtpAction,
   requestMockSignUpOtpAction,
   requestOtpAction,
+  requestSignUpEmailOtpAction,
   requestSignUpOtpAction,
   signInAsUserAction,
+  verifyEmailOtpAction,
+  verifyMockEmailOtpAction,
   verifyMockOtpAction,
+  verifyMockSignUpEmailOtpAction,
   verifyMockSignUpOtpAction,
   verifyOtpAction,
+  verifySignUpEmailOtpAction,
   verifySignUpOtpAction,
 } from "@/features/auth/session-actions";
 import type { User } from "@/types/domain";
@@ -21,8 +29,11 @@ interface AuthPageProps {
   error?: string;
   users?: User[];
   otpMode?: boolean;
+  emailMode?: boolean;
+  mockEmailMode?: boolean;
   otpStep?: "phone" | "verify";
   otpPhone?: string;
+  otpEmail?: string;
 }
 
 // --- Shared helpers ---
@@ -335,22 +346,323 @@ function SignupVerifyStep({
   );
 }
 
+// --- Email steps ---
+
+function EmailStep({
+  next,
+  error,
+  email,
+  action,
+  users = [],
+  isMock,
+}: {
+  next?: string;
+  error?: string;
+  email?: string;
+  action: (formData: FormData) => Promise<void>;
+  users?: User[];
+  isMock?: boolean;
+}) {
+  const errorMessage = error === "otp-send-failed"
+    ? "Something went wrong sending your code. Please try again."
+    : error === "email-not-found" && isMock
+      ? "That email isn't a test account. Try one of the addresses listed below."
+      : error ? "Something went wrong. Try again." : null;
+
+  return (
+    <div className={`container ${styles.page}`}>
+      <div className={styles.stack}>
+        <div className={styles.card}>
+          <div className={styles.eyebrow}>Sign in</div>
+          <h1 className={styles.title}>Enter your email</h1>
+          <div className={styles.body}>{"We'll send you a one-time code to sign in."}</div>
+          {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+
+          <form action={action} className={styles.form}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="email">Email address</label>
+              <input
+                autoComplete="email"
+                className={styles.input}
+                defaultValue={email ?? ""}
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                required
+                type="email"
+              />
+            </div>
+            <input name="next" type="hidden" value={next ?? ""} />
+            <div className={styles.actions}>
+              <Button type="submit">Send code</Button>
+            </div>
+          </form>
+        </div>
+
+        <div className={styles.inlineAction}>
+          {"Don't have an account? "}
+          <a className={styles.link} href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}>
+            Sign up
+          </a>
+        </div>
+
+        {isMock && users.length > 0 ? (
+          <div className={styles.card}>
+            <div className={styles.sectionTitle}>Dev shortcuts</div>
+            <div className={styles.body}>
+              Sign in as a test persona instantly, or use their email above and enter <strong>000000</strong>.
+            </div>
+            <div className={styles.quickList}>
+              {users.map((user) => (
+                <form action={signInAsUserAction} className={styles.quickRow} key={user.id}>
+                  <div>
+                    <div className={styles.quickTitle}>{user.fullName}</div>
+                    {user.mockPersonaLabel ? <div className={styles.quickPersona}>{user.mockPersonaLabel}</div> : null}
+                    <div className={styles.quickMeta}>
+                      {user.email ?? user.phone ?? ""}
+                      {user.roles.length > 0 ? ` · ${user.roles.join(", ")}` : ""}
+                    </div>
+                    {user.mockPersonaDescription ? (
+                      <div className={styles.quickDescription}>{user.mockPersonaDescription}</div>
+                    ) : null}
+                  </div>
+                  <input name="userId" type="hidden" value={user.id} />
+                  <input name="next" type="hidden" value={next ?? ""} />
+                  <Button type="submit" variant="secondary">Sign in</Button>
+                </form>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function EmailVerifyStep({
+  email,
+  next,
+  error,
+  action,
+  isMock,
+}: {
+  email: string;
+  next?: string;
+  error?: string;
+  action: (formData: FormData) => Promise<void>;
+  isMock?: boolean;
+}) {
+  const errorMessage = getVerifyErrorCopy(error);
+
+  return (
+    <div className={`container ${styles.page}`}>
+      <div className={styles.stack}>
+        <div className={styles.card}>
+          <div className={styles.eyebrow}>Verify</div>
+          <h1 className={styles.title}>Enter the code</h1>
+          <div className={styles.body}>
+            We sent a 6-digit code to <strong>{email}</strong>.
+          </div>
+          {isMock ? <div className={styles.devHint}>Dev mode — use code <strong>000000</strong></div> : null}
+          {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+
+          <form action={action} className={styles.form}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="token">Code</label>
+              <input
+                autoComplete="one-time-code"
+                className={styles.input}
+                id="token"
+                inputMode="numeric"
+                maxLength={6}
+                name="token"
+                pattern="\d{6}"
+                placeholder="000000"
+              />
+            </div>
+            <input name="email" type="hidden" value={email} />
+            <input name="next" type="hidden" value={next ?? ""} />
+            <div className={styles.actions}>
+              <Button type="submit">Verify</Button>
+            </div>
+          </form>
+        </div>
+
+        <div className={styles.inlineAction}>
+          Wrong email?{" "}
+          <a className={styles.link} href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>
+            Start over
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignupEmailDetailsStep({
+  next,
+  error,
+  action,
+  email,
+  isMock,
+}: {
+  next?: string;
+  error?: string;
+  action: (formData: FormData) => Promise<void>;
+  email?: string;
+  isMock?: boolean;
+}) {
+  const errorMessage = error === "otp-send-failed"
+    ? "Something went wrong sending your code. Please try again."
+    : error ? "Something went wrong. Try again." : null;
+
+  return (
+    <div className={`container ${styles.page}`}>
+      <div className={styles.stack}>
+        <div className={styles.card}>
+          <div className={styles.eyebrow}>Create account</div>
+          <h1 className={styles.title}>Sign up</h1>
+          <div className={styles.body}>{"We'll send a one-time code to verify your email."}</div>
+          {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+          {isMock ? <div className={styles.devHint}>Dev mode — use code <strong>000000</strong> on the next step</div> : null}
+
+          <form action={action} className={styles.form}>
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="firstName">First name</label>
+                <input autoComplete="given-name" className={styles.input} id="firstName" name="firstName" placeholder="Amara" required type="text" />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="lastName">Last name</label>
+                <input autoComplete="family-name" className={styles.input} id="lastName" name="lastName" placeholder="Ndiaye" required type="text" />
+              </div>
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="email">Email address</label>
+              <input
+                autoComplete="email"
+                className={styles.input}
+                defaultValue={email ?? ""}
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                required
+                type="email"
+              />
+            </div>
+            <input name="next" type="hidden" value={next ?? ""} />
+            <div className={styles.actions}>
+              <Button type="submit">Send code</Button>
+            </div>
+          </form>
+        </div>
+
+        <div className={styles.inlineAction}>
+          Already have an account?{" "}
+          <a className={styles.link} href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>
+            Sign in
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignupEmailVerifyStep({
+  email,
+  firstName,
+  lastName,
+  next,
+  error,
+  action,
+  isMock,
+}: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  next?: string;
+  error?: string;
+  action: (formData: FormData) => Promise<void>;
+  isMock?: boolean;
+}) {
+  const errorMessage = getVerifyErrorCopy(error);
+
+  return (
+    <div className={`container ${styles.page}`}>
+      <div className={styles.stack}>
+        <div className={styles.card}>
+          <div className={styles.eyebrow}>Verify</div>
+          <h1 className={styles.title}>Enter the code</h1>
+          <div className={styles.body}>
+            We sent a 6-digit code to <strong>{email}</strong>.
+          </div>
+          {isMock ? <div className={styles.devHint}>Dev mode — use code <strong>000000</strong></div> : null}
+          {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+
+          <form action={action} className={styles.form}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="token">Code</label>
+              <input
+                autoComplete="one-time-code"
+                className={styles.input}
+                id="token"
+                inputMode="numeric"
+                maxLength={6}
+                name="token"
+                pattern="\d{6}"
+                placeholder="000000"
+              />
+            </div>
+            <input name="email" type="hidden" value={email} />
+            <input name="firstName" type="hidden" value={firstName} />
+            <input name="lastName" type="hidden" value={lastName} />
+            <input name="next" type="hidden" value={next ?? ""} />
+            <div className={styles.actions}>
+              <Button type="submit">Verify</Button>
+            </div>
+          </form>
+        </div>
+
+        <div className={styles.inlineAction}>
+          Wrong email?{" "}
+          <a className={styles.link} href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}>
+            Start over
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Main export ---
 
-export function AuthPage({ mode, next, error, users = [], otpMode, otpStep, otpPhone }: AuthPageProps) {
-  const isVerifyStep = otpStep === "verify" && !!otpPhone;
+export function AuthPage({ mode, next, error, users = [], otpMode, emailMode, mockEmailMode, otpStep, otpPhone, otpEmail }: AuthPageProps) {
+  const isVerifyStep = otpStep === "verify";
+
+  if (mockEmailMode) {
+    if (isVerifyStep && otpEmail) {
+      return <EmailVerifyStep action={verifyMockEmailOtpAction} email={otpEmail} error={error} isMock next={next} />;
+    }
+    return <EmailStep action={requestMockEmailOtpAction} email={otpEmail} error={error} isMock next={next} users={users} />;
+  }
+
+  if (emailMode) {
+    if (isVerifyStep && otpEmail) {
+      return <EmailVerifyStep action={verifyEmailOtpAction} email={otpEmail} error={error} next={next} />;
+    }
+    return <EmailStep action={requestEmailOtpAction} email={otpEmail} error={error} next={next} />;
+  }
 
   if (otpMode) {
-    // Real Supabase OTP
-    if (isVerifyStep) {
-      return <VerifyStep action={verifyOtpAction} error={error} next={next} phone={otpPhone!} />;
+    if (isVerifyStep && otpPhone) {
+      return <VerifyStep action={verifyOtpAction} error={error} next={next} phone={otpPhone} />;
     }
     return <PhoneStep action={requestOtpAction} error={error} next={next} phone={otpPhone} />;
   }
 
   // Mock two-step flow
-  if (isVerifyStep) {
-    return <VerifyStep action={verifyMockOtpAction} error={error} isMock next={next} phone={otpPhone!} />;
+  if (isVerifyStep && otpPhone) {
+    return <VerifyStep action={verifyMockOtpAction} error={error} isMock next={next} phone={otpPhone} />;
   }
   return <PhoneStep action={requestMockOtpAction} error={error} isMock next={next} phone={otpPhone} users={users} />;
 }
@@ -359,13 +671,51 @@ interface SignupPageProps {
   next?: string;
   error?: string;
   otpMode?: boolean;
+  emailMode?: boolean;
+  mockEmailMode?: boolean;
   step?: "details" | "verify";
   phone?: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
 }
 
-export function SignupPage({ next, error, otpMode, step, phone, firstName, lastName }: SignupPageProps) {
+export function SignupPage({ next, error, otpMode, emailMode, mockEmailMode, step, phone, email, firstName, lastName }: SignupPageProps) {
+  if (mockEmailMode) {
+    const isVerifyStep = step === "verify" && !!email && !!firstName && !!lastName;
+    if (isVerifyStep) {
+      return (
+        <SignupEmailVerifyStep
+          action={verifyMockSignUpEmailOtpAction}
+          email={email!}
+          error={error}
+          firstName={firstName!}
+          isMock
+          lastName={lastName!}
+          next={next}
+        />
+      );
+    }
+    return <SignupEmailDetailsStep action={requestMockSignUpEmailOtpAction} email={email} error={error} isMock next={next} />;
+  }
+
+  if (emailMode) {
+    const isVerifyStep = step === "verify" && !!email && !!firstName && !!lastName;
+    if (isVerifyStep) {
+      return (
+        <SignupEmailVerifyStep
+          action={verifySignUpEmailOtpAction}
+          email={email!}
+          error={error}
+          firstName={firstName!}
+          lastName={lastName!}
+          next={next}
+        />
+      );
+    }
+    return <SignupEmailDetailsStep action={requestSignUpEmailOtpAction} email={email} error={error} next={next} />;
+  }
+
   const isVerifyStep = step === "verify" && !!phone && !!firstName && !!lastName;
 
   if (isVerifyStep) {
