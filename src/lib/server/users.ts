@@ -157,6 +157,38 @@ export async function upsertOtpUserInDb(input: { supabaseAuthId: string; phone: 
   return getUserByIdFromDb(idResult.rows[0].id);
 }
 
+export async function upsertEmailUserInDb(input: { supabaseAuthId: string; email: string; fullName?: string }) {
+  const email = input.email.trim().toLowerCase();
+  const fullName = input.fullName ?? null;
+  const idResult = await getPgPool().query<{ id: string }>(
+    `
+      INSERT INTO app_user (
+        id,
+        email,
+        full_name,
+        roles,
+        status,
+        seed_source
+      )
+      VALUES (
+        $1::uuid,
+        $2,
+        COALESCE($3, $2),
+        ARRAY['user']::TEXT[],
+        'active',
+        'email_signup_v1'
+      )
+      ON CONFLICT (email) DO UPDATE
+        SET full_name = COALESCE($3, app_user.full_name),
+            status    = 'active'
+      RETURNING id
+    `,
+    [input.supabaseAuthId, email, fullName],
+  );
+
+  return getUserByIdFromDb(idResult.rows[0].id);
+}
+
 export async function createPhoneUserInDb(input: { phone: string; fullName: string }) {
   const idResult = await getPgPool().query<{ id: string }>(
     `

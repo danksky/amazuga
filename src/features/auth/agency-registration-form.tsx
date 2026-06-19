@@ -34,6 +34,20 @@ export function AgencyRegistrationForm() {
           </div>
 
           <div className={styles.field}>
+            <label className={styles.label} htmlFor="whatsapp">
+              WhatsApp number
+            </label>
+            <input
+              className={styles.input}
+              id="whatsapp"
+              name="whatsappPhone"
+              placeholder="+250 7XX XXX XXX"
+              type="tel"
+            />
+            <div className={styles.hint}>This is the number clients will use to contact your agency.</div>
+          </div>
+
+          <div className={styles.field}>
             <label className={styles.label} htmlFor="website">
               Website <span className={styles.optional}>(optional)</span>
             </label>

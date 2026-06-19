@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUser, isOtpMode } from "@/lib/auth";
+import { getCurrentUser, isEmailMode, isMockEmailMode, isOtpMode } from "@/lib/auth";
 import { SignupPage } from "@/features/auth/auth-page";
 import { routes } from "@/lib/routes";
 
@@ -14,11 +14,12 @@ export default async function SignupPageRoute({
     error?: string;
     step?: string;
     phone?: string;
+    email?: string;
     firstName?: string;
     lastName?: string;
   }>;
 }) {
-  const [currentUser, { next, error, step, phone, firstName, lastName }] = await Promise.all([
+  const [currentUser, { next, error, step, phone, email, firstName, lastName }] = await Promise.all([
     getCurrentUser(),
     searchParams,
   ]);
@@ -31,9 +32,12 @@ export default async function SignupPageRoute({
 
   return (
     <SignupPage
+      email={email}
+      emailMode={isEmailMode()}
       error={error}
       firstName={firstName}
       lastName={lastName}
+      mockEmailMode={isMockEmailMode()}
       next={next}
       otpMode={isOtpMode()}
       phone={phone}
