@@ -1286,3 +1286,70 @@ resource "cloudflare_dns_record" "txt_forwardemail_verification" {
   ttl     = 1
   comment = "Forward Email domain verification"
 }
+
+# --- amazuga.rw / amazuga.co.rw — redirect to amazuga.com via Worker ---
+
+data "cloudflare_zone" "amazuga_rw" {
+  filter = {
+    account = {
+      id = var.cloudflare_account_id
+    }
+    name = "amazuga.rw"
+  }
+}
+
+data "cloudflare_zone" "amazuga_co_rw" {
+  filter = {
+    account = {
+      id = var.cloudflare_account_id
+    }
+    name = "amazuga.co.rw"
+  }
+}
+
+resource "cloudflare_workers_script" "amazuga_rw_redirect" {
+  account_id = var.cloudflare_account_id
+  script_name = "amazuga-rw-redirect"
+  content    = <<-JS
+    addEventListener("fetch", event => {
+      event.respondWith(handleRequest(event.request));
+    });
+
+    async function handleRequest(request) {
+      const url = new URL(request.url);
+      return Response.redirect("https://amazuga.com" + url.pathname + url.search, 301);
+    }
+  JS
+}
+
+resource "cloudflare_workers_custom_domain" "amazuga_rw_apex" {
+  account_id  = var.cloudflare_account_id
+  hostname    = "amazuga.rw"
+  zone_id     = data.cloudflare_zone.amazuga_rw.id
+  service     = cloudflare_workers_script.amazuga_rw_redirect.script_name
+  environment = "production"
+}
+
+resource "cloudflare_workers_custom_domain" "amazuga_rw_www" {
+  account_id  = var.cloudflare_account_id
+  hostname    = "www.amazuga.rw"
+  zone_id     = data.cloudflare_zone.amazuga_rw.id
+  service     = cloudflare_workers_script.amazuga_rw_redirect.script_name
+  environment = "production"
+}
+
+resource "cloudflare_workers_custom_domain" "amazuga_co_rw_apex" {
+  account_id  = var.cloudflare_account_id
+  hostname    = "amazuga.co.rw"
+  zone_id     = data.cloudflare_zone.amazuga_co_rw.id
+  service     = cloudflare_workers_script.amazuga_rw_redirect.script_name
+  environment = "production"
+}
+
+resource "cloudflare_workers_custom_domain" "amazuga_co_rw_www" {
+  account_id  = var.cloudflare_account_id
+  hostname    = "www.amazuga.co.rw"
+  zone_id     = data.cloudflare_zone.amazuga_co_rw.id
+  service     = cloudflare_workers_script.amazuga_rw_redirect.script_name
+  environment = "production"
+}
