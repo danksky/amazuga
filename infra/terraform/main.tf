@@ -916,7 +916,7 @@ resource "neon_endpoint" "preview" {
 resource "cloudflare_turnstile_widget" "amazuga_auth" {
   account_id = var.cloudflare_account_id
   name       = "Amazuga authentication"
-  domains    = ["amazuga.com", "preview.amazuga.com", "localhost"]
+  domains    = ["amazuga.com", "localhost", "preview.amazuga.com"]
   mode       = "managed"
 }
 
