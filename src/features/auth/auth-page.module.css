@@ -141,6 +141,10 @@
   gap: 12px;
 }
 
+.captcha {
+  min-height: 65px;
+}
+
 .quickList {
   display: grid;
   gap: 12px;
