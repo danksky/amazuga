@@ -913,6 +913,13 @@ resource "neon_endpoint" "preview" {
 
 # --- Supabase ---
 
+resource "cloudflare_turnstile_widget" "amazuga_auth" {
+  account_id = var.cloudflare_account_id
+  name       = "Amazuga authentication"
+  domains    = ["amazuga.com", "preview.amazuga.com", "localhost"]
+  mode       = "managed"
+}
+
 resource "supabase_settings" "production" {
   project_ref = var.supabase_project_ref
 
@@ -934,11 +941,23 @@ resource "supabase_settings" "production" {
       smtp_user                           = "resend"
       smtp_pass                           = var.resend_api_key
       smtp_sender_name                    = "Amazuga"
-      mailer_autoconfirm                  = true
+      mailer_autoconfirm                  = false
       mailer_otp_exp                      = 600
       mailer_otp_length                   = 6
       mailer_subjects_magic_link          = "Your Amazuga sign-in code"
       mailer_templates_magic_link_content = local.email_otp_template
+
+      # CAPTCHA is enforced by Supabase Auth, including direct API calls that
+      # do not originate from the Amazuga UI.
+      security_captcha_enabled  = true
+      security_captcha_provider = "turnstile"
+      security_captcha_secret   = cloudflare_turnstile_widget.amazuga_auth.secret
+
+      # Keep the current production limits explicit to prevent dashboard drift.
+      rate_limit_email_sent = 2
+      rate_limit_otp        = 30
+      rate_limit_verify     = 30
+      rate_limit_sms_sent   = 30
     },
     var.supabase_sms_test_otp_production != null ? {
       sms_test_otp             = var.supabase_sms_test_otp_production
@@ -972,11 +991,20 @@ resource "supabase_settings" "preview" {
       smtp_user                           = "resend"
       smtp_pass                           = var.resend_api_key
       smtp_sender_name                    = "Amazuga"
-      mailer_autoconfirm                  = true
+      mailer_autoconfirm                  = false
       mailer_otp_exp                      = 600
       mailer_otp_length                   = 6
       mailer_subjects_magic_link          = "Your Amazuga sign-in code"
       mailer_templates_magic_link_content = local.email_otp_template
+
+      security_captcha_enabled  = true
+      security_captcha_provider = "turnstile"
+      security_captcha_secret   = cloudflare_turnstile_widget.amazuga_auth.secret
+
+      rate_limit_email_sent = 2
+      rate_limit_otp        = 30
+      rate_limit_verify     = 30
+      rate_limit_sms_sent   = 30
     },
     var.supabase_sms_test_otp != null ? {
       sms_test_otp             = var.supabase_sms_test_otp
@@ -999,6 +1027,16 @@ resource "vercel_project_environment_variable" "auth_mode" {
   sensitive  = false
   target     = ["production", "preview"]
   comment    = "'otp' uses Supabase phone OTP; 'mock' uses cookie-only dev auth."
+}
+
+resource "vercel_project_environment_variable" "next_public_turnstile_site_key" {
+  project_id = vercel_project.amazuga.id
+  team_id    = var.vercel_team_id
+  key        = "NEXT_PUBLIC_TURNSTILE_SITE_KEY"
+  value      = cloudflare_turnstile_widget.amazuga_auth.sitekey
+  sensitive  = false
+  target     = ["production", "preview"]
+  comment    = "Cloudflare Turnstile site key for Supabase Auth CAPTCHA."
 }
 
 resource "vercel_project_environment_variable" "next_public_supabase_url" {

@@ -29,6 +29,11 @@ function getNextDestination(formData: FormData, fallback: string) {
   return typeof next === "string" && next.trim() ? next.trim() : fallback;
 }
 
+function getCaptchaToken(formData: FormData) {
+  const token = formData.get("captchaToken");
+  return typeof token === "string" && token.trim() ? token.trim() : undefined;
+}
+
 export async function signInAction(formData: FormData) {
   const email = getRequiredString(formData, "email").toLowerCase();
   const next = getNextDestination(formData, routes.public.buy);
@@ -156,6 +161,7 @@ export async function requestOtpAction(formData: FormData) {
   const rawPhone = getRequiredString(formData, "phone");
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
+  const captchaToken = getCaptchaToken(formData);
 
   const existingUser = await getUserByPhoneFromDb(phone);
   if (!existingUser) {
@@ -163,7 +169,7 @@ export async function requestOtpAction(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithOtp({ phone });
+  const { error } = await supabase.auth.signInWithOtp({ phone, options: { captchaToken } });
 
   if (error) {
     redirect(
@@ -204,13 +210,14 @@ export async function requestSignUpOtpAction(formData: FormData) {
   const rawPhone = getRequiredString(formData, "phone");
   const next = getNextDestination(formData, routes.public.buy);
   const phone = normalizeRwandaPhone(rawPhone);
+  const captchaToken = getCaptchaToken(formData);
 
   const existing = await getUserByPhoneFromDb(phone);
   const supabase = await createSupabaseServerClient();
 
   if (existing) {
     // Account already exists — send an OTP and drop them into the sign-in verify step.
-    const { error } = await supabase.auth.signInWithOtp({ phone });
+    const { error } = await supabase.auth.signInWithOtp({ phone, options: { captchaToken } });
     if (error) {
       console.error("[requestSignUpOtpAction] signInWithOtp error (existing user):", error.status, error.message, error.code);
       redirect(`${routes.auth.login}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
@@ -218,7 +225,7 @@ export async function requestSignUpOtpAction(formData: FormData) {
     redirect(`${routes.auth.login}?step=verify&phone=${encodeURIComponent(phone)}&next=${encodeURIComponent(next)}`);
   }
 
-  const { error } = await supabase.auth.signInWithOtp({ phone });
+  const { error } = await supabase.auth.signInWithOtp({ phone, options: { captchaToken } });
 
   if (error) {
     console.error("[requestSignUpOtpAction] signInWithOtp error:", error.status, error.message, error.code);
@@ -383,6 +390,7 @@ export async function verifyMockSignUpEmailOtpAction(formData: FormData) {
 export async function requestEmailOtpAction(formData: FormData) {
   const email = getRequiredString(formData, "email").toLowerCase();
   const next = getNextDestination(formData, routes.public.buy);
+  const captchaToken = getCaptchaToken(formData);
 
   const existingUser = await getUserByEmailFromDb(email);
   if (!existingUser) {
@@ -390,7 +398,7 @@ export async function requestEmailOtpAction(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { captchaToken } });
 
   if (error) {
     console.error("[requestEmailOtpAction] signInWithOtp error:", error.status, error.message, error.code);
@@ -428,12 +436,13 @@ export async function requestSignUpEmailOtpAction(formData: FormData) {
   const lastName = getRequiredString(formData, "lastName");
   const email = getRequiredString(formData, "email").toLowerCase();
   const next = getNextDestination(formData, routes.public.buy);
+  const captchaToken = getCaptchaToken(formData);
 
   const existing = await getUserByEmailFromDb(email);
   const supabase = await createSupabaseServerClient();
 
   if (existing) {
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { captchaToken } });
     if (error) {
       console.error("[requestSignUpEmailOtpAction] signInWithOtp error (existing user):", error.status, error.message, error.code);
       redirect(`${routes.auth.login}?error=otp-send-failed&next=${encodeURIComponent(next)}`);
@@ -441,7 +450,7 @@ export async function requestSignUpEmailOtpAction(formData: FormData) {
     redirect(`${routes.auth.login}?step=verify&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
   }
 
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { captchaToken } });
   if (error) {
     console.error("[requestSignUpEmailOtpAction] signInWithOtp error:", error.status, error.message, error.code);
     redirect(`${routes.auth.signup}?error=otp-send-failed&next=${encodeURIComponent(next)}`);

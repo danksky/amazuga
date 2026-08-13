@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/features/auth/phone-input";
+import { Turnstile } from "@/features/auth/turnstile";
 import {
   requestEmailOtpAction,
   requestMockEmailOtpAction,
@@ -86,6 +87,7 @@ function PhoneStep({
               </label>
               <PhoneInput initialValue={phone} />
             </div>
+            <Turnstile action="phone_auth" />
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
               <Button type="submit">Send code</Button>
@@ -262,6 +264,7 @@ function SignupDetailsStep({
               <label className={styles.label} htmlFor="phone">Phone number</label>
               <PhoneInput initialValue={phone} />
             </div>
+            <Turnstile action="phone_signup" />
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
               <Button type="submit">Send code</Button>
@@ -392,6 +395,7 @@ function EmailStep({
                 type="email"
               />
             </div>
+            <Turnstile action="email_auth" />
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
               <Button type="submit">Send code</Button>
@@ -550,6 +554,7 @@ function SignupEmailDetailsStep({
                 type="email"
               />
             </div>
+            <Turnstile action="email_signup" />
             <input name="next" type="hidden" value={next ?? ""} />
             <div className={styles.actions}>
               <Button type="submit">Send code</Button>
